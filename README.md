@@ -93,3 +93,6 @@ If you find our repo useful, please cite it in your publications.
 }
 ```
 
+## Acknowledgement
+Our code implementation refers to code from [lightzero](https://github.com/opendilab/LightZero).
+
