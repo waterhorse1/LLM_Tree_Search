@@ -150,7 +150,7 @@ class AccelerateMCTSTrainer(BaseMCTSTrainer):
         if self.config.train.pre_onpolicy_datapath_test is not None:
             traj_dict_list = build_env_offline_data_component_fn(
                 jsonl_path=self.config.train.pre_onpolicy_datapath_test,
-                q2idx_dict=self.q2idx_dict,
+                q2idx_dict=self.q2idx_dict_test,
                 tokenizer=self.tokenizer,
                 is_few_shot=self.config.env.is_few_shot,
             )
