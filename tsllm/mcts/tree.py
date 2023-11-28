@@ -602,16 +602,16 @@ class MCTS(object):
                         cur_node.children
                     ):
                         return
-
-                    _, _, terminated, truncated, info = cur_env.step(
+                    copy_env = cur_env.copy()
+                    _, _, terminated, truncated, info = copy_env.step(
                         child.last_action, update_legal_action=True
                     )
 
                     if terminated or truncated:
                         child.set_as_terminate_node()
                     else:
-                        self._expand_leaf_node(child, cur_env, policy_forward_fn)
-                    execute_dfs(child, cur_env.copy())
+                        self._expand_leaf_node(child, copy_env, policy_forward_fn)
+                    execute_dfs(child, copy_env)
 
         execute_dfs(self.root, simulate_env.copy())
 
@@ -625,7 +625,7 @@ class MCTS(object):
         #         #  allow beam size to be larger than max_action of a node.
         #     })
         # traj_list[-1]["num_generated_token"] = self._num_generated_token
-
+        
         return traj_list
 
     def _simulate(
