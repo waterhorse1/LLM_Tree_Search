@@ -198,7 +198,7 @@ class SftInstance:
             if len(a) == 0:
                 if i != len(answer_steps) - 1:
                     print_with_rank(
-                        "possbile problems met in sft instance building. {}".format(
+                        "possible problems met in sft instance building. {}".format(
                             answer_steps
                         )
                     )
