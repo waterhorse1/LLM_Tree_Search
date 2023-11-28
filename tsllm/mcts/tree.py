@@ -615,16 +615,6 @@ class MCTS(object):
 
         execute_dfs(self.root, simulate_env.copy())
 
-        # for i, (e_value, e_node, e_env) in enumerate(end_nodes):
-        #     traj_list.append({
-        #         "path_idx": i,
-        #         "text": e_env.answer,
-        #         "value": e_value,
-        #         "num_generated_token": None,
-        #         # num_generated_token is hard to compute, since we
-        #         #  allow beam size to be larger than max_action of a node.
-        #     })
-        # traj_list[-1]["num_generated_token"] = self._num_generated_token
         
         return traj_list
 
