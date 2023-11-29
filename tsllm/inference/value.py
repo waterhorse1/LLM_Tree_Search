@@ -21,7 +21,8 @@ def value_fn(
 
     # print(input_str)
     inputs = tokenizer(input_str, return_tensors="pt", padding=True).to(critic.device)
-    inputs.pop("token_type_ids")
+    if "token_type_ids" in inputs:
+        inputs.pop("token_type_ids")
     value = critic(**inputs).value.cpu()
     value = value.gather(1, indices2pick.unsqueeze_(1)).squeeze_(1).float().numpy()
     return value

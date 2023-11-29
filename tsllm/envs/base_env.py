@@ -264,6 +264,13 @@ class CoTEnv(BaseEnv):
         truncated = len(self.action_history) >= self.config["max_length"] + (
             2 if self.task_prefix is not None else 1
         )
+        assert len(self.action_history) <= self.config["max_length"] + (
+            2 if self.task_prefix is not None else 1
+        ), "action history length: {}, max length: {}".format(
+            len(self.action_history),
+            self.config["max_length"] + (2 if self.task_prefix is not None else 1),
+        )
+
         if terminated or truncated:
             if self._is_correct(self.action_history[-1]):
                 info["winner"] = 1
@@ -458,13 +465,13 @@ class TokenEnv(BaseEnv):
         truncated = len(self.action_history) >= self.config["max_length"] + (
             2 if self.task_prefix is not None else 1
         )
-        # if terminated or truncated:
-
-        #     if self._is_correct(self.action_history):
-        #         info["winner"] = 1
-        #     else:
-        #         info["winner"] = 2
-        #     return terminated, truncated, info
+        assert len(self.action_history) <= self.config["max_length"] + (
+            2 if self.task_prefix is not None else 1
+        ), "action history length: {}, max length: {}".format(
+            len(self.action_history),
+            self.config["max_length"] + (2 if self.task_prefix is not None else 1),
+        )
+        
         return terminated, truncated, info
 
     def copy(self):
