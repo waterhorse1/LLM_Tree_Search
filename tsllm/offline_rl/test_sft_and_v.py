@@ -71,7 +71,7 @@ def judge_ans(
         return 0
 
     # score_normalization: this is only necessary for [-1, 1] values
-    valid_v_list = np.array(valid_v_list)
+    valid_v_list = np.array(valid_v_list, dtype=float)
     valid_v_list -= valid_v_list.min()
     valid_v_list /= valid_v_list.max() + 1e-3
     valid_v_list = valid_v_list.tolist()
@@ -180,8 +180,8 @@ if __name__ == "__main__":
             "num_mcts_aggregation": 1,
             "max_simulation": None,
             "max_token": 51200,
-            "rollout_method": "mcts.get_next_action",
-            "select_by_prior": True,
+            "rollout_method": "mcts.rap",
+            "select_by_prior": False,
             "reset_total_tree": False,
             "mcts_sample": False,
             "clear_tree": True,
@@ -235,15 +235,6 @@ if __name__ == "__main__":
     #     return np.array([0.0] * len(x))
 
     ############ CONVERT MODEL to CT2 files ###################
-
-    dist.barrier()
-
-    # PS：如果convert好了，上面两步都可以跳过
-
-    ################ LOAD CT2 model ####################
-    # ct2_generator = ctranslate2.Generator(ct2_dir,
-    #                                       )
-    # ct2_sp = spm.SentencePieceProcessor(os.path.join(ct2_dir, "tokenizer.model"))
     ct2_generator, ct2_sp = load_ct2_model(
         config.ct2_dir, device="cuda", device_index=local_rank, compute_type="bfloat16"
     )
