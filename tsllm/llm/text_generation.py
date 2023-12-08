@@ -81,6 +81,78 @@ def llm_forward_ct2(generator, tokenizer, prompt):
 #     return texts, logps
 
 
+def _generate_fastchat(
+    query_str,
+    model_name,
+    n,
+    temperature,
+    top_p=1.0,
+    top_k=-1,
+    max_new_tokens=256,
+    stop_token_ids=None,
+    stop_str=None,
+    controller_addr="http://localhost:21101",
+):
+    # ret = requests.post(controller_addr + "/refresh_all_workers")
+    # ret = requests.post(controller_addr + "/list_models")
+    # models = ret.json()["models"]
+    # models.sort()
+
+    ret = requests.post(
+        controller_addr + "/get_worker_address", json={"model": model_name}
+    )
+    worker_addr = ret.json()["address"]
+
+    headers = {"User-Agent": "FastChat Client"}
+    gen_params = {
+        "model": model_name,
+        "prompt": query_str,
+        "temperature": temperature,
+        "n": n,
+        "top_p": top_p,
+        "top_k": top_k,
+        "stop_token_ids": stop_token_ids,
+        "max_new_tokens": max_new_tokens,
+        "stop": stop_str,
+        "echo": False,
+    }
+    response = requests.post(
+        worker_addr + "/worker_generate",
+        headers=headers,
+        json=gen_params,
+        stream=True,
+    )
+    results = response.json()
+    output_token_lens = results["output_token_len"]
+    cum_logps = results["cumulative_logprob"]
+    avg_len_logps = [clp / otl for clp, otl in zip(cum_logps, output_token_lens)]
+    return results["text"], avg_len_logps
+
+
+def llm_gen_with_logp_vllm(
+    model_name,
+    unused_tokenizer,
+    unused_static_prompt,
+    prompt,
+    num_sequence,
+    unused_stop=None,
+    **generation_config
+):
+    assert unused_static_prompt is None
+    assert unused_stop is None
+    return _generate_fastchat(
+        query_str=prompt,
+        model_name=model_name,
+        n=num_sequence,
+        temperature=generation_config.get("temperature", 1.0),
+        top_p=generation_config.get("top_p", 1.0),
+        top_k=generation_config.get("top_k", 1),
+        max_new_tokens=generation_config.get("max_new_tokens", 16),
+        stop_token_ids=generation_config.get("stop_token_ids", None),
+        stop_str=generation_config.get("stop_str", None)
+    )
+
+
 @torch.no_grad()
 def llm_gen_with_logp_v1(
     model, tokenizer, static_prompt, prompt, num_sequence, stop, **generation_config

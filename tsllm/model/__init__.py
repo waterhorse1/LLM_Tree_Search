@@ -45,5 +45,5 @@ def load_critic_model(
             "Unknown value model type name {}.".format(value_model_type_name)
         )
 
-
+    critic.eval()
     return critic

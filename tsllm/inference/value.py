@@ -6,6 +6,7 @@ from tsllm.llm.text_generation import llm_gen_ct2
 from transformers import AutoTokenizer
 import re
 import numpy as np
+import requests
 
 
 @torch.inference_mode()
@@ -53,3 +54,29 @@ def seq_value_fn(critic_model, tokenizer, input_str):
     )
     value = critic_model(input_ids, return_dict=True).value
     return value.cpu().float().numpy()
+
+
+def _value_inference_fastchat(
+    model_name: str,
+    unused_tokenizer: AutoTokenizer,
+    input_str: Union[List[str], str],
+    controller_addr="http://localhost:21101"
+):
+    ret = requests.post(
+        controller_addr + "/get_worker_address", json={"model": model_name}
+    )
+    worker_addr = ret.json()["address"]
+
+    headers = {"User-Agent": "FastChat Client"}
+    gen_params = {
+        "input_str": input_str
+    }
+    response = requests.post(
+        worker_addr + "/worker_value_inference",
+        headers=headers,
+        json=gen_params,
+        stream=True,
+    )
+    results = response.json()
+    value = results["value"]
+    return value
