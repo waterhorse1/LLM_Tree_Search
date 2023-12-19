@@ -423,19 +423,30 @@ class MCTS(object):
             done = False
             while not done:
                 if select_by_prior:
+                    # select action node by the logp_score of LLM itself
                     action, node = self._select_by_prior(node, env_copy)
                 else:
+                    # select by PUCT
                     action, node = self._select_child(node, env_copy)
 
                 _, _, terminated, truncated, info = env_copy.step(
                     action, update_legal_action=node.is_leaf()
                 )
                 done = terminated or truncated
-                if not done:
-                    if node.is_leaf():
-                        self._expand_leaf_node(node, env_copy, policy_forward_fn)
-            if "reward" in info.keys():  # handle rlhf special case
-                leaf_value = info["reward"]
+                if not done and node.is_leaf():
+                    self._expand_leaf_node(node, env_copy, policy_forward_fn)
+
+            if not self.no_terminal_reward:  
+                winner = info["winner"]
+                if "reward" in info.keys(): # handle rlhf special case
+                    leaf_value = info["reward"]
+                else:
+                    if winner == -1:
+                        leaf_value = 0
+                    elif winner == 1:
+                        leaf_value = 1
+                    elif winner == 2:
+                        leaf_value = -1
             else:
                 if node.visit_count > 0:
                     leaf_value = node.value
@@ -444,6 +455,7 @@ class MCTS(object):
                         leaf_value = node._initial_value
                     else:
                         leaf_value = policy_forward_fn(env_copy.get_state()).item()
+
             node.update_recursive(leaf_value, env_copy.mcts_mode)
 
             traj_data = {
