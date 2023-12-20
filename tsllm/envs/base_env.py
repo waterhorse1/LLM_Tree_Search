@@ -352,27 +352,45 @@ class TokenEnv(BaseEnv):
             self.task_prefix = "\n".join(prefixes)
         else:
             self.task_prefix = None
-
+        
         if reset:
             self.reset(update_legal_action=True)
 
-    def reset(self, update_legal_action=True):
+    def reset(self, update_legal_action=True, use_cache=True):
         # reset environment to problem idx
         self.set_problem(idx=0)
         self.action_history = self.init_action_history()
         if update_legal_action:
-            self._legal_actions = self.update_legal_actions()
+            rets = self.update_legal_actions(return_cache=use_cache)
+            if use_cache:
+                self._legal_actions, self.init_key_values = rets
+            else:
+                self._legal_actions = rets
         return self.get_state()
 
-    def step(self, action, update_legal_action=True):
-        if not action == self.stop_str:
-            self.action_history.append(action)
+    def step(
+        self,
+        action,
+        update_legal_action=True,
+        past_key_values: Optional[List[torch.FloatTensor]] = None,
+        return_cache=True,
+    ):
+        self.action_history.append(action)
         state = self.get_state()
         reward = self.get_reward(state)
         terminated, truncated, info = self.get_done_and_info()
+        if terminated and self.action_history[-1] == self.stop_str:
+            self.action_history = self.action_history[:-1]
         # update legal actions
         if not (terminated or truncated) and update_legal_action:
-            self._legal_actions = self.update_legal_actions()
+            rets = self.update_legal_actions(
+                past_key_values=past_key_values, return_cache=return_cache
+            )
+            if return_cache:
+                self._legal_actions, past_key_values = rets
+                self.init_key_values = past_key_values
+            else:
+                self._legal_actions = rets
         else:
             self._legal_actions = None
         return state, reward, terminated, truncated, info
@@ -417,16 +435,46 @@ class TokenEnv(BaseEnv):
             self._problem_format_str.format(question=self.problem["question"])
         ]
 
-    def update_legal_actions(self):
+    @torch.inference_mode()
+    def update_legal_actions(
+        self,
+        past_key_values: Optional[List[torch.FloatTensor]] = None,
+        return_cache: bool = True,
+    ):
+        if past_key_values is not None:
+            assert return_cache
         state = self.get_state()
-        logits = self.llm_forward_fn(prompt=state)[0]
+        if return_cache:
+            logits, past_key_values = self.llm_forward_fn(
+                prompt=state, past_key_values=past_key_values
+            )
+        else:
+            logits = self.llm_forward_fn(prompt=state)[0]
 
         probs = torch.nn.functional.softmax(logits / self.config["temperature"], dim=-1)
         topk_values, topk_indices = torch.topk(probs, self.config["max_actions"])
-        text_list = self.tokenizer.batch_decode(
-            topk_indices.reshape(topk_indices.shape[-1], 1)
+        input_tokens = (
+            torch.Tensor(
+                self.tokenizer.encode(state, add_special_tokens=False),
+            )
+            .to(
+                device=topk_indices.device,
+                dtype=topk_indices.dtype,
+            )
+            .unsqueeze_(0)
+            .repeat(topk_indices.shape[-1], 1)
         )
-        prob_list = topk_values.tolist()
+        appended_tokens = torch.cat(
+            [input_tokens, topk_indices.view(topk_indices.shape[-1], 1)], dim=1
+        )
+        appended_text_list = self.tokenizer.batch_decode(
+            appended_tokens, skip_special_tokens=False
+        )
+        text_list = [text[len(state) :] for text in appended_text_list]
+        # text_list = self.tokenizer.batch_decode(
+        #     topk_indices.reshape(topk_indices.shape[-1], 1)
+        # )
+        prob_list = topk_values.squeeze_(0).tolist()
         prob_list = prob_list / np.sum(prob_list)
         _legal_actions = [
             {
@@ -436,7 +484,10 @@ class TokenEnv(BaseEnv):
             }
             for action, prob in zip(text_list, prob_list)
         ]
-        return _legal_actions
+        if not return_cache:
+            return _legal_actions
+        else:
+            return _legal_actions, past_key_values
 
     def set_problem(self, idx):
         self.problem = self.problems[idx]
@@ -471,7 +522,10 @@ class TokenEnv(BaseEnv):
             len(self.action_history),
             self.config["max_length"] + (2 if self.task_prefix is not None else 1),
         )
-        
+
+        if terminated:
+            self.action_history = self.action_history[:-1]
+
         return terminated, truncated, info
 
     def copy(self):
@@ -488,6 +542,7 @@ class TokenEnv(BaseEnv):
         env.problem = copy.deepcopy(self.problem)
         env._legal_actions = copy.deepcopy(self._legal_actions)
         env.action_history = copy.deepcopy(self.action_history)
+        env.init_key_values = None
         return env
 
     @property

@@ -38,7 +38,7 @@ def load_critic_model(
             critic_model_path
         ).to(device=device, dtype=torch.bfloat16)
 
-        if state_dict is not None:
+        if state_dict_path is not None:
             raise NotImplementedError
     else:
         raise ValueError(

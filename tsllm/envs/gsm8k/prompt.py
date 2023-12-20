@@ -3,4 +3,5 @@ COT_EXAMPLES = "Question: There are 15 trees in the grove. Grove workers will pl
 COT_TASK_DESC = None
 PROBLEM_FORMAT_STR = "Question: {question}\nAnswer: Let's think step by step"
 
-SEP = "\n"
+# SEP = "\n"
+SEP = ""

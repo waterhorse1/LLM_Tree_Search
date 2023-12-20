@@ -1,14 +1,17 @@
-from typing import Optional
-from tsllm.envs.base_env import CoTEnv
+from typing import Optional, Union
+from tsllm.envs.base_env import CoTEnv, TokenEnv
 from tsllm.inference.evaluation.vote_utils import MAJORITY_VOTE
 from tsllm.mcts.tree import MCTS
 from tsllm.mcts.utils import get_root
+import gc
+import torch
 import time
+import pdb
 
 
 def _mcts_rollout_v1(
     mcts: MCTS,
-    env: CoTEnv,
+    env: Union[CoTEnv, TokenEnv],
     policy_forward_value,
     n_rollout: int,
     reset_total_tree: bool,
@@ -16,6 +19,9 @@ def _mcts_rollout_v1(
     clear_total_tree: bool,
 ):
     """MCTS.GET_NEXT_ACTION"""
+
+    # t0 = time.time()
+    
     output_episodes = []
     num_generated_token = 0
     env.reset(True)
@@ -64,7 +70,11 @@ def _mcts_rollout_v1(
                 {"action": a, "prob": None} for a in mcts.root.children.keys()
             ]
         done = False
-
+    # t1 = time.time()
+    # print(output_episodes)
+    # print(t1-t0)
+    gc.collect()
+    torch.cuda.empty_cache()
     return output_episodes
 
 

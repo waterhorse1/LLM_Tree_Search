@@ -1,5 +1,6 @@
 import torch
-from typing import Union, List
+from typing import Optional, Union, List
+from tsllm.llm.fastchat_utils import get_worker_address
 from tsllm.model import ValueHeadedLLM
 from tsllm.model.modeling_actor_critic import AutoModelForCausalLMWithValueHead
 from tsllm.llm.text_generation import llm_gen_ct2
@@ -60,17 +61,16 @@ def _value_inference_fastchat(
     model_name: str,
     unused_tokenizer: AutoTokenizer,
     input_str: Union[List[str], str],
+    *,
+    worker_addr: Optional[str] = None,
     controller_addr="http://localhost:21101"
 ):
-    ret = requests.post(
-        controller_addr + "/get_worker_address", json={"model": model_name}
-    )
-    worker_addr = ret.json()["address"]
+    if worker_addr is None:
+        assert False
+        worker_addr = get_worker_address(model_name, controller_addr)
 
     headers = {"User-Agent": "FastChat Client"}
-    gen_params = {
-        "input_str": input_str
-    }
+    gen_params = {"input_str": input_str}
     response = requests.post(
         worker_addr + "/worker_value_inference",
         headers=headers,
@@ -79,4 +79,4 @@ def _value_inference_fastchat(
     )
     results = response.json()
     value = results["value"]
-    return value
+    return np.array(value)

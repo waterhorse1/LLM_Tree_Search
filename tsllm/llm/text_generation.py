@@ -1,5 +1,9 @@
+from typing import Optional
 import requests
 import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+
+from tsllm.llm.fastchat_utils import get_worker_address
 
 
 def llm_gen_ct2(
@@ -91,6 +95,8 @@ def _generate_fastchat(
     max_new_tokens=256,
     stop_token_ids=None,
     stop_str=None,
+    *,
+    worker_addr: Optional[str] = None,
     controller_addr="http://localhost:21101",
 ):
     # ret = requests.post(controller_addr + "/refresh_all_workers")
@@ -98,12 +104,13 @@ def _generate_fastchat(
     # models = ret.json()["models"]
     # models.sort()
 
-    ret = requests.post(
-        controller_addr + "/get_worker_address", json={"model": model_name}
-    )
-    worker_addr = ret.json()["address"]
+    if worker_addr is None:
+        assert False
+        worker_addr = get_worker_address(model_name, controller_addr)
 
     headers = {"User-Agent": "FastChat Client"}
+    if temperature <= 1e-5:
+        top_k = -1
     gen_params = {
         "model": model_name,
         "prompt": query_str,
@@ -136,7 +143,8 @@ def llm_gen_with_logp_vllm(
     prompt,
     num_sequence,
     unused_stop=None,
-    **generation_config
+    worker_addr: Optional[str] = None,
+    **generation_config,
 ):
     assert unused_static_prompt is None
     assert unused_stop is None
@@ -144,13 +152,28 @@ def llm_gen_with_logp_vllm(
         query_str=prompt,
         model_name=model_name,
         n=num_sequence,
+        worker_addr=worker_addr,
         temperature=generation_config.get("temperature", 1.0),
         top_p=generation_config.get("top_p", 1.0),
         top_k=generation_config.get("top_k", 1),
         max_new_tokens=generation_config.get("max_new_tokens", 16),
         stop_token_ids=generation_config.get("stop_token_ids", None),
-        stop_str=generation_config.get("stop_str", None)
+        stop_str=generation_config.get("stop_str", None),
     )
+
+@torch.inference_mode()
+def llm_gen_hf(
+    model: AutoModelForCausalLM,
+    tokenizer: AutoTokenizer,
+    static_prompt: Optional[str],
+    prompt: str,
+    num_sequence: int,
+    stop=None,
+    **generation_config,
+):
+    generator = pipeline("text-generation", model=model, tokenizer=tokenizer)
+    output = generator(prompt, num_return_sequences=num_sequence, **generation_config)
+    import pdb; pdb.set_trace()
 
 
 @torch.no_grad()

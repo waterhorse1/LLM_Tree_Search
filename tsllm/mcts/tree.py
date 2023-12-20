@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 from typing import List, Dict, Any, Optional, Tuple, Union, Callable, Type
 from tsllm.distributed.utils import print_rank_0, print_with_rank
-from tsllm.envs.base_env import CoTEnv
+from tsllm.envs.base_env import CoTEnv, TokenEnv
 import pdb
 from tqdm import tqdm
 import heapq
@@ -149,6 +149,10 @@ class LanguageNode(Node):
     prm_value: Optional[float] = None
     num_generated_token: Optional[int] = None
 
+    policy_kv_cache: Optional[torch.FloatTensor] = None
+    critic_kv_cache: Optional[torch.FloatTensor] = None
+    seq_length: Optional[int] = None
+
     def __init__(
         self,
         parent: Node = None,
@@ -184,6 +188,52 @@ class LanguageNode(Node):
             info_dict["text_state"] = self.text_state
         return info_dict
 
+    def get_context_kv_cache(self):
+        node = self
+        policy_kv_cache_values2concat = [self.policy_kv_cache]
+        while not node.is_root():
+            node = node.parent
+            policy_kv_cache_values2concat.append(node.policy_kv_cache)
+
+    def init_kv_caches(self, past_key_values):
+        assert self.is_root(), "init_kv_caches call is only allowed on root node."
+        self.policy_kv_cache = past_key_values
+        self.last_policy_cache_index = self.policy_kv_cache[0][0].shape[2]
+
+    def register_kv_caches(self, policy_past_key_values: List[torch.FloatTensor]):
+        assert not self.is_root(), "for root node, use init_kv_caches instead."
+        self.last_policy_cache_index = policy_past_key_values[0][0].shape[2]
+        cache_begin_idx = self.parent.last_policy_cache_index
+        self.policy_kv_cache = []
+        for k_per_layer, v_per_layer in policy_past_key_values:
+            self.policy_kv_cache.append(
+                (
+                    k_per_layer[:, :, cache_begin_idx:],
+                    v_per_layer[:, :, cache_begin_idx:],
+                )
+            )
+    
+    def get_path_key_values(self):
+        kv_cache_list = []
+        node = self
+        while not node.is_root():
+            node = node.parent
+            kv_cache_list.append(node.policy_kv_cache)
+        kv2ret = []
+        kv_cache_list = kv_cache_list[::-1]
+        num_layers = len(kv_cache_list[0])
+        for i_layer in range(num_layers):
+            concat_ks, concat_vs = [], []
+            for step_t in range(len(kv_cache_list)):
+                concat_ks.append(kv_cache_list[step_t][i_layer][0])
+                concat_vs.append(kv_cache_list[step_t][i_layer][1])
+            # shape # [bsz, num_head, seq_len, hidden_size]
+            concated_k = torch.concat(concat_ks, dim=2)
+            concated_v = torch.concat(concat_vs, dim=2)
+            kv2ret.append((concated_k, concated_v))
+        
+        return kv2ret
+            
 
 def get_root(node: Node):
     while not node.is_root():
@@ -230,6 +280,8 @@ class MCTS(object):
 
         self._prune_node_under_v = self._cfg.get("prune_node_under_v", None)
 
+        self._use_cache = True
+
     @property
     def num_generated_token(self):
         return self._num_generated_token
@@ -262,6 +314,8 @@ class MCTS(object):
         """
         if self.root is None:
             root = LanguageNode(text_state=simulate_env.get_state())
+            if self._use_cache:
+                root.init_kv_caches(simulate_env.init_key_values)
             self._expand_leaf_node(root, simulate_env, policy_forward_fn)
             self.root = root
         else:
@@ -322,6 +376,7 @@ class MCTS(object):
     ) -> Tuple[int, List[float]]:
         if self.root is None:
             root = LanguageNode(text_state=simulate_env.get_state())
+            root.init_kv_caches()
             self.root = root
             self._expand_leaf_node(root, simulate_env, policy_forward_fn)
         if sample:
@@ -615,13 +670,12 @@ class MCTS(object):
 
         execute_dfs(self.root, simulate_env.copy())
 
-        
         return traj_list
 
     def _simulate(
         self,
         node: Node,
-        simulate_env: Type[CoTEnv],
+        simulate_env: Type[TokenEnv],
         policy_forward_fn: Optional[Callable] = None,
     ) -> None:
         """
@@ -638,9 +692,20 @@ class MCTS(object):
         done = False
         while not node.is_leaf():
             action, node = self._select_child(node, simulate_env)
+            update_action_flag = (node.is_leaf() and node.visit_count == 1)
+            if update_action_flag:
+                past_key_values = node.get_path_key_values()
+            else:
+                past_key_values = None
+
             _, _, terminated, truncated, info = simulate_env.step(
-                action, update_legal_action=(node.is_leaf() and node.visit_count == 1)
-            )
+                action,
+                update_legal_action=update_action_flag,
+                past_key_values=past_key_values,
+                return_cache=self._use_cache,
+            ) 
+            if not (terminated or truncated) and update_action_flag:
+                node.register_kv_caches(simulate_env.init_key_values)
             done = terminated or truncated
 
             # In original AlphaZero, the leaf node will be expanded once it is reached
@@ -819,7 +884,7 @@ class MCTS(object):
     def _expand_leaf_node(
         self,
         node: Node,
-        simulate_env: Type[CoTEnv],
+        simulate_env: Type[TokenEnv],
         policy_forward_fn: Optional[Callable] = None,
     ) -> float:
         """
@@ -856,7 +921,6 @@ class MCTS(object):
                     for x in simulate_env.legal_actions
                 ]
             ).tolist()
-
         assert len(node.children) == 0
         for i, action_dict in enumerate(simulate_env.legal_actions):
             action, prob = action_dict["action"], action_dict["prob"]
@@ -892,6 +956,7 @@ class MCTS(object):
                 initial_value=child_value,
                 num_generated_token=action_dict["num_token"],
             )
+            
         if len(node.children) == 0:
             print_rank_0(
                 "Prune all current children at node {}".format(node.last_action)
