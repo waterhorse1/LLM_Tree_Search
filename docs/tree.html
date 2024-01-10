@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="github-markdown.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .directory:hover {
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        :target {
+            background-color: yellow !important;
+        }
+
+        .folded::before {
+            content: '\25B6';
+            margin-right: 8px;
+            /* Add space between marker and text */
+        }
+
+        .expanded::before {
+            content: '\25BC';
+            margin-right: 8px;
+            /* Add space between marker and text */
+        }
+    </style>
+    <script>
+        function toggleVisibility(element) {
+            let mclass = element.getAttribute("class");
+            if (mclass == "expanded") {
+                element.setAttribute('class', 'folded');
+            } else {
+                element.setAttribute('class', 'expanded');
+            }
+            const siblings = element.parentNode.children;
+            for (const sibling of siblings) {
+                if (sibling !== element) {
+                    sibling.style.display = (sibling.style.display === 'none') ? 'block' : 'none';
+                }
+            }
+        }
+    </script>
+    <style>
+        .markdown-body {
+            box-sizing: border-box;
+            min-width: 200px;
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 45px;
+        }
+
+        @media (max-width: 767px) {
+            .markdown-body {
+                padding: 15px;
+            }
+
+            .partial-repository-url {
+                display: none;
+            }
+        }
+
+        ul {
+            list-style: none;
+        }
+    </style>
+</head>
+
+<body>
+    <article class="markdown-body">
+        <h2>Project Structure<span hierarchy="0" class="partial-repository-url"> of: waterhorse1/LLM_Tree_Search</span><div style="float: right;"><a href="index.html"><i class="bi bi-search"></i></a></div></h2>
+<ul>
+<li><span hierarchy="0" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/"><code>LLM_Tree_Search</code></strong> <em>Trains MCTS models for time-series language modeling using AlphaZero-like techniques.</em></span><ul>
+<li><a href="index.html?q=/README.md" id="/README.md"><code>README.md</code></a> <em>Accelerate language model inference with AlphaZero-like techniques.</em></li>
+<li><a href="index.html?q=/requirement.txt" id="/requirement.txt"><code>requirement.txt</code></a> <em>Required packages: ctranslate2, transformers, torch, numpy, flash-attn, dm-tree</em></li>
+<li><a href="index.html?q=/setup.py" id="/setup.py"><code>setup.py</code></a> <em>Setup Python package for AlphaZero-like learning framework using LLMs</em></li>
+<li><span hierarchy="1" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/train_mcts_scripts/"><code>train_mcts_scripts</code></strong> <em>Trains MCTS models with various methods</em></span><ul>
+<li><span hierarchy="2" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/train_mcts_scripts/game24/"><code>game24</code></strong> <em>Trains MCTS Game24 with DeepSpeed and RL models.</em></span><ul>
+<li><a href="index.html?q=/train_mcts_scripts/game24/ds_config.json" id="/train_mcts_scripts/game24/ds_config.json"><code>ds_config.json</code></a> <em>Trains ML model with params: micro-batch size, grad accum steps, mixed precision.</em></li>
+<li><a href="index.html?q=/train_mcts_scripts/game24/mcts_game24_llama_deepspeed.yaml" id="/train_mcts_scripts/game24/mcts_game24_llama_deepspeed.yaml"><code>mcts_game24_llama_deepspeed.yaml</code></a> <em>DeepSpeed MCTS Game24 Training Config</em></li>
+<li><a href="index.html?q=/train_mcts_scripts/game24/test_policy_and_value.sh" id="/train_mcts_scripts/game24/test_policy_and_value.sh"><code>test_policy_and_value.sh</code></a> <em>Test offline RL model for game24 with specified CT2 and critic models.</em></li>
+<li><a href="index.html?q=/train_mcts_scripts/game24/train_game24_critic.py" id="/train_mcts_scripts/game24/train_game24_critic.py"><code>train_game24_critic.py</code></a> <em>Train MCTS algorithm for game24 task using Flash attention.</em></li>
+<li><a href="index.html?q=/train_mcts_scripts/game24/train_game24_sft.py" id="/train_mcts_scripts/game24/train_game24_sft.py"><code>train_game24_sft.py</code></a> <em>Trains Game24 RL model with Llama-2-7b base, config params.</em></li>
+</ul>
+</li>
+<li><span hierarchy="2" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/train_mcts_scripts/gsm8k/"><code>gsm8k</code></strong> <em>Training MCTS-based GSM8k language model with PeFT, SFT, and critic</em></span><ul>
+<li><a href="index.html?q=/train_mcts_scripts/gsm8k/README.md" id="/train_mcts_scripts/gsm8k/README.md"><code>README.md</code></a> <em>GSM8k rollout and training process using rollouts, SFT, and critic.</em></li>
+<li><a href="index.html?q=/train_mcts_scripts/gsm8k/ds_config.json" id="/train_mcts_scripts/gsm8k/ds_config.json"><code>ds_config.json</code></a> <em>Training parameters JSON for ML model.</em></li>
+<li><a href="index.html?q=/train_mcts_scripts/gsm8k/it1_gsm8k.ipynb" id="/train_mcts_scripts/gsm8k/it1_gsm8k.ipynb"><code>it1_gsm8k.ipynb</code></a> <em>Deduplicates, merges, subsamples Q&amp;A data for JSONL files.</em></li>
+<li><a href="index.html?q=/train_mcts_scripts/gsm8k/mcts_gsm8k_llama_deepspeed.yaml" id="/train_mcts_scripts/gsm8k/mcts_gsm8k_llama_deepspeed.yaml"><code>mcts_gsm8k_llama_deepspeed.yaml</code></a> <em>Training MCTS on game24 with DeepSpeed, 8 processes.</em></li>
+<li><a href="index.html?q=/train_mcts_scripts/gsm8k/test_policy_and_value.sh" id="/train_mcts_scripts/gsm8k/test_policy_and_value.sh"><code>test_policy_and_value.sh</code></a> <em>Trains ML model with env settings, tests policy and value functions.</em></li>
+<li><a href="index.html?q=/train_mcts_scripts/gsm8k/train_gsm8k_critic.py" id="/train_mcts_scripts/gsm8k/train_gsm8k_critic.py"><code>train_gsm8k_critic.py</code></a> <em>Trains MCTS-based language model using PeFT</em></li>
+<li><a href="index.html?q=/train_mcts_scripts/gsm8k/train_gsm8k_sft.py" id="/train_mcts_scripts/gsm8k/train_gsm8k_sft.py"><code>train_gsm8k_sft.py</code></a> <em>Trains Llama-2-7b on GSM8K with SFT data and MCTS algorithm.</em></li>
+</ul>
+</li>
+<li><span hierarchy="2" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/train_mcts_scripts/prontoqa/"><code>prontoqa</code></strong> <em>Trains ProntoQA with MCTS and DeepSpeed, Llama</em></span><ul>
+<li><a href="index.html?q=/train_mcts_scripts/prontoqa/ds_config.json" id="/train_mcts_scripts/prontoqa/ds_config.json"><code>ds_config.json</code></a> <em>Trains ML model with config parameters.</em></li>
+<li><a href="index.html?q=/train_mcts_scripts/prontoqa/mcts_prontoqa_llama_deepspeed.yaml" id="/train_mcts_scripts/prontoqa/mcts_prontoqa_llama_deepspeed.yaml"><code>mcts_prontoqa_llama_deepspeed.yaml</code></a> <em>DeepSpeed MCTS game24 training config with 8 processes.</em></li>
+<li><a href="index.html?q=/train_mcts_scripts/prontoqa/test_policy_and_value.sh" id="/train_mcts_scripts/prontoqa/test_policy_and_value.sh"><code>test_policy_and_value.sh</code></a> <em>Run ProntoQA test with multi-GPU offline RL model.</em></li>
+<li><a href="index.html?q=/train_mcts_scripts/prontoqa/train_prontoqa_critic.py" id="/train_mcts_scripts/prontoqa/train_prontoqa_critic.py"><code>train_prontoqa_critic.py</code></a> <em>Trains Llama with Lora &amp; Flash Attention</em></li>
+<li><a href="index.html?q=/train_mcts_scripts/prontoqa/train_prontoqa_sft.py" id="/train_mcts_scripts/prontoqa/train_prontoqa_sft.py"><code>train_prontoqa_sft.py</code></a> <em>Train ProntoQA with Flash Attention</em></li>
+</ul>
+</li>
+<li><span hierarchy="2" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/train_mcts_scripts/rlhf/"><code>rlhf</code></strong> <em>Trains RL model with MCTS, preprocessed data</em></span><ul>
+<li><a href="index.html?q=/train_mcts_scripts/rlhf/README.md" id="/train_mcts_scripts/rlhf/README.md"><code>README.md</code></a> <em>Trains RL model with preprocessed data using RLHF</em></li>
+<li><a href="index.html?q=/train_mcts_scripts/rlhf/accelerate_config.yaml" id="/train_mcts_scripts/rlhf/accelerate_config.yaml"><code>accelerate_config.yaml</code></a> <em>Local DeepSpeed, 8 processes, RDZV backend</em></li>
+<li><a href="index.html?q=/train_mcts_scripts/rlhf/ds_config_no_offload.json" id="/train_mcts_scripts/rlhf/ds_config_no_offload.json"><code>ds_config_no_offload.json</code></a> <em>Optimize ML training: micro-batch, acc steps, BF16/FP16, zero optimization.</em></li>
+<li><a href="index.html?q=/train_mcts_scripts/rlhf/filter_top_data_policy_training.py" id="/train_mcts_scripts/rlhf/filter_top_data_policy_training.py"><code>filter_top_data_policy_training.py</code></a> <em>Filter top 5 MCTS data for policy training.</em></li>
+<li><a href="index.html?q=/train_mcts_scripts/rlhf/mix_value_data.py" id="/train_mcts_scripts/rlhf/mix_value_data.py"><code>mix_value_data.py</code></a> <em>Mixes and loads data for RL critic training.</em></li>
+<li><a href="index.html?q=/train_mcts_scripts/rlhf/test_policy_and_value.sh" id="/train_mcts_scripts/rlhf/test_policy_and_value.sh"><code>test_policy_and_value.sh</code></a> <em>Test policy and value using CT2 model cache.</em></li>
+<li><a href="index.html?q=/train_mcts_scripts/rlhf/train_rlhf_critic.py" id="/train_mcts_scripts/rlhf/train_rlhf_critic.py"><code>train_rlhf_critic.py</code></a> <em>Trains RL model using MCTS</em></li>
+<li><a href="index.html?q=/train_mcts_scripts/rlhf/train_rlhf_policy.py" id="/train_mcts_scripts/rlhf/train_rlhf_policy.py"><code>train_rlhf_policy.py</code></a> <em>Trains RL model for language modeling with MCTS</em></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><span hierarchy="1" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/tsllm/"><code>tsllm</code></strong> <em>Time-series language model library</em></span><ul>
+<li><a href="index.html?q=/tsllm/argparse_utils.py" id="/tsllm/argparse_utils.py"><code>argparse_utils.py</code></a> <em>Utility functions for boolean and list of integers parsing</em></li>
+<li><span hierarchy="2" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/tsllm/distributed/"><code>distributed</code></strong></span><ul>
+<li><a href="index.html?q=/tsllm/distributed/utils.py" id="/tsllm/distributed/utils.py"><code>utils.py</code></a> <em>Distributed computation utilities for tensor collection</em></li>
+</ul>
+</li>
+<li><span hierarchy="2" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/tsllm/envs/"><code>envs</code></strong> <em>Language model environments and tasks for natural language processing.</em></span><ul>
+<li><a href="index.html?q=/tsllm/envs/__init__.py" id="/tsllm/envs/__init__.py"><code><strong>init</strong>.py</code></a> <em>Imports envs, defines tasks with datasets.</em></li>
+<li><a href="index.html?q=/tsllm/envs/base_env.py" id="/tsllm/envs/base_env.py"><code>base_env.py</code></a> <em>Base class for Monte Carlo Tree Search in text-based games.</em></li>
+<li><span hierarchy="3" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/tsllm/envs/game24/"><code>game24</code></strong> <em>Game24: 24 puzzle environment and datasets for training and testing.</em></span><ul>
+<li><a href="index.html?q=/tsllm/envs/game24/__init__.py" id="/tsllm/envs/game24/__init__.py"><code><strong>init</strong>.py</code></a> <em>Game24 environment setup.</em></li>
+<li><a href="index.html?q=/tsllm/envs/game24/data.py" id="/tsllm/envs/game24/data.py"><code>data.py</code></a> <em>Trains and tests datasets for game puzzles.</em></li>
+<li><a href="index.html?q=/tsllm/envs/game24/env.py" id="/tsllm/envs/game24/env.py"><code>env.py</code></a> <em>Game24Env: Solving 24 math puzzle environment</em></li>
+<li><a href="index.html?q=/tsllm/envs/game24/prompt.py" id="/tsllm/envs/game24/prompt.py"><code>prompt.py</code></a> <em>Solve 24 with given numbers and ops.</em></li>
+</ul>
+</li>
+<li><span hierarchy="3" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/tsllm/envs/gsm8k/"><code>gsm8k</code></strong> <em>Gsm8k environment for speech data processing and GSM8K dataset loading.</em></span><ul>
+<li><a href="index.html?q=/tsllm/envs/gsm8k/__init__.py" id="/tsllm/envs/gsm8k/__init__.py"><code><strong>init</strong>.py</code></a> <em>Environment initialization and data handling.</em></li>
+<li><a href="index.html?q=/tsllm/envs/gsm8k/data.py" id="/tsllm/envs/gsm8k/data.py"><code>data.py</code></a> <em>GSM8K dataset loader with truncation</em></li>
+<li><a href="index.html?q=/tsllm/envs/gsm8k/env.py" id="/tsllm/envs/gsm8k/env.py"><code>env.py</code></a> <em>Gsm8kEnv: CoTEnv class, answer/ground truth extraction, init/reward methods.</em></li>
+<li><a href="index.html?q=/tsllm/envs/gsm8k/prompt.py" id="/tsllm/envs/gsm8k/prompt.py"><code>prompt.py</code></a> <em>Python math prompts, step-by-step with multiple-choice</em></li>
+</ul>
+</li>
+<li><span hierarchy="3" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/tsllm/envs/prontoqa/"><code>prontoqa</code></strong> <em>QA environment for arthropods datasets.</em></span><ul>
+<li><a href="index.html?q=/tsllm/envs/prontoqa/__init__.py" id="/tsllm/envs/prontoqa/__init__.py"><code><strong>init</strong>.py</code></a> <em>Imports for PrOntoQA environment.</em></li>
+<li><a href="index.html?q=/tsllm/envs/prontoqa/data.py" id="/tsllm/envs/prontoqa/data.py"><code>data.py</code></a> <em>Data generation scripts for question-answer datasets</em></li>
+<li><a href="index.html?q=/tsllm/envs/prontoqa/env.py" id="/tsllm/envs/prontoqa/env.py"><code>env.py</code></a> <em>Defines QA environment class for answer extraction and ground truth.</em></li>
+<li><a href="index.html?q=/tsllm/envs/prontoqa/prompt.py" id="/tsllm/envs/prontoqa/prompt.py"><code>prompt.py</code></a> <em>Logical reasoning with arthropods examples.</em></li>
+</ul>
+</li>
+<li><span hierarchy="3" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/tsllm/envs/rlhf/"><code>rlhf</code></strong> <em>RLHF reinforcement learning language environment</em></span><ul>
+<li><a href="index.html?q=/tsllm/envs/rlhf/__init__.py" id="/tsllm/envs/rlhf/__init__.py"><code><strong>init</strong>.py</code></a> <em>Imports for RLHF environment</em></li>
+<li><a href="index.html?q=/tsllm/envs/rlhf/data.py" id="/tsllm/envs/rlhf/data.py"><code>data.py</code></a> <em>Generates datasets, customizes for models, encodes answers.</em></li>
+<li><a href="index.html?q=/tsllm/envs/rlhf/env.py" id="/tsllm/envs/rlhf/env.py"><code>env.py</code></a> <em>Reinforcement learning environment for language models</em></li>
+<li><a href="index.html?q=/tsllm/envs/rlhf/prompt.py" id="/tsllm/envs/rlhf/prompt.py"><code>prompt.py</code></a> <em>Task format constants and templates.</em></li>
+</ul>
+</li>
+<li><span hierarchy="3" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/tsllm/envs/tests/"><code>tests</code></strong> <em>Test various language model environments and tasks.</em></span><ul>
+<li><a href="index.html?q=/tsllm/envs/tests/test_game24.py" id="/tsllm/envs/tests/test_game24.py"><code>test_game24.py</code></a> <em>Test Game24Env environment, data loading, and lengths display.</em></li>
+<li><a href="index.html?q=/tsllm/envs/tests/test_gsm8k.py" id="/tsllm/envs/tests/test_gsm8k.py"><code>test_gsm8k.py</code></a> <em>Test GSM8k dataset few-shot learning model.</em></li>
+<li><a href="index.html?q=/tsllm/envs/tests/test_prontoqa.py" id="/tsllm/envs/tests/test_prontoqa.py"><code>test_prontoqa.py</code></a> <em>Setup environment for PrOntoQA, tokenize with Llama-2-7b-hf.</em></li>
+<li><a href="index.html?q=/tsllm/envs/tests/test_rlhf.py" id="/tsllm/envs/tests/test_rlhf.py"><code>test_rlhf.py</code></a> <em>Contextual understanding task environment setup and model fine-tuning.</em></li>
+</ul>
+</li>
+<li><a href="index.html?q=/tsllm/envs/utils.py" id="/tsllm/envs/utils.py"><code>utils.py</code></a> <em>Constructs data component, tokenizes, generates queries and responses. Assigns rewards.</em></li>
+</ul>
+</li>
+<li><span hierarchy="2" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/tsllm/inference/"><code>inference</code></strong> <em>Inference: Model, LM, evaluation, Monte Carlo Tree Search</em></span><ul>
+<li><span hierarchy="3" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/tsllm/inference/evaluation/"><code>evaluation</code></strong></span><ul>
+<li><a href="index.html?q=/tsllm/inference/evaluation/vote_utils.py" id="/tsllm/inference/evaluation/vote_utils.py"><code>vote_utils.py</code></a> <em>Aggregate votes based on rules using Counter and defaultdict.</em></li>
+</ul>
+</li>
+<li><a href="index.html?q=/tsllm/inference/lm_self_value.py" id="/tsllm/inference/lm_self_value.py"><code>lm_self_value.py</code></a> <em>Calculate mean values and generate prompts.</em></li>
+<li><a href="index.html?q=/tsllm/inference/trajectory_collector.py" id="/tsllm/inference/trajectory_collector.py"><code>trajectory_collector.py</code></a> <em>Monte Carlo Tree Search, trajectory data collection.</em></li>
+<li><a href="index.html?q=/tsllm/inference/value.py" id="/tsllm/inference/value.py"><code>value.py</code></a> <em>Value function from critic model on text input.</em></li>
+</ul>
+</li>
+<li><span hierarchy="2" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/tsllm/llm/"><code>llm</code></strong> <em>Text generation with ctranslate2 and ChatGLM</em></span><ul>
+<li><a href="index.html?q=/tsllm/llm/ct2_utils.py" id="/tsllm/llm/ct2_utils.py"><code>ct2_utils.py</code></a> <em>Load ctranslate2 model and converter.</em></li>
+<li><a href="index.html?q=/tsllm/llm/text_generation.py" id="/tsllm/llm/text_generation.py"><code>text_generation.py</code></a> <em>Text generation with ChatGLM, handling missing substrings.</em></li>
+</ul>
+</li>
+<li><span hierarchy="2" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/tsllm/mcts/"><code>mcts</code></strong> <em>Tree-based search algorithms for games and language tasks using MCTS, Beam Search, and JSON data.</em></span><ul>
+<li><a href="index.html?q=/tsllm/mcts/tree.py" id="/tsllm/mcts/tree.py"><code>tree.py</code></a> <em>Tree-based search algorithms for games and language tasks using MCTS, Beam Search, and JSON data.</em></li>
+<li><a href="index.html?q=/tsllm/mcts/utils.py" id="/tsllm/mcts/utils.py"><code>utils.py</code></a> <em>Retrieves root node from tree by traversing upwards.</em></li>
+</ul>
+</li>
+<li><a href="index.html?q=/tsllm/merge_jsonl.py" id="/tsllm/merge_jsonl.py"><code>merge_jsonl.py</code></a> <em>Merge multiple JSONL files, excluding "merged.jsonl", into one.</em></li>
+<li><span hierarchy="2" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/tsllm/model/"><code>model</code></strong> <em>Transfromer-based Actor-Critic language models with PEFT, Llama attention mods.</em></span><ul>
+<li><a href="index.html?q=/tsllm/model/__init__.py" id="/tsllm/model/__init__.py"><code><strong>init</strong>.py</code></a> <em>Initializes critic model based on value_model_type_name and model path.</em></li>
+<li><a href="index.html?q=/tsllm/model/llama_flash_attn_monkey_patch.py" id="/tsllm/model/llama_flash_attn_monkey_patch.py"><code>llama_flash_attn_monkey_patch.py</code></a> <em>Llama model's attention modification with GPU restriction.</em></li>
+<li><a href="index.html?q=/tsllm/model/modeling_actor_critic.py" id="/tsllm/model/modeling_actor_critic.py"><code>modeling_actor_critic.py</code></a> <em>Actor-Critic Transformer Language Model</em></li>
+<li><a href="index.html?q=/tsllm/model/modeling_base.py" id="/tsllm/model/modeling_base.py"><code>modeling_base.py</code></a> <em>Wrapper for PreTrainedModel with Peft support and efficient downloads.</em></li>
+<li><a href="index.html?q=/tsllm/model/modeling_prm.py" id="/tsllm/model/modeling_prm.py"><code>modeling_prm.py</code></a> <em>Improved sequential decoding for causal language models.</em></li>
+<li><a href="index.html?q=/tsllm/model/utils.py" id="/tsllm/model/utils.py"><code>utils.py</code></a> <em>Simplify attribute access with chainable functions</em></li>
+</ul>
+</li>
+<li><span hierarchy="2" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/tsllm/offline_rl/"><code>offline_rl</code></strong> <em>Offline RL training, data gen and processing</em></span><ul>
+<li><a href="index.html?q=/tsllm/offline_rl/dedup.py" id="/tsllm/offline_rl/dedup.py"><code>dedup.py</code></a> <em>Deduplicates JSONL text entries and tracks counts.</em></li>
+<li><span hierarchy="3" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/tsllm/offline_rl/game24/"><code>game24</code></strong> <em>Generate and preprocess 3-episode Game24 data for CUDA offline RL training.</em></span><ul>
+<li><a href="index.html?q=/tsllm/offline_rl/game24/gen_3.sh" id="/tsllm/offline_rl/game24/gen_3.sh"><code>gen_3.sh</code></a> <em>Generate 3-episode game24 data using CUDA devices.</em></li>
+<li><a href="index.html?q=/tsllm/offline_rl/game24/process.sh" id="/tsllm/offline_rl/game24/process.sh"><code>process.sh</code></a> <em>Preprocesses Game24 data for offline RL training.</em></li>
+</ul>
+</li>
+<li><a href="index.html?q=/tsllm/offline_rl/generate_data.py" id="/tsllm/offline_rl/generate_data.py"><code>generate_data.py</code></a> <em>Generate Llama responses with ThreadPoolExecutor.</em></li>
+<li><span hierarchy="3" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/tsllm/offline_rl/gsm8k_data/"><code>gsm8k_data</code></strong> <em>Generates and processes GSM8K data for offline RL training.</em></span><ul>
+<li><a href="index.html?q=/tsllm/offline_rl/gsm8k_data/gen_3.sh" id="/tsllm/offline_rl/gsm8k_data/gen_3.sh"><code>gen_3.sh</code></a> <em>Generates data for GSM8K environment thrice.</em></li>
+<li><a href="index.html?q=/tsllm/offline_rl/gsm8k_data/process.sh" id="/tsllm/offline_rl/gsm8k_data/process.sh"><code>process.sh</code></a> <em>Processes GSM8K data for offline RL training.</em></li>
+</ul>
+</li>
+<li><a href="index.html?q=/tsllm/offline_rl/merge.py" id="/tsllm/offline_rl/merge.py"><code>merge.py</code></a> <em>Merges, filters, and deduplicates JSONL pairs.</em></li>
+<li><span hierarchy="3" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/tsllm/offline_rl/prontoqa/"><code>prontoqa</code></strong> <em>Offline RL data generation and processing</em></span><ul>
+<li><a href="index.html?q=/tsllm/offline_rl/prontoqa/gen_3.sh" id="/tsllm/offline_rl/prontoqa/gen_3.sh"><code>gen_3.sh</code></a> <em>Offline RL data generation script</em></li>
+<li><a href="index.html?q=/tsllm/offline_rl/prontoqa/process.sh" id="/tsllm/offline_rl/prontoqa/process.sh"><code>process.sh</code></a> <em>Process script for offline RL split.</em></li>
+</ul>
+</li>
+<li><span hierarchy="3" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/tsllm/offline_rl/rlhf/"><code>rlhf</code></strong> <em>Trains RLHF model using 8 processes, loads/merges JSONL data, processes input files.</em></span><ul>
+<li><a href="index.html?q=/tsllm/offline_rl/rlhf/gen_3.sh" id="/tsllm/offline_rl/rlhf/gen_3.sh"><code>gen_3.sh</code></a> <em>Trains RLHF model using 8 processes, specified settings.</em></li>
+<li><a href="index.html?q=/tsllm/offline_rl/rlhf/process.py" id="/tsllm/offline_rl/rlhf/process.py"><code>process.py</code></a> <em>Loads, merges JSONL data and produces a new JSONL file.</em></li>
+<li><a href="index.html?q=/tsllm/offline_rl/rlhf/process.sh" id="/tsllm/offline_rl/rlhf/process.sh"><code>process.sh</code></a> <em>Process input files, set env vars, create output dir if needed.</em></li>
+</ul>
+</li>
+<li><a href="index.html?q=/tsllm/offline_rl/sample.py" id="/tsllm/offline_rl/sample.py"><code>sample.py</code></a> <em>Randomly samples JSONL data for training or testing</em></li>
+<li><a href="index.html?q=/tsllm/offline_rl/split_two_test.py" id="/tsllm/offline_rl/split_two_test.py"><code>split_two_test.py</code></a> <em>Trains and splits JSONL data for offline RL.</em></li>
+<li><a href="index.html?q=/tsllm/offline_rl/test_sft_and_v.py" id="/tsllm/offline_rl/test_sft_and_v.py"><code>test_sft_and_v.py</code></a> <em>Test offline RL agent with various methods and evaluate accuracy.</em></li>
+<li><a href="index.html?q=/tsllm/offline_rl/test_sft_and_v_rlhf.py" id="/tsllm/offline_rl/test_sft_and_v_rlhf.py"><code>test_sft_and_v_rlhf.py</code></a> <em>Offline RL for LLMs with search parameters and CotSC comparisons.</em></li>
+<li><a href="index.html?q=/tsllm/offline_rl/utils.py" id="/tsllm/offline_rl/utils.py"><code>utils.py</code></a> <em>Utils for JSONL file operations and random seeding</em></li>
+</ul>
+</li>
+<li><span hierarchy="2" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/tsllm/rl/"><code>rl</code></strong> <em>Deep RL library for time-series data.</em></span><ul>
+<li><a href="index.html?q=/tsllm/rl/config.py" id="/tsllm/rl/config.py"><code>config.py</code></a> <em>Configurable RL settings class</em></li>
+<li><span hierarchy="3" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/tsllm/rl/data/"><code>data</code></strong> <em>TimeStep, Trajectories, SFTBuffer, Buffer class</em></span><ul>
+<li><a href="index.html?q=/tsllm/rl/data/buffer.py" id="/tsllm/rl/data/buffer.py"><code>buffer.py</code></a> <em>Buffer class with padding validation and DataLoader support</em></li>
+<li><a href="index.html?q=/tsllm/rl/data/node_types_new.py" id="/tsllm/rl/data/node_types_new.py"><code>node_types_new.py</code></a> <em>TimeStep, tokenizing, reinforcement learning, returns calculation</em></li>
+<li><a href="index.html?q=/tsllm/rl/data/sft_buffer.py" id="/tsllm/rl/data/sft_buffer.py"><code>sft_buffer.py</code></a> <em>SFTBuffer: Batch, Pad, Collate SftInstance data.</em></li>
+<li><a href="index.html?q=/tsllm/rl/data/traj_buffer.py" id="/tsllm/rl/data/traj_buffer.py"><code>traj_buffer.py</code></a> <em>TrajBuffer management and MultiTrajBuffer for trajectories.</em></li>
+</ul>
+</li>
+<li><span hierarchy="3" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/tsllm/rl/trainer/"><code>trainer</code></strong> <em>Trains RL models, PyTorch DataLoader, optimizers &amp; schedulers.</em></span><ul>
+<li><a href="index.html?q=/tsllm/rl/trainer/base_trainer.py" id="/tsllm/rl/trainer/base_trainer.py"><code>base_trainer.py</code></a> <em>BaseTrainer: MCTS-based model training abstract class with get_arch, setup_optimizer methods.</em></li>
+<li><a href="index.html?q=/tsllm/rl/trainer/mcts_trainer_traj_ct2_sft.py" id="/tsllm/rl/trainer/mcts_trainer_traj_ct2_sft.py"><code>mcts_trainer_traj_ct2_sft.py</code></a> <em>Trains MCTS models for Monte Carlo search algorithms.</em></li>
+<li><a href="index.html?q=/tsllm/rl/trainer/mcts_trainer_traj_ct2_value.py" id="/tsllm/rl/trainer/mcts_trainer_traj_ct2_value.py"><code>mcts_trainer_traj_ct2_value.py</code></a> <em>Trains/tests RL and language models with PyTorch DataLoader.</em></li>
+<li><a href="index.html?q=/tsllm/rl/trainer/opt_utils.py" id="/tsllm/rl/trainer/opt_utils.py"><code>opt_utils.py</code></a> <em>Optimizer class, Adam, AdamW, SGD, learning rate schedulers</em></li>
+<li><a href="index.html?q=/tsllm/rl/trainer/utils.py" id="/tsllm/rl/trainer/utils.py"><code>utils.py</code></a> <em>Flattens dict, retrieves git commit details.</em></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+    </article>
+    <script type="text/javascript">
+        function getQueryParams() {
+            var search = window.location.search.substring(1); // Remove leading '?'
+            var queryParams = {};
+            search.split('&').forEach(function (pair) {
+                var parts = pair.split('=');
+                var key = decodeURIComponent(parts[0]);
+                var value = decodeURIComponent(parts[1]);
+                queryParams[key] = value;
+            });
+            return queryParams;
+        }
+
+        const queryParams = getQueryParams(window.location.search);
+        const show_full = queryParams.full == "true";
+        if (!show_full) {
+            const spans = document.querySelectorAll('span');
+            for (let span of spans) {
+                if (span.getAttribute("hierarchy") == '0') { continue }
+
+                toggleVisibility(span);
+            }
+        }
+    </script>
+</body>
+
+</html>
