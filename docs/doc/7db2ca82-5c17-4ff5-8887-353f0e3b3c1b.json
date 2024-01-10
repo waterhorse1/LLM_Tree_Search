@@ -1,0 +1,20 @@
+{
+    "summary": "The code includes a Game24Env class for solving the 24 math puzzle and defines functions for extracting answers, determining correctness, and obtaining rewards.",
+    "details": [
+        {
+            "comment": "This code defines functions to extract the answer and ground truth from a given problem string, as well as determine if the extracted answer is correct. It also handles exceptions by returning INVALID_ANS if any error occurs during extraction.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/envs/game24/env.py\":0-39",
+            "content": "import re\nfrom typing import Optional\nimport sympy\nfrom tsllm.distributed.utils import print_with_rank\nfrom tsllm.envs.base_env import CoTEnv, NoLegalActionException, INVALID_ANS\nimport numpy as np\nfrom .prompt import COT_EXAMPLES, COT_TASK_DESC, PROBLEM_FORMAT_STR, SEP\nSTOP_STR = \"The answer is \"\ndef extract_answer(answer_str):\n    try:\n        expressions = (\n            answer_str.strip()\n            .split(\"\\n\")[-1]\n            .lower()\n            .replace(STOP_STR.lower(), \"\")\n            .split(\"=\")\n        )\n        lhs = expressions[0].strip()\n        rhs = expressions[1].strip()\n        # if int(rhs) != 24:\n        #     return INVALID_ANS\n    except:\n        return INVALID_ANS\n    return lhs\ndef extract_groundtruth(x: str):\n    return None\ndef judge_correct(\n    problem_str: str, extracted_groundtruth: Optional[str], extracted_answer\n):\n    numbers = re.findall(r\"\\d+\", extracted_answer)\n    problem_numbers = re.findall(r\"\\d+\", problem_str)\n    if sorted(numbers) != sorted(problem_numbers):\n        return False"
+        },
+        {
+            "comment": "This code defines a class Game24Env that represents an environment for solving the game 24 math puzzle. It takes in various configurations, such as config, math_problems, llm_gen_fn, tokenizer, and more. The class initializes with some checks and adjustments to ensure the \"max_length\" is set to 4, which is necessary for the game. It also provides a property 'stop_str' and a method '_is_correct' for checking the correctness of the completion.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/envs/game24/env.py\":40-83",
+            "content": "    try:\n        return sympy.simplify(extracted_answer) == 24\n    except Exception as e:\n        return False\nclass Game24Env(CoTEnv):\n    \"\"\"\n    Pure Question input is: 4 numbers seperated by whitespace\n    e.g. 2 3 5 12\n    \"\"\"\n    sep = SEP\n    def __init__(\n        self,\n        config,\n        math_problems,\n        llm_gen_fn,\n        tokenizer,\n        task_desc_str: str = COT_TASK_DESC,\n        cot_example_str: str = COT_EXAMPLES,\n        problem_format_str: str = PROBLEM_FORMAT_STR,\n        reset=True,\n    ):\n        if \"max_length\" in config and config[\"max_length\"] != 4:\n            print_with_rank(\"In game24 max_length should be 4, force setting it to 4.\")\n        config[\"max_length\"] = 4\n        super().__init__(\n            config,\n            math_problems,\n            llm_gen_fn,\n            tokenizer,\n            task_desc_str,\n            cot_example_str,\n            problem_format_str,\n            reset,\n        )\n    @property\n    def stop_str(self):\n        return STOP_STR\n    def _is_correct(self, completion):"
+        },
+        {
+            "comment": "This code snippet contains two methods: \"judge_correct\" and \"get_reward\". The \"judge_correct\" method takes the game question, answer, and extracted solution to determine if it is correct. The \"get_reward\" method always returns a reward of 0.0.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/envs/game24/env.py\":84-90",
+            "content": "        extracted_answer = extract_answer(completion)\n        return judge_correct(\n            self.math_problem[\"question\"], self.math_problem[\"answer\"], extracted_answer\n        )\n    def get_reward(self):\n        return 0.0"
+        }
+    ]
+}

@@ -1,0 +1,539 @@
+{
+    "300": {
+        "file_id": 45,
+        "content": "127 is real.\nThe answer is false.\"\"\"\nPROBLEM_FORMAT_STR = \"Question: {question}\\nSteps:\"\nSEP = \"\\n\"\n# 5-shot\nstandard_task_desc = \"\"\"Given a problem statement as contexts, the task is to answer a logical reasoning question.\"\"\"\nstandard_5shot_examples = f\"\"\"Question: Lepidopterans are insects. Every animal is multicellular. Each insect is an arthropod. Each invertebrate is an animal. Insects are six-legged. Arthropods are small. Arthropods are invertebrates. Each butterfly is a lepidopteran. Whales are not small. Polly is a lepidopteran. Is the statement \\\"Polly is not small\\\" true or false?\nThe answer is false.\nQuestion: Every natural number is positive. Real numbers are numbers. Mersenne primes are prime. Natural numbers are integers. Prime numbers are prime. Mersenne primes are prime numbers. Prime numbers are natural numbers. Every integer is a real number. Real numbers are not imaginary. Every complex number is imaginary. 131071 is a Mersenne prime. Is the statement \\\"131071 is not imaginary\\\" true or false?",
+        "type": "code",
+        "location": "/tsllm/envs/prontoqa/prompt.py:62-71"
+    },
+    "301": {
+        "file_id": 45,
+        "content": "The code defines a problem format string, a separator for formatting output, and a standard task description along with two example 5-shot problems. These examples illustrate the context and question structure, providing a logical reasoning task to answer.",
+        "type": "comment"
+    },
+    "302": {
+        "file_id": 45,
+        "content": "The answer is true.\nQuestion: Every whale is bony. Every insect is an arthropod. Animals are not unicellular. Each butterfly is a lepidopteran. Every lepidopteran is an insect. Each arthropod is an invertebrate. Insects are not eight-legged. Arthropods are not bony. Every invertebrate is an animal. Rex is a lepidopteran. Is the statement \\\"Rex is bony\\\" true or false?\nThe answer is false.\nQuestion: Every whale is bony. Each arthropod is an invertebrate. Insects are arthropods. Each lepidopteran is an insect. Each butterfly is a lepidopteran. Invertebrates are animals. Animals are not unicellular. Insects are not eight-legged. Arthropods are not bony. Polly is a butterfly. Is the statement \\\"Polly is bony\\\" true or false?\nThe answer is false.\nQuestion: Integers are real numbers. Mersenne primes are prime. Each natural number is positive. Every imaginary number is not real. Each prime number is a natural number. Prime numbers are not composite. Every real number is real. Real numbers are numb",
+        "type": "code",
+        "location": "/tsllm/envs/prontoqa/prompt.py:72-77"
+    },
+    "303": {
+        "file_id": 45,
+        "content": "The code presents a series of questions and answers related to various mathematical and scientific concepts. Each question tests the understanding of definitions, relationships, and classifications among different types of numbers, animals, and mathematical entities. The answers are provided for each question, highlighting whether a given statement is true or false based on the concepts defined in the code.",
+        "type": "comment"
+    },
+    "304": {
+        "file_id": 45,
+        "content": "ers. Each natural number is an integer. Every Mersenne prime is a prime number. 127 is a natural number. Is the statement \\\"127 is not real\\\" true or false?\nThe answer is false.\n\"\"\"",
+        "type": "code",
+        "location": "/tsllm/envs/prontoqa/prompt.py:77-79"
+    },
+    "305": {
+        "file_id": 45,
+        "content": "This code defines a function that determines whether a given statement is true or false. It uses the provided prompt to formulate a response and stores it in the \"answer\" variable. In this case, the answer is \"false\".",
+        "type": "comment"
+    },
+    "306": {
+        "file_id": 46,
+        "content": "/tsllm/envs/rlhf/__init__.py",
+        "type": "filepath"
+    },
+    "307": {
+        "file_id": 46,
+        "content": "Imports necessary components for RLHF environment: Env, data-related functions, and prompt elements.",
+        "type": "summary"
+    },
+    "308": {
+        "file_id": 46,
+        "content": "from .env import RLHF_TokenEnv as Env\nfrom .data import get_train_test_dataset, build_offline_data_component\nfrom .prompt import SEP, COT_TASK_DESC, COT_EXAMPLES, PROBLEM_FORMAT_STR",
+        "type": "code",
+        "location": "/tsllm/envs/rlhf/__init__.py:1-3"
+    },
+    "309": {
+        "file_id": 46,
+        "content": "Imports necessary components for RLHF environment: Env, data-related functions, and prompt elements.",
+        "type": "comment"
+    },
+    "310": {
+        "file_id": 47,
+        "content": "/tsllm/envs/rlhf/data.py",
+        "type": "filepath"
+    },
+    "311": {
+        "file_id": 47,
+        "content": "The code generates train and test datasets, customizes for specific models, encodes answer tokens, and builds query strings for unique answers, removing duplicates. It also creates a list of dictionaries containing query string, answer, value index, and reward list using relevant functions/classes.",
+        "type": "summary"
+    },
+    "312": {
+        "file_id": 47,
+        "content": "from transformers import AutoTokenizer\nfrom datasets import load_dataset, load_from_disk\nimport json\nimport numpy as np\nfrom tsllm.distributed.utils import print_with_rank\nfrom tsllm.offline_rl.utils import load_jsonl\nfrom .prompt import PROBLEM_FORMAT_STR, SEP\nfrom .env import RLHF_TokenEnv\n'''\ndef get_train_test_dataset(*args, **kwargs):\n    train_dataset = build_dataset(dataset_name = \"imdb\", setting = \"train\", **kwargs)\n    test_dataset = build_dataset(dataset_name = \"imdb\", setting = \"test\", **kwargs)\n    return train_dataset, test_dataset\ndef build_dataset(model_name, dataset_name=\"imdb\", setting=\"train\", input_text_length=5):\n    \"\"\"\n    Build dataset for training. This builds the dataset from `load_dataset`, one should\n    customize this function to train the model on its own dataset.\n    Args:\n        dataset_name (`str`):\n            The name of the dataset to be loaded.\n    Returns:\n        dataloader (`torch.utils.data.DataLoader`):\n            The dataloader for the dataset.\n    \"\"\"\n    tokenizer = AutoTokenizer.from_pretrained(model_name)",
+        "type": "code",
+        "location": "/tsllm/envs/rlhf/data.py:1-30"
+    },
+    "313": {
+        "file_id": 47,
+        "content": "This code defines two functions: `get_train_test_dataset` and `build_dataset`. The former builds train and test datasets using the latter function. The latter function builds a dataset for training, which loads data from `load_dataset`, and requires customization for training models on specific datasets. It returns a dataloader for the dataset.",
+        "type": "comment"
+    },
+    "314": {
+        "file_id": 47,
+        "content": "    tokenizer.pad_token = tokenizer.eos_token\n    # load imdb with datasets\n    ds = load_dataset(dataset_name, split=setting)\n    ds = ds.rename_columns({\"text\": \"review\"})\n    #ds = ds.filter(lambda x: len(x[\"review\"]) > 200, batched=False)\n    #input_size = LengthSampler(input_min_text_length, input_max_text_length)\n    def tokenize(sample):\n        input_ids = tokenizer.encode(sample[\"review\"])[: input_text_length]\n        sample[\"question\"] = tokenizer.decode(input_ids)\n        return sample\n    ds = ds.map(tokenize, batched=False)\n    ds.set_format(type=\"torch\")\n    return ds\n'''\ndef get_train_test_dataset(*args, **kwargs):\n    if \"num_train_data\" in kwargs.keys():\n        num_train_data = kwargs.pop(\"num_train_data\")\n        if \"path\" in kwargs.keys():\n            train_dataset = load_dataset(**kwargs, split=f\"train[:{num_train_data}]\")\n            test_dataset = load_dataset(**kwargs, split=f\"train[{num_train_data}:]\")\n        else:\n            full_dataset = load_from_disk(**kwargs)[\"train\"]\n            train_dataset = full_dataset.select([i for i in range(num_train_data)])",
+        "type": "code",
+        "location": "/tsllm/envs/rlhf/data.py:31-58"
+    },
+    "315": {
+        "file_id": 47,
+        "content": "Code chunk loads and processes a dataset for training and testing. It pads tokens, tokenizes samples, sets data format to torch, and defines function to get train/test datasets based on the number of samples required.",
+        "type": "comment"
+    },
+    "316": {
+        "file_id": 47,
+        "content": "            test_dataset = full_dataset.select(\n                [i for i in range(num_train_data, len(full_dataset))]\n            )\n    else:\n        train_data_pre = kwargs.pop(\"train_data_pre\")\n        train_data_post = kwargs.pop(\"train_data_post\")\n        full_dataset = load_from_disk(**kwargs)[\"train\"]\n        train_dataset = full_dataset.select(\n            [i for i in range(train_data_pre, train_data_post)]\n        )\n        test_dataset = full_dataset.select(\n            [i for i in range(train_data_pre, train_data_post)]\n        )\n    train_dataset = train_dataset.rename_column(\"prompt\", \"question\")\n    test_dataset = test_dataset.rename_column(\"prompt\", \"question\")\n    return train_dataset, test_dataset\ndef build_offline_data_component(path, q2idx_dict, tokenizer, sep):\n    def get_value_index(question, answer):\n        pre_state_token_length = len(tokenizer.encode(question + sep))\n        index = [pre_state_token_length]\n        if not sep == \"\":\n            answer_list = answer.split(sep)\n            for action in answer_list:",
+        "type": "code",
+        "location": "/tsllm/envs/rlhf/data.py:59-83"
+    },
+    "317": {
+        "file_id": 47,
+        "content": "The code defines a function that takes in various parameters such as `train_data_pre`, `train_data_post`, and `full_dataset`. If the `test_dataset` is not specified, it creates both train and test datasets by selecting specific ranges of data from the full dataset. It then renames the \"prompt\" column to \"question\" for both datasets. The code also defines an inner function called `get_value_index()` that takes in a question and answer and calculates the value index based on token length. This function may be used later in the code.",
+        "type": "comment"
+    },
+    "318": {
+        "file_id": 47,
+        "content": "                action_length = len(\n                    tokenizer.encode(action + sep, add_special_tokens=False)\n                )\n                index.append(action_length)\n                if action_length == 0:\n                    print_with_rank(\n                        \"possbile problems met in online value instance building. {}\".format(\n                            action\n                        )\n                    )\n        else:\n            answer_tokens = tokenizer.encode(answer, add_special_tokens=False)\n            for token in answer_tokens:\n                index.append(1)\n        index = np.cumsum(index) - 1\n        return index\n    predata = load_jsonl(path)\n    traj_dict_list = []\n    for idx, d in enumerate(predata):\n        question = d[\"question\"]\n        if question in q2idx_dict.keys():\n            task_idx = q2idx_dict[question]\n            full_answer_list = d[\"answer\"]\n            # deduplication\n            # note that in Dahoas/synthetic-instruct-gptj-pairwise, these exists several questions that are the same",
+        "type": "code",
+        "location": "/tsllm/envs/rlhf/data.py:84-110"
+    },
+    "319": {
+        "file_id": 47,
+        "content": "Code calculates the action length for each token, appends it to index list. If action length is 0, prints potential issues. Else, encodes answer tokens and appends 1 to index list for each token. Calculates cumulative sum of index list and subtracts 1. Loads jsonl data and creates traj_dict_list by iterating over predata, considering unique questions and their corresponding answers.",
+        "type": "comment"
+    },
+    "320": {
+        "file_id": 47,
+        "content": "            # but here the deduplication only happens for the answer list given one question\n            # So it is still possible to have sample example when add traj\n            unique_answer_list = list(\n                {item[\"text\"]: item for item in full_answer_list}.values()\n            )\n            answer_list = []\n            for a in unique_answer_list:\n                answer = a[\"text\"]\n                query_str = RLHF_TokenEnv.build_query_str(\n                    cot_task_desc=None,\n                    cot_examples=None,\n                    problem_format_str=PROBLEM_FORMAT_STR,\n                    problem_input=question,\n                    sep=SEP,\n                    is_few_shot=False,\n                )\n                value_index = get_value_index(query_str, answer)\n                # :-1 is value index, -1 is the reward index\n                reward_list = np.zeros(len(value_index) - 1)\n                reward_list[-1] = a[\"reward\"]\n                traj_dict = {\n                    \"idx\": task_idx,",
+        "type": "code",
+        "location": "/tsllm/envs/rlhf/data.py:111-132"
+    },
+    "321": {
+        "file_id": 47,
+        "content": "This code ensures that duplicate answer texts are removed from the full_answer_list, creating a unique list of answers. Then, for each unique answer in the updated list, it builds a query string using the RLHF_TokenEnv class. The function get_value_index is used to find the value index, and np.zeros creates a reward list with all values set to 0 except the last one which gets the \"reward\" value from the unique answer dictionary. Lastly, a traj_dict is created with an 'idx' key for task index.",
+        "type": "comment"
+    },
+    "322": {
+        "file_id": 47,
+        "content": "                    \"query_str\": query_str,\n                    \"answer\": answer,\n                    \"value_index\": value_index,\n                    \"reward_list\": reward_list,\n                }\n                traj_dict_list.append(traj_dict)\n                answer_list.append(answer)\n    return traj_dict_list\n# def build_query_str(problem_input, config=None):\n#     from .prompt import PROBLEM_FORMAT_STR\n#     return PROBLEM_FORMAT_STR.format(problem_input)",
+        "type": "code",
+        "location": "/tsllm/envs/rlhf/data.py:133-146"
+    },
+    "323": {
+        "file_id": 47,
+        "content": "This function takes in a problem input and returns a list of dictionaries, where each dictionary contains the generated query string, answer, value index, and reward list. The build_query_str function formats the problem input using the PROBLEM_FORMAT_STR prompt from the prompt module.",
+        "type": "comment"
+    },
+    "324": {
+        "file_id": 48,
+        "content": "/tsllm/envs/rlhf/env.py",
+        "type": "filepath"
+    },
+    "325": {
+        "file_id": 48,
+        "content": "The code defines a reinforcement learning environment class, extending TokenEnv, for language model tasks. It initializes with parameters and includes properties for actions, termination conditions, updates, reward calculation, and environment copying.",
+        "type": "summary"
+    },
+    "326": {
+        "file_id": 48,
+        "content": "import copy\nimport re\nfrom typing import List\nimport numpy as np\nfrom transformers import PreTrainedTokenizer\nfrom tsllm.envs.base_env import TokenEnv\nfrom .prompt import PROBLEM_FORMAT_STR, SEP\nclass RLHF_TokenEnv(TokenEnv):\n    sep=SEP\n    def __init__(\n        self,\n        config,\n        problems,\n        llm_forward_fn,\n        tokenizer,\n        reward_fn,\n        task_desc_str= None,\n        cot_example_str = None,\n        problem_format_str = PROBLEM_FORMAT_STR,\n        reset=True,\n    ):\n        super().__init__(\n            config,\n            problems,\n            llm_forward_fn,\n            tokenizer,\n            task_desc_str,\n            cot_example_str,\n            problem_format_str,\n            reset,\n        )\n        self.reward_fn = reward_fn\n    @staticmethod\n    def build_response_str(\n        answer_str: str, tokenizer: PreTrainedTokenizer, add_eos_token: bool\n    ):\n        if (\n            add_eos_token\n            and len(tokenizer.encode(answer_str, add_special_tokens=False)) < 64\n        ):\n            answer_str += tokenizer.eos_token",
+        "type": "code",
+        "location": "/tsllm/envs/rlhf/env.py:1-43"
+    },
+    "327": {
+        "file_id": 48,
+        "content": "This code defines a class called RLHF_TokenEnv that extends the TokenEnv class. It initializes an object with various parameters such as config, problems, llm_forward_fn, tokenizer, reward_fn, task_desc_str, cot_example_str, problem_format_str, and reset. The class also defines a static method build_response_str that takes in answer_str, tokenizer, and add_eos_token as parameters. This method adds the eos_token to the answer if the answer length is less than 64 and add_eos_token is True.",
+        "type": "comment"
+    },
+    "328": {
+        "file_id": 48,
+        "content": "        return answer_str\n    @property\n    def stop_str(self):\n        return self.tokenizer.eos_token\n    # def init_action_history(self):\n    #     # add the first prompted questions\n    #     return ([self.task_prefix] if self.task_prefix is not None else []) + [\n    #         self._problem_format_str.format(self.problem['prompt'])\n    #     ]\n    def step(self, action, update_legal_action=True):\n        terminated = False\n        if not self.stop_str == action:\n            # remove the final stop string like eos token\n            self.action_history.append(action)\n        else:\n            terminated = True\n        state = self.get_state()\n        truncated = len(self.action_history) >= self.config[\"max_length\"] + (\n            2 if self.task_prefix is not None else 1\n        )\n        reward = self.get_reward(terminated, truncated)\n        # update legal actions\n        if not (terminated or truncated) and update_legal_action:\n            self._legal_actions = self.update_legal_actions()\n        else:\n            self._legal_actions = None",
+        "type": "code",
+        "location": "/tsllm/envs/rlhf/env.py:44-72"
+    },
+    "329": {
+        "file_id": 48,
+        "content": "The code defines a class with properties stop_str and step, which is used in a reinforcement learning environment. The stop_str returns the end of sequence token, and the step function handles actions taken by the environment, termination conditions, and updates legal actions. It also retrieves the state and reward based on the action taken.",
+        "type": "comment"
+    },
+    "330": {
+        "file_id": 48,
+        "content": "        return state, reward, terminated, truncated, {'winner': None, 'reward': reward}\n    def get_reward(self, terminated, truncated):\n        \"\"\"To implement based on learned reward model\"\"\"\n        if terminated or truncated:\n            reward = self.reward_fn(self.question, self.answer)\n        else:\n            reward = 0\n        return reward\n    def copy(self):\n        env = self.__class__(\n            self.config,\n            self.problems,\n            self.llm_forward_fn,\n            self.tokenizer,\n            self.reward_fn,\n            self._task_desc_str,\n            self._cot_example_str,\n            self._problem_format_str,\n            reset=False,\n        )\n        env.problem = copy.deepcopy(self.problem)\n        env._legal_actions = copy.deepcopy(self._legal_actions)\n        env.action_history = copy.deepcopy(self.action_history)\n        return env\nif \"__name__\" == '__main__':\n    pass",
+        "type": "code",
+        "location": "/tsllm/envs/rlhf/env.py:73-102"
+    },
+    "331": {
+        "file_id": 48,
+        "content": "The code defines an environment (env.py) for a reinforcement learning task involving language models. It returns state, reward, termination, and truncation status, along with additional information. The get_reward function calculates the reward based on a learned reward model, while the copy function creates a copy of the environment with the same configuration and current state.",
+        "type": "comment"
+    },
+    "332": {
+        "file_id": 49,
+        "content": "/tsllm/envs/rlhf/prompt.py",
+        "type": "filepath"
+    },
+    "333": {
+        "file_id": 49,
+        "content": "The code snippet defines constants related to the instruction and response format of a task. COT_EXAMPLES and COT_TASK_DESC are set to None, suggesting they might be used later in the program. The variable PROBLEM_FORMAT_STR provides a template for displaying instructions and requests, with placeholders for the question and response. SEP is an empty string possibly used for separating elements in the code.",
+        "type": "summary"
+    },
+    "334": {
+        "file_id": 49,
+        "content": "COT_EXAMPLES = None\nCOT_TASK_DESC = None\nPROBLEM_FORMAT_STR = \"\"\"Below is an instruction that describes a task. Write a response that appropriately completes the request.\n### Instruction:\n{question}\n### Response:\n\"\"\"\nSEP=\"\"",
+        "type": "code",
+        "location": "/tsllm/envs/rlhf/prompt.py:1-12"
+    },
+    "335": {
+        "file_id": 49,
+        "content": "The code snippet defines constants related to the instruction and response format of a task. COT_EXAMPLES and COT_TASK_DESC are set to None, suggesting they might be used later in the program. The variable PROBLEM_FORMAT_STR provides a template for displaying instructions and requests, with placeholders for the question and response. SEP is an empty string possibly used for separating elements in the code.",
+        "type": "comment"
+    },
+    "336": {
+        "file_id": 50,
+        "content": "/tsllm/envs/tests/test_game24.py",
+        "type": "filepath"
+    },
+    "337": {
+        "file_id": 50,
+        "content": "The code initializes a Game24Env environment, tests answers, and prints the state of the environment. It also loads data from a JSONL file, tokenizes it, and displays lengths of critic_data, query string, and answer.",
+        "type": "summary"
+    },
+    "338": {
+        "file_id": 50,
+        "content": "from tsllm.envs.game24.env import (\n    Game24Env,\n    COT_EXAMPLES,\n    COT_TASK_DESC,\n    PROBLEM_FORMAT_STR,\n    SEP,\n)\nimport pytest\nif __name__ == \"__main__\":\n    problem_input = \"1 3 3 4\"\n    env = Game24Env(\n        config={},\n        math_problems=[{\"question\": \"1 3 3 4\", \"answer\": \"\"}],\n        tokenizer=None,\n        llm_gen_fn=None,\n        reset=False,\n    )\n    env.reset(False)\n    print(env.get_state())\n    print(env._is_correct(\"The answer is (3 * 4) * (3 - 1) = 24\"))\n    print(env._is_correct(\"\\n\\nThe answer is (3 * 4) * (3 - 1) = 24\"))\n    print(env._is_correct(\"The answer is (3 * 3) * (3 - 1) = 24\"))\n    print(env._is_correct(\"The answer is (3 * 4) * (3 - 1) = 23\"))\n    print(\"\\n\\n====== ZERO SHOT COT ============\")\n    build_query_str = Game24Env.build_query_str\n    print(\n        build_query_str(\n            COT_TASK_DESC, COT_EXAMPLES, PROBLEM_FORMAT_STR, problem_input, SEP, False\n        )\n    )\n    print(\"\\n\\n====== FEW SHOT COT ============\")\n    print(\n        build_query_str(\n            COT_TASK_DESC, COT_EXAMPLES, PROBLEM_FORMAT_STR, problem_input, SEP, True",
+        "type": "code",
+        "location": "/tsllm/envs/tests/test_game24.py:1-38"
+    },
+    "339": {
+        "file_id": 50,
+        "content": "This code is initializing a Game24Env environment and testing different answers to see if they are correct. It also prints the state of the environment and uses build_query_str function for zero shot and few shot contextual understanding tasks.",
+        "type": "comment"
+    },
+    "340": {
+        "file_id": 50,
+        "content": "        )\n    )\n    from transformers import AutoTokenizer\n    tokenizer = AutoTokenizer.from_pretrained(\"meta-llama/Llama-2-7b-hf\")\n    print(\"\\n\\n====== default sft dataset ============\")\n    from tsllm.envs import get_default_sft_data_builder, get_env_datasets\n    train_ds, _  = get_env_datasets(\"game24\")\n    q2idx_dict = {}\n    for idx, problem_inst in enumerate(train_ds):\n        question = problem_inst[\"question\"]\n        q2idx_dict[question] = idx\n    sft_data = get_default_sft_data_builder(\n        \"game24\")(\n        \"tsllm/envs/game24/train_data/train_dedup.jsonl\",\n        q2idx_dict,\n        tokenizer=tokenizer,\n        add_eos_token=True,\n        is_few_shot=False,\n    )\n    print(\"Len train_ds: {}\\ntrian_ds[0]:\\n{}\".format(len(train_ds), train_ds[0]))\n    print(\"Len sft_data: {}\\nsft_data[0]:\\n{}\".format(len(sft_data), sft_data[0]))\n    print(\"\\n\\n====== default critic dataset ============\")\n    from tsllm.envs import get_default_critic_data_builder\n    critic_data = get_default_critic_data_builder(\"game24\")(",
+        "type": "code",
+        "location": "/tsllm/envs/tests/test_game24.py:39-68"
+    },
+    "341": {
+        "file_id": 50,
+        "content": "The code imports necessary libraries, defines a tokenizer, prepares a default small few-shot task dataset, and prints the lengths and samples of both the training data and the default critic dataset for \"game24\".",
+        "type": "comment"
+    },
+    "342": {
+        "file_id": 50,
+        "content": "        \"tsllm/envs/game24/train_data/train_dedup.jsonl\",\n        q2idx_dict,\n        tokenizer=tokenizer,\n        is_few_shot=False\n    )\n    print(\"Len critic_data: {}\\ncritic_data[0]:\\n{}\".format(len(critic_data), critic_data[0]))\n    print(len(tokenizer.encode(critic_data[0][\"query_str\"]+critic_data[0][\"answer\"])))\n    print(len(tokenizer.encode(critic_data[0][\"query_str\"])))",
+        "type": "code",
+        "location": "/tsllm/envs/tests/test_game24.py:69-76"
+    },
+    "343": {
+        "file_id": 50,
+        "content": "This code is loading data from a JSONL file, using a provided dictionary and tokenizer. It then prints the length of the critic_data, and the encoded lengths of the query string and answer in that data.",
+        "type": "comment"
+    },
+    "344": {
+        "file_id": 51,
+        "content": "/tsllm/envs/tests/test_gsm8k.py",
+        "type": "filepath"
+    },
+    "345": {
+        "file_id": 51,
+        "content": "The code initializes modules, retrieves the GSM8k dataset, builds a few-shot learning task dataset, and tests the model by creating an instance of GSMLLMTreeSearch. It prints dataset information and lengths of encoded text data for analysis.",
+        "type": "summary"
+    },
+    "346": {
+        "file_id": 51,
+        "content": "from tsllm.envs.gsm8k.env import (\n    Gsm8kEnv,\n    COT_EXAMPLES,\n    COT_TASK_DESC,\n    PROBLEM_FORMAT_STR,\n    SEP,\n)\nimport pytest\nif __name__ == \"__main__\":\n    problem_input = \"1 3 3 4\"\n    env = Gsm8kEnv(\n        config={},\n        math_problems=[{\"question\": \"1 3 3 4\", \"answer\": \"3\"}],\n        tokenizer=None,\n        llm_gen_fn=None,\n        reset=False,\n    )\n    env.reset(False)\n    print(env.get_state())\n    print(env._is_correct(\"The answer is 3\"))\n    print(env._is_correct(\"\\n\\nThe answer is 3.\"))\n    print(env._is_correct(\"The answer is 4\"))\n    print(env._is_correct(\"The answer is x\"))\n    build_query_str = Gsm8kEnv.build_query_str\n    print(\"\\n\\n====== ZERO SHOT COT ============\")\n    print(\n        build_query_str(\n            COT_TASK_DESC, COT_EXAMPLES, PROBLEM_FORMAT_STR, problem_input, SEP, False\n        )\n    )\n    # print(\"\\n\\n====== FEW SHOT COT ============\")\n    # print(\n    #     build_query_str(\n    #         COT_TASK_DESC, COT_EXAMPLES, PROBLEM_FORMAT_STR, problem_input, SEP, True\n    #     )",
+        "type": "code",
+        "location": "/tsllm/envs/tests/test_gsm8k.py:1-39"
+    },
+    "347": {
+        "file_id": 51,
+        "content": "The code imports necessary modules and defines the environment for a math problem game. It creates an instance of Gsm8kEnv with a given math problem, resets the game state, checks correct answers, and prints the current game state. It also demonstrates zero-shot contextualized ordinal regression task description using provided functions.",
+        "type": "comment"
+    },
+    "348": {
+        "file_id": 51,
+        "content": "    # )\n    from transformers import AutoTokenizer\n    tokenizer = AutoTokenizer.from_pretrained(\"meta-llama/Llama-2-7b-hf\")\n    print(\"\\n\\n====== default sft dataset ============\")\n    from tsllm.envs import get_default_sft_data_builder, get_env_datasets\n    train_ds, _ = get_env_datasets(\"gsm8k\")\n    q2idx_dict = {}\n    for idx, problem_inst in enumerate(train_ds):\n        question = problem_inst[\"question\"]\n        q2idx_dict[question] = idx\n    sft_data = get_default_sft_data_builder(\"gsm8k\")(\n        \"tsllm/envs/gsm8k/train_data/sft_init.jsonl\",\n        q2idx_dict,\n        tokenizer=tokenizer,\n        add_eos_token=True,\n        is_few_shot=False,\n    )\n    print(\"Len train_ds: {}\\ntrian_ds[0]:\\n{}\".format(len(train_ds), train_ds[0]))\n    print(\"Len sft_data: {}\\nsft_data[0]:\\n{}\".format(len(sft_data), sft_data[0]))\n    print(\"\\n\\n====== default critic dataset ============\")\n    from tsllm.envs import get_default_critic_data_builder\n    critic_data = get_default_critic_data_builder(\"gsm8k\")(\n        \"tsllm/envs/gsm8k/train_data/sft_init.jsonl\",",
+        "type": "code",
+        "location": "/tsllm/envs/tests/test_gsm8k.py:40-68"
+    },
+    "349": {
+        "file_id": 51,
+        "content": "This code initializes a tokenizer, retrieves the training dataset for an 8k General Science Multitask (GSMT) dataset, creates a dictionary mapping questions to indices, builds a few-shot learning task dataset using the GSM8K dataset, and prints information about the datasets.",
+        "type": "comment"
+    },
+    "350": {
+        "file_id": 51,
+        "content": "        q2idx_dict,\n        tokenizer=tokenizer,\n        is_few_shot=False,\n    )\n    print(\n        \"Len critic_data: {}\\ncritic_data[0]:\\n{}\".format(\n            len(critic_data), critic_data[0]\n        )\n    )\n    print(len(tokenizer.encode(critic_data[0][\"query_str\"] + critic_data[0][\"answer\"])))\n    print(len(tokenizer.encode(critic_data[0][\"query_str\"])))",
+        "type": "code",
+        "location": "/tsllm/envs/tests/test_gsm8k.py:69-79"
+    },
+    "351": {
+        "file_id": 51,
+        "content": "This code tests the GSM8k dataset by creating an instance of the GSMLLMTreeSearch model, setting tokenizer and few-shot parameters to False, then prints various lengths related to encoded text data for further analysis.",
+        "type": "comment"
+    },
+    "352": {
+        "file_id": 52,
+        "content": "/tsllm/envs/tests/test_prontoqa.py",
+        "type": "filepath"
+    },
+    "353": {
+        "file_id": 52,
+        "content": "The code sets up an environment for PrOntoQA question answering task, using Llama-2-7b-hf model for tokenization. It creates and prints the length of different datasets, with 'sft_data' and 'critic_data' generated by get_default_sft_data_builder and get_default_critic_data_builder functions respectively. The code also performs additional print statements on selected elements from critic_data.",
+        "type": "summary"
+    },
+    "354": {
+        "file_id": 52,
+        "content": "from tsllm.envs.prontoqa.env import (\n    PrOntoQAEnv,\n    COT_EXAMPLES,\n    COT_TASK_DESC,\n    PROBLEM_FORMAT_STR,\n    SEP,\n)\nif __name__ == \"__main__\":\n    problem_input = 'Butterflies are lepidopterans. Every arthropod is small. Whales are not small. Invertebrates are animals. Every insect is an arthropod. Lepidopterans are insects. Every insect is six-legged. Every arthropod is an invertebrate. Animals are multicellular. Polly is a lepidopteran. Is the statement \"Polly is not small\" true or false?'\n    env = PrOntoQAEnv(\n        config={},\n        math_problems=[\n            {\n                \"question\": 'Butterflies are lepidopterans. Every arthropod is small. Whales are not small. Invertebrates are animals. Every insect is an arthropod. Lepidopterans are insects. Every insect is six-legged. Every arthropod is an invertebrate. Animals are multicellular. Polly is a lepidopteran. Is the statement \"Polly is not small\" true or false?',\n                \"answer\": False,\n            }\n        ],\n        tokenizer=None,",
+        "type": "code",
+        "location": "/tsllm/envs/tests/test_prontoqa.py:1-19"
+    },
+    "355": {
+        "file_id": 52,
+        "content": "This code imports necessary modules and defines a PrOntoQAEnv class, which is an environment for a question answering task. The code then creates an instance of this class to solve a specific problem input and check if the statement \"Polly is not small\" is true or false.",
+        "type": "comment"
+    },
+    "356": {
+        "file_id": 52,
+        "content": "        llm_gen_fn=None,\n        reset=False,\n    )\n    env.reset(False)\n    print(env.get_state())\n    print(\"correct: \", env._is_correct(\"The answer is false.\"))\n    build_query_str = PrOntoQAEnv.build_query_str\n    print(\"\\n\\n====== ZERO SHOT COT ============\")\n    print(\n        build_query_str(\n            COT_TASK_DESC, COT_EXAMPLES, PROBLEM_FORMAT_STR, problem_input, SEP, False\n        )\n    )\n    print(\"\\n\\n====== FEW SHOT COT ============\")\n    print(\n        build_query_str(\n            COT_TASK_DESC, COT_EXAMPLES, PROBLEM_FORMAT_STR, problem_input, SEP, True\n        )\n    )\n    from transformers import AutoTokenizer\n    tokenizer = AutoTokenizer.from_pretrained(\"meta-llama/Llama-2-7b-hf\")\n    print(\"\\n\\n====== default sft dataset ============\")\n    from tsllm.envs import get_default_sft_data_builder, get_env_datasets\n    train_ds, _ = get_env_datasets(\"prontoqa\")\n    q2idx_dict = {}\n    for idx, problem_inst in enumerate(train_ds):\n        question = problem_inst[\"question\"]\n        q2idx_dict[question] = idx",
+        "type": "code",
+        "location": "/tsllm/envs/tests/test_prontoqa.py:20-52"
+    },
+    "357": {
+        "file_id": 52,
+        "content": "This code initializes an environment for PrOntoQA, prints its state, and demonstrates zero-shot and few-shot capabilities. It then tokenizes using the Llama-2-7b-hf model and retrieves default SFG data builder for \"prontoqa\".",
+        "type": "comment"
+    },
+    "358": {
+        "file_id": 52,
+        "content": "    sft_data = get_default_sft_data_builder(\"prontoqa\")(\n        \"tsllm/envs/prontoqa/train_data/train.jsonl\",\n        q2idx_dict,\n        tokenizer=tokenizer,\n        add_eos_token=True,\n        is_few_shot=False,\n    )\n    print(\"Len train_ds: {}\\ntrian_ds[0]:\\n{}\".format(len(train_ds), train_ds[0]))\n    print(\"Len sft_data: {}\\nsft_data[0]:\\n{}\".format(len(sft_data), sft_data[0]))\n    print(\"\\n\\n====== default critic dataset ============\")\n    from tsllm.envs import get_default_critic_data_builder\n    critic_data = get_default_critic_data_builder(\"prontoqa\")(\n        \"tsllm/envs/prontoqa/train_data/train.jsonl\",\n        q2idx_dict,\n        tokenizer=tokenizer,\n        is_few_shot=False,\n    )\n    print(\n        \"Len critic_data: {}\\ncritic_data[0]:\\n{}\".format(\n            len(critic_data), critic_data[0]\n        )\n    )\n    print(len(tokenizer.encode(critic_data[0][\"query_str\"] + critic_data[0][\"answer\"])))\n    print(len(tokenizer.encode(critic_data[0][\"query_str\"])))",
+        "type": "code",
+        "location": "/tsllm/envs/tests/test_prontoqa.py:53-79"
+    },
+    "359": {
+        "file_id": 52,
+        "content": "This code snippet is responsible for creating and printing the length of different datasets. It uses the get_default_sft_data_builder and get_default_critic_data_builder functions to generate 'sft_data' and 'critic_data' respectively, which contain training data for a model. The code then prints the lengths of these datasets (train_ds, sft_data, critic_data) and performs some additional print statements on selected elements from critic_data.",
+        "type": "comment"
+    },
+    "360": {
+        "file_id": 53,
+        "content": "/tsllm/envs/tests/test_rlhf.py",
+        "type": "filepath"
+    },
+    "361": {
+        "file_id": 53,
+        "content": "The code imports necessary modules and functions, sets up an environment for a contextual understanding task, fine-tunes pretrained models, and prints critical data details.",
+        "type": "summary"
+    },
+    "362": {
+        "file_id": 53,
+        "content": "from tsllm.envs.rlhf.env import RLHF_TokenEnv, PROBLEM_FORMAT_STR, SEP\nfrom tsllm.envs.rlhf.prompt import COT_EXAMPLES, COT_TASK_DESC\nimport pytest\nif __name__ == \"__main__\":\n    problem_input = \"1 3 3 4\"\n    env = RLHF_TokenEnv(\n        config={},\n        problems=[{\"question\": \"1 3 3 4\", \"answer\": \"\"}],\n        tokenizer=None,\n        llm_forward_fn=None,\n        reward_fn=None,\n        reset=False,\n    )\n    env.reset(False)\n    print(env.get_state())\n    # print(env._is_correct(\"The answer is (3 * 4) * (3 - 1) = 24\"))\n    # print(env._is_correct(\"\\n\\nThe answer is (3 * 4) * (3 - 1) = 24\"))\n    # print(env._is_correct(\"The answer is (3 * 3) * (3 - 1) = 24\"))\n    # print(env._is_correct(\"The answer is (3 * 4) * (3 - 1) = 23\"))\n    build_query_str = RLHF_TokenEnv.build_query_str\n    print(\"\\n\\n====== ZERO SHOT COT ============\")\n    print(\n        build_query_str(\n            COT_TASK_DESC, COT_EXAMPLES, PROBLEM_FORMAT_STR, problem_input, SEP, False\n        )\n    )\n    # print(\"\\n\\n====== FEW SHOT COT ============\")",
+        "type": "code",
+        "location": "/tsllm/envs/tests/test_rlhf.py:1-29"
+    },
+    "363": {
+        "file_id": 53,
+        "content": "The code imports necessary classes and functions from related modules, creates an RLHF_TokenEnv environment with a single problem input, resets the environment, prints its state, and then builds a query string for a zero-shot contextual understanding task using provided descriptions, examples, and problem input.",
+        "type": "comment"
+    },
+    "364": {
+        "file_id": 53,
+        "content": "    # print(\n    #     build_query_str(\n    #         COT_TASK_DESC, COT_EXAMPLES, PROBLEM_FORMAT_STR, problem_input, True\n    #     )\n    # )\n    from transformers import AutoTokenizer\n    tokenizer = AutoTokenizer.from_pretrained(\"vicgalle/gpt2-open-instruct-v1\")\n    print(\"\\n\\n====== default sft dataset ============\")\n    from tsllm.envs import get_default_sft_data_builder, get_env_datasets\n    train_ds, _  = get_env_datasets(\"game24\")\n    q2idx_dict = {}\n    for idx, problem_inst in enumerate(train_ds):\n        question = problem_inst[\"question\"]\n        q2idx_dict[question] = idx\n    sft_data = get_default_sft_data_builder(\n        \"rlhf\")(\n        \"tsllm/envs/game24/train_data/train_dedup.jsonl\",\n        q2idx_dict,\n        tokenizer=tokenizer,\n        add_eos_token=True,\n        is_few_shot=False,\n    )\n    print(\"Len train_ds: {}\\ntrian_ds[0]:\\n{}\".format(len(train_ds), train_ds[0]))\n    print(\"Len sft_data: {}\\nsft_data[0]:\\n{}\".format(len(sft_data), sft_data[0]))\n    print(\"\\n\\n====== default critic dataset ============\")",
+        "type": "code",
+        "location": "/tsllm/envs/tests/test_rlhf.py:30-56"
+    },
+    "365": {
+        "file_id": 53,
+        "content": "This code imports necessary libraries and builds the default supervised fine-tuning (sft) dataset using a pretrained tokenizer. It then prints details about the sft_data and train_ds, including their lengths and examples.",
+        "type": "comment"
+    },
+    "366": {
+        "file_id": 53,
+        "content": "    from tsllm.envs import get_default_critic_data_builder\n    critic_data = get_default_critic_data_builder(\"rlhf\")(\n        \"tsllm/envs/game24/train_data/train_dedup.jsonl\",\n        q2idx_dict,\n        tokenizer=tokenizer,\n        is_few_shot=False\n    )\n    print(\"Len critic_data: {}\\ncritic_data[0]:\\n{}\".format(len(critic_data), critic_data[0]))\n    print(len(tokenizer.encode(critic_data[0][\"query_str\"]+critic_data[0][\"answer\"])))\n    print(len(tokenizer.encode(critic_data[0][\"query_str\"])))",
+        "type": "code",
+        "location": "/tsllm/envs/tests/test_rlhf.py:57-66"
+    },
+    "367": {
+        "file_id": 53,
+        "content": "The code imports the `get_default_critic_data_builder` function from `tsllm.envs` module and uses it to create a `critic_data` object with given parameters: \"rlhf\" mode, path to train data file, query to index dictionary (q2idx_dict), tokenizer, and non-few shot setting. It then prints the length of critic_data, first sample in critic_data, encoded length of the concatenation of query string and answer in critic_data, and lastly the encoded length of just the query string from critic_data.",
+        "type": "comment"
+    },
+    "368": {
+        "file_id": 54,
+        "content": "/tsllm/inference/lm_self_value.py",
+        "type": "filepath"
+    },
+    "369": {
+        "file_id": 54,
+        "content": "This code defines a function `tot_value_fn` that generates prompts based on inputs and assigns scores to keywords, while another code calculates the mean of a list of values and returns an array containing all computed means.",
+        "type": "summary"
+    },
+    "370": {
+        "file_id": 54,
+        "content": "import torch\nfrom typing import Union, List\nfrom tsllm.model import ValueHeadedLLM\nfrom transformers import AutoTokenizer\nimport re\nimport numpy as np\n@torch.inference_mode()\ndef tot_value_fn(\n    critic: ValueHeadedLLM,\n    tokenizer: AutoTokenizer,\n    env_name: str,\n    input_str: Union[List[str], str],\n):\n    if env_name == \"game24\":\n        from envs.game24.prompt import VALUE_PROMPT, VALUE_LAST_STEP_PROMPT\n    else:\n        print(\"tot_value_fn does not support env {}.\".format(env_name))\n        raise NotImplementedError\n    token_batch = []\n    for text in input_str:\n        last_line = text.strip().split(\"\\n\")[-1]\n        if \"left\" in last_line:\n            current_numbers = last_line.split(\"left: \")[-1].split(\")\")[0]\n            prompt = VALUE_PROMPT.format(input=current_numbers)\n        else:\n            inp = text.strip().split(\"\\n\")[1].replace(\"Input: \", \"\")\n            ans = last_line.lower().replace(\"The answer is: \", \"\")\n            prompt = VALUE_LAST_STEP_PROMPT.format(input=inp, answer=ans)\n        prompt_tokens = tokenizer.convert_ids_to_tokens(tokenizer.encode(prompt))",
+        "type": "code",
+        "location": "/tsllm/inference/lm_self_value.py:1-32"
+    },
+    "371": {
+        "file_id": 54,
+        "content": "This code defines a function `tot_value_fn` which takes a critic model, tokenizer, environment name and input string as inputs. It then generates prompts for the given input strings based on the environment type (game24) and encodes them using the tokenizer.",
+        "type": "comment"
+    },
+    "372": {
+        "file_id": 54,
+        "content": "        token_batch.append(prompt_tokens)\n    step_results = critic.generate_batch(\n        token_batch,\n        sampling_temperature=1.0,\n        sampling_topp=1.0,\n        sampling_topk=100,\n        max_length=128,\n        return_scores=True,\n        include_prompt_in_result=False,\n        end_token=[tokenizer.eos_token_id],\n        static_prompt=None,\n        max_batch_size=0,\n        num_hypotheses=3,  # it is the n_evaluate_sample in tot\n    )\n    values = []\n    value_map = {\"impossible\": 0.001, \"likely\": 1, \"sure\": 20}\n    for res in list(step_results):\n        v_res = []\n        for seq in res.sequences_ids:\n            text = tokenizer.decode(seq)\n            matchs = re.findall(r\"\\bimpossible|sure|likely\\b\", text)\n            if len(matchs) > 0:\n                # it will generate too much imagination, thus we chose only the first one.\n                v_seq = value_map[matchs[0]]\n            else:\n                # default to likely\n                v_seq = value_map[\"likely\"]\n            v_res.append(v_seq)",
+        "type": "code",
+        "location": "/tsllm/inference/lm_self_value.py:33-62"
+    },
+    "373": {
+        "file_id": 54,
+        "content": "This code is generating a batch of sequences using a language model and then evaluating each sequence based on specific keywords. It assigns scores to the sequences based on whether they contain certain words (\"impossible\", \"likely\", or \"sure\"). These scores are stored in values, which may be used later in the program.",
+        "type": "comment"
+    },
+    "374": {
+        "file_id": 54,
+        "content": "        values.append(np.mean(v_res))\n    return np.array(values)",
+        "type": "code",
+        "location": "/tsllm/inference/lm_self_value.py:63-65"
+    },
+    "375": {
+        "file_id": 54,
+        "content": "This code calculates the mean of a list of values and appends it to another list. Finally, it returns an array containing all computed means.",
+        "type": "comment"
+    },
+    "376": {
+        "file_id": 55,
+        "content": "/tsllm/inference/trajectory_collector.py",
+        "type": "filepath"
+    },
+    "377": {
+        "file_id": 55,
+        "content": "The given comments describe a Monte Carlo Tree Search (MCTS) function that generates episodes by selecting actions and updating the MCTS tree based on environment responses, while collecting trajectory data. The function is named `_mcts_rollout_v2` and returns a list of outputs containing generated texts, values, and token counts from an MCTS rollout with optional simulation and token parameters.",
+        "type": "summary"
+    },
+    "378": {
+        "file_id": 55,
+        "content": "from typing import Optional\nfrom tsllm.envs.base_env import CoTEnv\nfrom tsllm.inference.evaluation.vote_utils import MAJORITY_VOTE\nfrom tsllm.mcts.tree import MCTS\nfrom tsllm.mcts.utils import get_root\nimport time\ndef _mcts_rollout_v1(\n    mcts: MCTS,\n    env: CoTEnv,\n    policy_forward_value,\n    n_rollout: int,\n    reset_total_tree: bool,\n    sample: bool,\n    clear_total_tree: bool,\n):\n    \"\"\"MCTS.GET_NEXT_ACTION\"\"\"\n    output_episodes = []\n    num_generated_token = 0\n    env.reset(True)\n    mcts.root = None\n    done = False\n    for i in range(n_rollout):\n        while not done:\n            action, _, current_node = mcts.get_next_action(\n                env,\n                policy_forward_fn=policy_forward_value,\n                sample=sample,\n                return_tree=True,\n            )\n            mcts.root = current_node.children[action]\n            next_state, reward, terminated, truncated, info = env.step(\n                action, update_legal_action=len(mcts.root.children) == 0\n            )\n            done = terminated or truncated",
+        "type": "code",
+        "location": "/tsllm/inference/trajectory_collector.py:1-36"
+    },
+    "379": {
+        "file_id": 55,
+        "content": "This function, _mcts_rollout_v1, performs Monte Carlo Tree Search (MCTS) for a given environment and policy. It resets the environment and MCTS tree at the start of each iteration. It generates episodes by selecting actions using the provided policy until done condition is met. It updates the MCTS tree based on the environment's response to the selected action. It returns the generated episodes and the number of tokens generated.",
+        "type": "comment"
+    },
+    "380": {
+        "file_id": 55,
+        "content": "            if not done and len(mcts.root.children) > 0:\n                env._legal_actions = [\n                    {\"action\": a, \"prob\": None} for a in mcts.root.children.keys()\n                ]\n        num_generated_token = mcts.num_generated_token\n        traj_data = {\n            \"path_idx\": i,\n            \"text\": env.answer.strip(),  # drop the last \"\\n\"\n            \"value\": mcts.root.value,\n            \"num_generated_token\": num_generated_token,\n        }\n        output_episodes.append(traj_data)\n        assert not (reset_total_tree and clear_total_tree)  # cannot be both true\n        if reset_total_tree:\n            if i < n_rollout - 1:\n                mcts.root = None\n                env.reset(update_legal_action=True)\n        else:\n            mcts.root = get_root(current_node)\n            if clear_total_tree:\n                mcts.clear_node(mcts.root)\n            env.reset(update_legal_action=False)\n            env._legal_actions = [\n                {\"action\": a, \"prob\": None} for a in mcts.root.children.keys()",
+        "type": "code",
+        "location": "/tsllm/inference/trajectory_collector.py:38-64"
+    },
+    "381": {
+        "file_id": 55,
+        "content": "The code handles the trajectory collection during inference. It updates the legal actions, stores trajectory data for each path, and resets or clears the Monte Carlo Tree Search (MCTS) tree based on specified conditions.",
+        "type": "comment"
+    },
+    "382": {
+        "file_id": 55,
+        "content": "            ]\n        done = False\n    return output_episodes\ndef _mcts_rollout_v2(\n    mcts: MCTS,\n    env: CoTEnv,\n    policy_forward_value,\n    n_rollout: int,\n    max_simulation: Optional[int],\n    max_token: Optional[int],\n):\n    \"\"\"MCTS.ROLLOUT\"\"\"\n    output_list, num_simulation, root = mcts.rollout(\n        env,\n        n_rollout,\n        policy_forward_value,\n        max_num_simulation=max_simulation,\n        max_token=max_token,\n        return_tree=True,\n    )\n    # texts = [x[\"text\"].strip() for x in output_list]\n    # values = [x[\"value\"] for x in output_list]\n    # num_generated_token = mcts.num_generated_token\n    return output_list  # texts, values, num_generated_token",
+        "type": "code",
+        "location": "/tsllm/inference/trajectory_collector.py:65-94"
+    },
+    "383": {
+        "file_id": 55,
+        "content": "This code defines a function `_mcts_rollout_v2` that performs an MCTS rollout with the given `MCTS` object, environment (`env`), and policy forward value. It returns a list of outputs containing the generated texts, values, and the number of generated tokens. The maximum simulation and token parameters are optional for this function call.",
+        "type": "comment"
+    },
+    "384": {
+        "file_id": 56,
+        "content": "/tsllm/inference/value.py",
+        "type": "filepath"
+    },
+    "385": {
+        "file_id": 56,
+        "content": "The code defines the `value_fn` function, which takes a critic model, tokenizer, and input text. It prepares the input text, passes it through the critic model to obtain value predictions for each word, gathers the results, and returns them as numpy float arrays in torch inference mode.",
+        "type": "summary"
+    },
+    "386": {
+        "file_id": 56,
+        "content": "import torch\nfrom typing import Union, List\nfrom tsllm.model import ValueHeadedLLM\nfrom tsllm.model.modeling_actor_critic import AutoModelForCausalLMWithValueHead\nfrom tsllm.llm.text_generation import llm_gen_ct2\nfrom transformers import AutoTokenizer\nimport re\nimport numpy as np\n@torch.inference_mode()\ndef value_fn(\n    critic: ValueHeadedLLM, tokenizer: AutoTokenizer, input_str: Union[List[str], str]\n):\n    if isinstance(input_str, list):\n        indices2pick = torch.LongTensor(\n            [len(tokenizer.encode(txt)) - 1 for txt in input_str]\n        )\n    else:\n        indices2pick = torch.LongTensor([len(tokenizer.encode(input_str)) - 1])\n    # print(input_str)\n    inputs = tokenizer(input_str, return_tensors=\"pt\", padding=True).to(critic.device)\n    if \"token_type_ids\" in inputs:\n        inputs.pop(\"token_type_ids\")\n    value = critic(**inputs).value.cpu()\n    value = value.gather(1, indices2pick.unsqueeze_(1)).squeeze_(1).float().numpy()\n    return value\n@torch.inference_mode()\ndef value_fn_rlhf(\n    critic: AutoModelForCausalLMWithValueHead,",
+        "type": "code",
+        "location": "/tsllm/inference/value.py:1-33"
+    },
+    "387": {
+        "file_id": 56,
+        "content": "This code defines the function `value_fn` which takes a critic model, tokenizer, and input text as inputs. It prepares the input text, passes it through the critic model to obtain value predictions for each word in the input text. The returned values are then gathered and converted into numpy float arrays.",
+        "type": "comment"
+    },
+    "388": {
+        "file_id": 56,
+        "content": "    tokenizer: AutoTokenizer,\n    input_str: Union[List[str], str],\n):\n    if isinstance(input_str, list):\n        indices2pick = torch.LongTensor(\n            [len(tokenizer.encode(txt)) - 1 for txt in input_str]\n        )\n    else:\n        indices2pick = torch.LongTensor([len(tokenizer.encode(input_str)) - 1])\n    inputs = tokenizer(input_str, return_tensors=\"pt\", padding=True).to(critic.device)\n    value = critic(**inputs, return_dict=True).value.cpu()\n    value = value.gather(1, indices2pick.unsqueeze_(1)).squeeze_(1).float().numpy()\n    return value\n@torch.inference_mode()\ndef seq_value_fn(critic_model, tokenizer, input_str):\n    input_ids = tokenizer(input_str, return_tensors=\"pt\").input_ids.to(\n        critic_model.device\n    )\n    value = critic_model(input_ids, return_dict=True).value\n    return value.cpu().float().numpy()",
+        "type": "code",
+        "location": "/tsllm/inference/value.py:34-55"
+    },
+    "389": {
+        "file_id": 56,
+        "content": "This function takes a critic model, tokenizer, and input string. It converts the input string into tokenized tensors using the tokenizer and moves them to the device of the critic model. Then, it calculates the value using the critic model and returns it as a float numpy array. The `@torch.inference_mode()` decorator enables torch inference mode for this function.",
+        "type": "comment"
+    },
+    "390": {
+        "file_id": 57,
+        "content": "/tsllm/inference/evaluation/vote_utils.py",
+        "type": "filepath"
+    },
+    "391": {
+        "file_id": 57,
+        "content": "This code defines functions for aggregating votes based on majority and other rules. It uses the Counter class from collections to count votes, and defaultdict from collections for calculating the orm_max. The AGG_FN_MAP dictionary maps different aggregation functions to their corresponding functions in this module.",
+        "type": "summary"
+    },
+    "392": {
+        "file_id": 57,
+        "content": "from collections import Counter, defaultdict\nfrom typing import List\nMAJORITY_VOTE = \"majority_vote\"\nORM_VOTE = \"orm_vote\"\nORM_MAX = \"orm_max\"\ndef _agg_majority_vote(x_list: List[str], unused_v_list: List[float]):\n    counts = Counter(x_list)\n    most_common = max(counts, key=counts.get)\n    return most_common\ndef _agg_orm_vote(x_list: List[str], v_list: List[float]):\n    assert len(x_list) == len(v_list)\n    x_dict = defaultdict(lambda: 0.0)\n    for x, v in zip(x_list, v_list):\n        x_dict[x] += v\n    highest_x = max(x_dict, key=x_dict.get)\n    return highest_x\ndef _agg_orm_max(x_list: List[str], v_list: List[float]):\n    text_max = x_list[v_list.index(max(v_list))]\n    return text_max\nAGG_FN_MAP = {\n    MAJORITY_VOTE: _agg_majority_vote,\n    ORM_VOTE: _agg_orm_vote,\n    ORM_MAX: _agg_orm_max,\n}",
+        "type": "code",
+        "location": "/tsllm/inference/evaluation/vote_utils.py:1-34"
+    },
+    "393": {
+        "file_id": 57,
+        "content": "This code defines functions for aggregating votes based on majority and other rules. It uses the Counter class from collections to count votes, and defaultdict from collections for calculating the orm_max. The AGG_FN_MAP dictionary maps different aggregation functions to their corresponding functions in this module.",
+        "type": "comment"
+    },
+    "394": {
+        "file_id": 58,
+        "content": "/tsllm/llm/ct2_utils.py",
+        "type": "filepath"
+    },
+    "395": {
+        "file_id": 58,
+        "content": "The code defines a model loading function, `load_ct2_model`, that initializes a ctranslate2 model and provides an `OnlineHfConverter` class that extends `TransformersConverter` for translation tasks. The `trust_remote_code` parameter is not utilized in this context.",
+        "type": "summary"
+    },
+    "396": {
+        "file_id": 58,
+        "content": "import ctranslate2\nfrom ctranslate2.converters import TransformersConverter\nfrom typing import Optional, List\nfrom transformers import PreTrainedModel\nimport os\nimport sentencepiece as spm\ndef load_ct2_model(ct2_model_path, **generator_kwargs):\n    ct2_generator = ctranslate2.Generator(ct2_model_path, **generator_kwargs)\n    ct2_sp = None\n    # spm.SentencePieceProcessor(\n    #     os.path.join(ct2_model_path, \"tokenizer.model\"))\n    return ct2_generator, ct2_sp\nclass OnlineHfConverter(TransformersConverter):\n    \"\"\"Initializes the converter.\n    Arguments:\n      model_name_or_path: Name of the pretrained model to download, or path to the\n        directory containing the pretrained model.\n      activation_scales: Path to the pre-computed activation scales. Models may\n        use them to rescale some weights to smooth the intermediate activations\n        and improve the quantization accuracy. See\n        https://github.com/mit-han-lab/smoothquant.\n      copy_files: List of filenames to copy from the Hugging Face model to the",
+        "type": "code",
+        "location": "/tsllm/llm/ct2_utils.py:1-27"
+    },
+    "397": {
+        "file_id": 58,
+        "content": "Function `load_ct2_model` loads a ctranslate2 model at the specified path with optional generator kwargs, and initializes the SentencePieceProcessor (`ct2_sp`) from the tokenizer.model file in the same directory. The `OnlineHfConverter` class extends `TransformersConverter`, initializing the converter with arguments for model name or path, activation scales, and copying additional files as needed.",
+        "type": "comment"
+    },
+    "398": {
+        "file_id": 58,
+        "content": "        converted model directory.\n      load_as_float16: Load the model weights as float16. More precisely, the model\n        will be loaded with ``from_pretrained(..., torch_dtype=torch.float16)``.\n      revision: Revision of the model to download from the Hugging Face Hub.\n      low_cpu_mem_usage: Enable the flag ``low_cpu_mem_usage`` when loading the model\n        with ``from_pretrained``.\n      trust_remote_code: Allow converting models using custom code.\n    \"\"\"\n    def __init__(\n        self,\n        model: Optional[PreTrainedModel],\n        model_name_or_path: str,\n        activation_scales: Optional[str] = None,\n        copy_files: Optional[List[str]] = None,\n        load_as_float16: bool = False,\n        revision: Optional[str] = None,\n        low_cpu_mem_usage: bool = False,\n        trust_remote_code: bool = False,\n    ):\n        super().__init__(\n            model_name_or_path,\n            activation_scales,\n            copy_files,\n            load_as_float16,\n            revision,\n            low_cpu_mem_usage,",
+        "type": "code",
+        "location": "/tsllm/llm/ct2_utils.py:28-54"
+    },
+    "399": {
+        "file_id": 58,
+        "content": "The code defines a class with an __init__ method that initializes an instance of the class. It takes in parameters like model, model_name_or_path, activation_scales, copy_files, load_as_float16, revision, low_cpu_mem_usage, and trust_remote_code. The class inherits from a superclass, and these parameters are used to configure the instance.",
+        "type": "comment"
+    }
+}

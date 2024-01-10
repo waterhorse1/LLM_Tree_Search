@@ -1,0 +1,110 @@
+{
+    "900": {
+        "file_id": 92,
+        "content": "        backward_time += time.time()\n        stats[\"time/forward_time\"] = forward_time\n        stats[\"time/backward_time\"] = backward_time\n        return loss.item(), stats\n    @torch.inference_mode()\n    def evaluate(self):\n        self.model.eval()\n        train_test_dataloader = self.onpolicy_train_test_buffer.create_loader(\n            self.config.train.micro_batch_size, shuffle=False\n        )\n        test_dataloader = self.onpolicy_test_buffer.create_loader(\n            self.config.train.micro_batch_size, shuffle=False\n        )\n        def evaluate_on_dataloader(dataloader, setting):\n            print_with_rank(setting)\n            stats_list = []\n            for minibatch in tqdm(dataloader, disable=not self.local_rank == 0):\n                _, stats = self.loss_fn(minibatch, setting=setting)\n                stats_list.append(stats)\n            if len(stats_list) == 0:\n                stats_list.append(\n                    {\n                        f\"{setting}/value_loss\": 0.0,\n                        f\"{setting}/reward_loss\": 0.0,",
+        "type": "code",
+        "location": "/tsllm/rl/trainer/mcts_trainer_traj_ct2_value.py:370-397"
+    },
+    "901": {
+        "file_id": 92,
+        "content": "Function `evaluate` is evaluating the model by iterating over train and test dataloaders, and accumulating evaluation statistics. The statistics are stored in a list for both train and test settings. If there were no data in any of the settings, the function will return a default statistic of 0.0 for value_loss and reward_loss. The function is wrapped in `@torch.inference_mode()` which optimizes the code execution for inference mode.",
+        "type": "comment"
+    },
+    "902": {
+        "file_id": 92,
+        "content": "                        f\"{setting}/total_loss\": 0.0,\n                    }\n                )\n            return stats_list\n        train_test_stats = evaluate_on_dataloader(\n            train_test_dataloader, setting=\"train_test\"\n        )\n        train_test_stats = dm_tree.map_structure(\n            lambda *xs: np.mean(xs), *train_test_stats\n        )\n        test_stats = evaluate_on_dataloader(test_dataloader, setting=\"test\")\n        test_stats = dm_tree.map_structure(lambda *xs: np.mean(xs), *test_stats)\n        device = self.accelerator.device\n        eval_stats = dict()\n        for k, v in train_test_stats.items():\n            tmp_tensor = torch.tensor(v, device=device)\n            gather_tensor = self.accelerator.gather(tmp_tensor)\n            eval_stats[k] = gather_tensor.mean().item()\n        for k, v in test_stats.items():\n            tmp_tensor = torch.tensor(v, device=device)\n            gather_tensor = self.accelerator.gather(tmp_tensor)\n            eval_stats[k] = gather_tensor.mean().item()\n        print_with_rank(eval_stats)",
+        "type": "code",
+        "location": "/tsllm/rl/trainer/mcts_trainer_traj_ct2_value.py:398-426"
+    },
+    "903": {
+        "file_id": 92,
+        "content": "This code calculates and evaluates training and testing statistics using dataloaders, maps the results to means, and then gathers them on the device. Finally, it prints the average evaluation statistics for both train and test sets.",
+        "type": "comment"
+    },
+    "904": {
+        "file_id": 92,
+        "content": "        return eval_stats",
+        "type": "code",
+        "location": "/tsllm/rl/trainer/mcts_trainer_traj_ct2_value.py:427-427"
+    },
+    "905": {
+        "file_id": 92,
+        "content": "This code snippet returns the evaluation statistics from a function or method.",
+        "type": "comment"
+    },
+    "906": {
+        "file_id": 93,
+        "content": "/tsllm/rl/trainer/opt_utils.py",
+        "type": "filepath"
+    },
+    "907": {
+        "file_id": 93,
+        "content": "The code defines a class `OptimizerName` with function `get_optimizer_class()`, supporting Adam, AdamW, and SGD, and a learning rate scheduler function that returns a scheduler based on the provided scheduler name, including cosine annealing, linear, and warmup-cosine utility functions.",
+        "type": "summary"
+    },
+    "908": {
+        "file_id": 93,
+        "content": "from enum import Enum\nfrom functools import partial\nimport math\nfrom typing import Optional\nimport torch\nfrom torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, LambdaLR\nclass OptimizerName(str, Enum):\n    \"\"\"Supported optimizer names\"\"\"\n    ADAM: str = \"adam\"\n    ADAMW: str = \"adamw\"\n    # ADAM_8BIT_BNB: str = \"adam_8bit_bnb\"\n    # ADAMW_8BIT_BNB: str = \"adamw_8bit_bnb\"\n    SGD: str = \"sgd\"\ndef get_optimizer_class(name: OptimizerName):\n    \"\"\"\n    Returns the optimizer class with the given name\n    Args:\n        name (str): Name of the optimizer as found in `OptimizerNames`\n    \"\"\"\n    if name == OptimizerName.ADAM:\n        return torch.optim.Adam\n    if name == OptimizerName.ADAMW:\n        return torch.optim.AdamW\n    if name == OptimizerName.SGD.value:\n        return torch.optim.SGD\n    supported_optimizers = [o.value for o in OptimizerName]\n    raise ValueError(\n        f\"`{name}` is not a supported optimizer. \"\n        f\"Supported optimizers are: {supported_optimizers}\"\n    )\ndef _get_cosine_schedule_with_warmup_lr_lambda(",
+        "type": "code",
+        "location": "/tsllm/rl/trainer/opt_utils.py:1-40"
+    },
+    "909": {
+        "file_id": 93,
+        "content": "This code defines a class `OptimizerName` which represents the supported optimizer names. The function `get_optimizer_class()` returns an optimizer class based on the provided name. It currently supports Adam, AdamW, and SGD optimizers. A ValueError is raised if an unsupported optimizer name is given. The code also contains a partial implementation of _get_cosine_schedule_with_warmup_lr_lambda().",
+        "type": "comment"
+    },
+    "910": {
+        "file_id": 93,
+        "content": "    current_step: int,\n    *,\n    num_warmup_steps: int,\n    num_training_steps: int,\n    num_cycles: float,\n):\n    if current_step < num_warmup_steps:\n        return float(current_step) / float(max(1, num_warmup_steps))\n    progress = float(current_step - num_warmup_steps) / float(\n        max(1, num_training_steps - num_warmup_steps)\n    )\n    return max(\n        0.0, 0.5 * (1.0 + math.cos(math.pi * float(num_cycles) * 2.0 * progress))\n    )\ndef get_cosine_schedule_with_warmup(\n    optimizer,\n    num_training_steps: int,\n    num_warmup_steps: Optional[int] = None,\n    warmup_ratio: Optional[float] = None,\n    num_cycles: float = 0.5,\n    last_epoch: int = -1,\n):\n    assert (num_warmup_steps is not None) ^ (warmup_ratio is not None), (\n        warmup_ratio,\n        num_warmup_steps,\n    )\n    if warmup_ratio is not None:\n        assert (\n            warmup_ratio > 0 and warmup_ratio < 1.0\n        ), \"Invalid warmup ratio: {}\".format(warmup_ratio)\n        num_warmup_steps = int(num_training_steps * warmup_ratio)\n    assert num_warmup_steps >= 0",
+        "type": "code",
+        "location": "/tsllm/rl/trainer/opt_utils.py:41-74"
+    },
+    "911": {
+        "file_id": 93,
+        "content": "This code defines a function `get_cosine_schedule_with_warmup` that creates a learning rate schedule for an optimizer, using a cosine annealing with warm-up. The schedule takes into account the number of training steps, optional warm-up steps or ratio, and the number of cycles to smoothly increase and decrease the learning rate. The function asserts the validity of inputs before calculating the learning rate based on current step, warm-up duration, and cycle progress.",
+        "type": "comment"
+    },
+    "912": {
+        "file_id": 93,
+        "content": "    assert num_training_steps >= 0\n    lr_lambda = partial(\n        _get_cosine_schedule_with_warmup_lr_lambda,\n        num_warmup_steps=num_warmup_steps,\n        num_training_steps=num_training_steps,\n        num_cycles=num_cycles,\n    )\n    return LambdaLR(optimizer, lr_lambda, last_epoch)\nclass SchedulerName(str, Enum):\n    \"\"\"Supported scheduler names\"\"\"\n    COSINE_ANNEALING = \"cosine_annealing\"\n    LINEAR = \"linear\"\n    COSINE_WARMUP = \"cosine_warmup\"\ndef get_scheduler_class(name: SchedulerName):\n    \"\"\"\n    Returns the scheduler class with the given name\n    \"\"\"\n    if name == SchedulerName.COSINE_ANNEALING:\n        return CosineAnnealingLR\n    elif name == SchedulerName.LINEAR:\n        return LinearLR\n    elif name == SchedulerName.COSINE_WARMUP:\n        return get_cosine_schedule_with_warmup\n    supported_schedulers = [s.value for s in SchedulerName]\n    raise ValueError(\n        f\"`{name}` is not a supported scheduler. \"\n        f\"Supported schedulers are: {supported_schedulers}\"\n    )",
+        "type": "code",
+        "location": "/tsllm/rl/trainer/opt_utils.py:75-107"
+    },
+    "913": {
+        "file_id": 93,
+        "content": "This code defines a function that returns a learning rate scheduler based on the provided scheduler name. It also includes utility functions for different types of learning rate schedules like cosine annealing, linear, and warmup-cosine. The `get_scheduler_class` function identifies the requested scheduler and returns its corresponding class.",
+        "type": "comment"
+    },
+    "914": {
+        "file_id": 94,
+        "content": "/tsllm/rl/trainer/utils.py",
+        "type": "filepath"
+    },
+    "915": {
+        "file_id": 94,
+        "content": "This code defines two functions: one flattens a dictionary recursively and another retrieves the latest git commit details. The first function also returns distributed configuration when DeepSpeed plugin is used, including gradient accumulation steps and clipping.",
+        "type": "summary"
+    },
+    "916": {
+        "file_id": 94,
+        "content": "import subprocess\nfrom typing import Dict, MutableMapping, Tuple, Union\nimport accelerate\ndef flatten_dict(\n    d: Union[dict, MutableMapping],\n    parent_key: str = \"\",\n    sep: str = \"/\",\n) -> dict:\n    # From: https://stackoverflow.com/a/6027615\n    items = []\n    for k, v in d.items():\n        new_key = parent_key + sep + k if parent_key else k\n        if isinstance(v, MutableMapping):\n            items.extend(flatten_dict(v, new_key, sep=sep).items())\n        else:\n            items.append((new_key, v))\n    return dict(items)\ndef get_distributed_config(accelerator: accelerate.Accelerator):\n    \"\"\"\n    Return accelerator distributed config\n    \"\"\"\n    dist_config = {\n        \"mixed_precision\": accelerator.mixed_precision,\n        \"num_gpus\": accelerator.num_processes,\n    }\n    if accelerator.state.deepspeed_plugin is not None:\n        ds_plugin = accelerator.state.deepspeed_plugin\n        dist_config.update(\n            {\n                \"gradient_accumulation_steps\": ds_plugin.gradient_accumulation_steps,\n                \"gradient_clipping\": ds_plugin.gradient_clipping,",
+        "type": "code",
+        "location": "/tsllm/rl/trainer/utils.py:1-38"
+    },
+    "917": {
+        "file_id": 94,
+        "content": "This code defines two functions. The first function `flatten_dict` takes a dictionary and recursively flattens it, returning a new dictionary with all keys separated by \"/\". The second function `get_distributed_config` returns a dictionary containing distributed configuration based on the accelerator settings. If DeepSpeed plugin is used, additional configuration such as gradient accumulation steps and gradient clipping are included in the returned dictionary.",
+        "type": "comment"
+    },
+    "918": {
+        "file_id": 94,
+        "content": "                \"zero_stage\": ds_plugin.zero_stage,\n                \"offload_optimizer_device\": ds_plugin.offload_optimizer_device,\n                \"offload_param_device\": ds_plugin.offload_param_device,\n            }\n        )\n    return dist_config\ndef get_git_tag() -> Tuple[str, str]:\n    \"\"\"\n    Returns commit's short hash and date\n    \"\"\"\n    try:\n        output = subprocess.check_output(\"git log --format='%h/%as' -n1\".split())\n        branch = subprocess.check_output(\"git rev-parse --abbrev-ref HEAD\".split())\n        return branch.decode()[:-1], output.decode()[1:-2]\n    except subprocess.CalledProcessError:\n        return \"unknown\", \"unknown\"",
+        "type": "code",
+        "location": "/tsllm/rl/trainer/utils.py:39-57"
+    },
+    "919": {
+        "file_id": 94,
+        "content": "This code defines two functions: `get_dist_config()` and `get_git_tag()`. The first function sets various parameters for distributed learning and returns them in a dictionary. The second function uses subprocess to retrieve the short hash and date of the most recent commit in git.",
+        "type": "comment"
+    }
+}

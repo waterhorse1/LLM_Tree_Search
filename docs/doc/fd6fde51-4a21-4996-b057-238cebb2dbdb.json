@@ -1,0 +1,15 @@
+{
+    "summary": "The code imports modules, sets up configurations for language model training using Llama-2-7b, AdamW optimizer, and cosine scheduler. It trains on GSM8K environment for 3 epochs with SFT data initialized from a predefined path. Another code initializes a trainer with an RLConfig from a JSON file and trains the model using accelerate MCTS algorithm with checkpoint settings and logging directory.",
+    "details": [
+        {
+            "comment": "This code imports necessary modules and sets up configurations for a language model training task. It uses the Llama-2-7b model, AdamW optimizer with a learning rate of 2e-05, cosine scheduler with warmup ratio 0.03, trains on GSM8K environment, and performs Softmax Factorization Training (SFT) for 3 epochs. The SFT data is initialized from a predefined path.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/train_mcts_scripts/gsm8k/train_gsm8k_sft.py\":0-32",
+            "content": "from tsllm.rl.trainer.mcts_trainer_traj_ct2_sft import AccelerateMCTSTrainer\nfrom tsllm.rl.config import RLConfig\nfrom tsllm.model.llama_flash_attn_monkey_patch import replace_llama_attn_with_flash_attn\nreplace_llama_attn_with_flash_attn()\nconfig = {\n    \"model\": {\n        \"model_path\": \"meta-llama/Llama-2-7b-hf\",\n    },\n    \"tokenizer\": {\n        \"tokenizer_path\": \"meta-llama/Llama-2-7b-hf\",\n        \"padding_side\": \"right\",\n    },\n    \"optimizer\": {\n        \"name\": \"adamw\",\n        \"kwargs\": {\n            \"lr\": 2e-05,\n            \"betas\": [0.9, 0.999],\n            \"eps\": 1e-08,\n            \"weight_decay\": 0.0,\n        },\n    },\n    \"scheduler\": {\"name\": \"cosine_warmup\", \"kwargs\": {\"warmup_ratio\": 0.03}},\n    \"train\": {\n        \"pre_sft_datapath\": \"../../tsllm/envs/gsm8k/train_data/sft_init.jsonl\",\n        \"env_name\": \"gsm8k\",\n        \"epochs\": 3,\n        \"train_epoch\": 1,\n        \"sft_micro_batch_size\": 4,\n        \"gradient_accumulation_steps\": 4,\n        \"seq_length\": 1024,\n        \"eval_interval\": 1,\n        \"sft_loss_coef\": 1.0,"
+        },
+        {
+            "comment": "The code initializes a trainer with an RLConfig from a JSON file, then trains the model using the accelerate MCTS algorithm. The config includes checkpoint settings and logging directory.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/train_mcts_scripts/gsm8k/train_gsm8k_sft.py\":33-49",
+            "content": "        \"checkpoint_interval\": 1,\n        \"checkpoint_dir\": tmp_for_check,\n        \"save_optimizer\": False,\n        \"project_name\": \"tmp_for_check\",\n        \"tracker\": \"tensorboard\",\n        \"logging_dir\": \"logs/\",\n        \"sft_per_problem_max_size\": 1000,\n    },\n    \"mcts\": {},\n    \"env\": {},\n}\n# config = RLConfig.from_json(\"gsm8k_sft_config.json\")\nconfig = RLConfig.from_dict(config)\ntrainer = AccelerateMCTSTrainer(config)\ntrainer.learn()"
+        }
+    ]
+}

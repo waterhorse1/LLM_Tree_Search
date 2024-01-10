@@ -1,0 +1,10 @@
+{
+    "summary": "This code imports necessary modules and functions from related files for initializing the environment, extracting answer and ground truth, judging correctness, getting train/test datasets, and defining prompt examples.",
+    "details": [
+        {
+            "comment": "This code imports necessary modules and functions from related files for initializing the environment, extracting answer and ground truth, judging correctness, getting train/test datasets, and defining prompt examples.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/envs/gsm8k/__init__.py\":0-2",
+            "content": "from .env import Gsm8kEnv as Env, extract_answer, extract_groundtruth, judge_correct\nfrom .data import get_train_test_dataset\nfrom .prompt import COT_EXAMPLES, COT_TASK_DESC, PROBLEM_FORMAT_STR, SEP"
+        }
+    ]
+}

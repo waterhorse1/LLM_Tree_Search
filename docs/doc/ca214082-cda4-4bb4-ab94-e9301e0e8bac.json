@@ -1,0 +1,15 @@
+{
+    "summary": "The code contains functions for distributed computation, with capabilities to initialize the process group, gather scalar values, and print messages from specific processes. It collects tensor values in a distributed environment, returning them as a list after gathering across all processes.",
+    "details": [
+        {
+            "comment": "This code contains functions for distributed computation, including initializing the distributed process group using NCCL backend, gathering scalar values from different processes, and providing methods to print messages only on rank 0 or with ranks included in the message.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/distributed/utils.py\":0-36",
+            "content": "import torch.distributed as dist\nimport torch\nfrom datetime import timedelta\ndef print_rank_0(message):\n    \"\"\"If distributed is initialized, print only on rank 0.\"\"\"\n    if dist.is_initialized():\n        if dist.get_rank() == 0:\n            print(message, flush=True)\n    else:\n        print(message, flush=True)\ndef print_with_rank(message):\n    if dist.is_initialized():\n        rank = dist.get_rank()\n        world_size = dist.get_world_size()\n        print(\"[{}/{}]: {}\".format(rank, world_size, message), flush=True)\n    else:\n        print(message, flush=True)\ndef init_distributed(timeout=timedelta(seconds=3 * 60 * 60)):\n    if not dist.is_initialized():\n        dist.init_process_group(backend=\"nccl\", timeout=timeout)\n    world_size = dist.get_world_size()\n    local_rank = dist.get_rank()\n    return local_rank, world_size\ndef gather_scalar(x, rank, world_size):\n    x_tensor = torch.tensor(x).to(f\"cuda:{rank}\")\n    if rank == 0:\n        x_list = [torch.zeros_like(x_tensor) for _ in range(world_size)]\n        dist.gather(x_tensor, x_list, 0)"
+        },
+        {
+            "comment": "This code block is responsible for collecting distributed tensor values and returning them as a list or gathering the values in a distributed environment. If the tensor is not distributed, it will return a list of itemized values; otherwise, it will gather the values across all processes in the distributed system.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/distributed/utils.py\":37-39",
+            "content": "        return [x.item() for x in x_list]\n    else:\n        dist.gather(x_tensor)"
+        }
+    ]
+}

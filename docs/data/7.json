@@ -1,0 +1,539 @@
+{
+    "700": {
+        "file_id": 74,
+        "content": "                gathered_results[k] = {}\n                for sub_k, sub_v in v.items():\n                    gathered_list = gather_scalar(float(sub_v), local_rank, world_size)\n                    if local_rank == 0:\n                        gathered_results[k][sub_k] = sum(gathered_list)\n            else:\n                raise ValueError\n        if local_rank == 0:\n            total_cnt = sum(cnt_list)\n            t1 = time.time()\n            total_results_strs = _result_str(gathered_results, total_cnt)\n            print(cur_args)\n            print(\"TOTAL RESULTS:\\n\", total_results_strs)\n            print(\"Time: {}\".format(t1 - t0))",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:479-494"
+    },
+    "701": {
+        "file_id": 74,
+        "content": "This code gathers results from multiple processes, sums them if the local rank is 0, and prints the total results with time taken. It uses `gather_scalar` to collect float values from different sub-values in a dictionary.",
+        "type": "comment"
+    },
+    "702": {
+        "file_id": 75,
+        "content": "/tsllm/offline_rl/utils.py",
+        "type": "filepath"
+    },
+    "703": {
+        "file_id": 75,
+        "content": "Functions to write data to a JSONL file, load data from a JSONL file, and set up random seed across different libraries.",
+        "type": "summary"
+    },
+    "704": {
+        "file_id": 75,
+        "content": "import json\nfrom typing import Optional\nimport random\nimport numpy as np\nimport os\nimport torch\ndef write_to_jsonl(data, output_file):\n    cnt = 0\n    with open(output_file, \"w\") as outfile:\n        for item in data:\n            outfile.write(json.dumps(item) + \"\\n\")\n            cnt += len(item[\"answer\"])\n        print(\"Write {} items into {}\".format(cnt, output_file))\ndef load_jsonl(file_path):\n    data_list = []\n    with open(file_path, \"r\", encoding=\"utf-8\") as file:\n        for line in file:\n            data = json.loads(line.strip())\n            data_list.append(data)\n    return data_list\ndef setup_seed(seed):\n    torch.manual_seed(seed)\n    torch.cuda.manual_seed_all(seed)\n    np.random.seed(seed)\n    random.seed(seed)\n    os.environ[\"PYTHONHASHSEED\"] = str(seed)\n    torch.backends.cudnn.deterministic = True",
+        "type": "code",
+        "location": "/tsllm/offline_rl/utils.py:1-33"
+    },
+    "705": {
+        "file_id": 75,
+        "content": "Functions to write data to a JSONL file, load data from a JSONL file, and set up random seed across different libraries.",
+        "type": "comment"
+    },
+    "706": {
+        "file_id": 76,
+        "content": "/tsllm/offline_rl/game24/gen_3.sh",
+        "type": "filepath"
+    },
+    "707": {
+        "file_id": 76,
+        "content": "This script generates data for the game24 environment using three different episodes (ep1, ep2, ep3) and a specified number of workers. It utilizes CUDA devices, sets output directory, CT2 cache, and tokenizer paths to generate JSONL files for each episode.",
+        "type": "summary"
+    },
+    "708": {
+        "file_id": 76,
+        "content": "set -e\nK=100\nT=0.7\nN_WORKER=16\nOUTPUT_DIR=./game24/cot_sample/\nCUDA_DEVICES=0,1,2,3,4,5,6,7\nCT2_CACHE=$1\nTOKENIZER_PATH=$2\npython generate_data.py \\\n    -k $K \\\n    -t $T \\\n    --num_workers $N_WORKER \\\n    --gpu_ids $CUDA_DEVICES \\\n    --ct2_dir ${CT2_CACHE}/llama2_sft_ep1_ct2 \\\n    --tokenizer_path $TOKENIZER_PATH \\\n    --output_path ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k${K}_ep1.jsonl \\\n    --env_name game24\npython generate_data.py \\\n    -k $K \\\n    -t $T \\\n    --num_workers $N_WORKER \\\n    --gpu_ids $CUDA_DEVICES \\\n    --ct2_dir ${CT2_CACHE}/llama2_sft_ep2_ct2 \\\n    --tokenizer_path $TOKENIZER_PATH \\\n    --output_path ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k${K}_ep2.jsonl \\\n    --env_name game24\npython generate_data.py \\\n    -k $K \\\n    -t $T \\\n    --num_workers $N_WORKER \\\n    --gpu_ids $CUDA_DEVICES \\\n    --ct2_dir ${CT2_CACHE}/llama2_sft_ep3_ct2 \\\n    --tokenizer_path $TOKENIZER_PATH \\\n    --output_path ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k${K}_ep3.jsonl \\\n    --env_name game24",
+        "type": "code",
+        "location": "/tsllm/offline_rl/game24/gen_3.sh:1-41"
+    },
+    "709": {
+        "file_id": 76,
+        "content": "This script generates data for the game24 environment using three different episodes (ep1, ep2, ep3) and a specified number of workers. It utilizes CUDA devices, sets output directory, CT2 cache, and tokenizer paths to generate JSONL files for each episode.",
+        "type": "comment"
+    },
+    "710": {
+        "file_id": 77,
+        "content": "/tsllm/offline_rl/game24/process.sh",
+        "type": "filepath"
+    },
+    "711": {
+        "file_id": 77,
+        "content": "The script preprocesses game24 training data by deduplicating and sampling it for episodes 1-3, creating deduplicated and sampled JSONL files in output directories. This allows for easy selection of data by other scripts and merging with additional splits.",
+        "type": "summary"
+    },
+    "712": {
+        "file_id": 77,
+        "content": "set -e\nINPUT_DIR=\"game24/cot_sample\"\nOUTPUT_DIR=\"game24/processed\"\nmkdir -p $OUTPUT_DIR\nN=17\nfile_prefix=\"game24_train_cot_sample_offline_sft_k100_ep1\"\npython dedup.py \\\n    --input_path ${INPUT_DIR}/${file_prefix}.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl\npython sample.py \\\n    --input_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup_sample${N}.jsonl \\\n    -n $N\nfile_prefix=\"game24_train_cot_sample_offline_sft_k100_ep2\"\npython dedup.py \\\n    --input_path ${INPUT_DIR}/${file_prefix}.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl\npython sample.py \\\n    --input_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup_sample${N}.jsonl \\\n    -n $N\nfile_prefix=\"game24_train_cot_sample_offline_sft_k100_ep3\"\npython dedup.py \\\n    --input_path ${INPUT_DIR}/${file_prefix}.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl\n# split_two_test.py will choose files encswith \"dedup\"",
+        "type": "code",
+        "location": "/tsllm/offline_rl/game24/process.sh:1-30"
+    },
+    "713": {
+        "file_id": 77,
+        "content": "This script preprocesses game24 training data by deduplicating and sampling the data for episodes 1-3. It uses the dedup.py and sample.py scripts, creating deduped and sampled JSONL files in output directories with episode number appended to the file prefix. The output filenames are chosen based on their content, so other scripts can select them easily.",
+        "type": "comment"
+    },
+    "714": {
+        "file_id": 77,
+        "content": "python split_two_test.py \\\n    --train_data_prefix ${OUTPUT_DIR}/${file_prefix} \\\n    --train_num $N \\\n    --train_test_num 3 \npython merge.py \\\n    --input_paths ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k100_ep1_dedup_sample17.jsonl \\\n    ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k100_ep2_dedup_sample17.jsonl \\\n    ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k100_ep3_dedup_sample17.jsonl \\\n    --output_path ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k100_merged_dedup_sample17x3.jsonl",
+        "type": "code",
+        "location": "/tsllm/offline_rl/game24/process.sh:31-42"
+    },
+    "715": {
+        "file_id": 77,
+        "content": "This code is splitting a training data set into two parts and then merging three of these splits back together. The merged result will be stored in the specified output path.",
+        "type": "comment"
+    },
+    "716": {
+        "file_id": 78,
+        "content": "/tsllm/offline_rl/gsm8k_data/gen_3.sh",
+        "type": "filepath"
+    },
+    "717": {
+        "file_id": 78,
+        "content": "The code executes a Python script named 'generate_data.py' three times with different parameters for each run. The aim is to generate data for an environment called gsm8k, and the generated data will be stored in different JSONL files. The code uses different CT2 directories for each run, indicating that it is generating data for different episodes of the gsm8k environment.",
+        "type": "summary"
+    },
+    "718": {
+        "file_id": 78,
+        "content": "set -e\nK=100\nT=0.7\nN_WORKER=16\nOUTPUT_DIR=./gsm8k_data/cot_sample/\nCUDA_DEVICES=0,1,2,3,4,5,6,7\nCT2_CACHE=$1\nTOKENIZER_PATH=$2\npython generate_data.py \\\n    -k $K \\\n    -t $T \\\n    --num_workers $N_WORKER \\\n    --gpu_ids $CUDA_DEVICES \\\n    --ct2_dir ${CT2_CACHE}/llama2_sft_ep1_ct2 \\\n    --tokenizer_path $TOKENIZER_PATH \\\n    --output_path ${OUTPUT_DIR}/gsm8k_train_cot_sample_offline_sft_k${K}_ep1.jsonl \\\n    --env_name gsm8k\npython generate_data.py \\\n    -k $K \\\n    -t $T \\\n    --num_workers $N_WORKER \\\n    --gpu_ids $CUDA_DEVICES \\\n    --ct2_dir ${CT2_CACHE}/llama2_sft_ep2_ct2 \\\n    --tokenizer_path $TOKENIZER_PATH \\\n    --output_path ${OUTPUT_DIR}/gsm8k_train_cot_sample_offline_sft_k${K}_ep2.jsonl \\\n    --env_name gsm8k\npython generate_data.py \\\n    -k $K \\\n    -t $T \\\n    --num_workers $N_WORKER \\\n    --gpu_ids $CUDA_DEVICES \\\n    --ct2_dir ${CT2_CACHE}/llama2_sft_ep3_ct2 \\\n    --tokenizer_path $TOKENIZER_PATH \\\n    --output_path ${OUTPUT_DIR}/gsm8k_train_cot_sample_offline_sft_k${K}_ep3.jsonl \\\n    --env_name gsm8k",
+        "type": "code",
+        "location": "/tsllm/offline_rl/gsm8k_data/gen_3.sh:1-41"
+    },
+    "719": {
+        "file_id": 78,
+        "content": "The code executes a Python script named 'generate_data.py' three times with different parameters for each run. The aim is to generate data for an environment called gsm8k, and the generated data will be stored in different JSONL files. The code uses different CT2 directories for each run, indicating that it is generating data for different episodes of the gsm8k environment.",
+        "type": "comment"
+    },
+    "720": {
+        "file_id": 79,
+        "content": "/tsllm/offline_rl/gsm8k_data/process.sh",
+        "type": "filepath"
+    },
+    "721": {
+        "file_id": 79,
+        "content": "This script processes GSM8K data, deduplicates and samples data files, creates three output episodes named with \"gsm8k_train_cot_sample_offline_sft_k100_ep\". It uses split_two_test.py for splitting into training and testing sets, and merge.py for merging training files. The scripts utilize environment variables such as ${OUTPUT_DIR}, ${file_prefix}, $N, sample17x3.jsonl.",
+        "type": "summary"
+    },
+    "722": {
+        "file_id": 79,
+        "content": "set -e\nINPUT_DIR=\"gsm8k_data/cot_sample\"\nOUTPUT_DIR=\"gsm8k_data/processed\"\nmkdir -p $OUTPUT_DIR\nN=17\nfile_prefix=\"gsm8k_train_cot_sample_offline_sft_k100_ep1\"\npython dedup.py \\\n    --input_path ${INPUT_DIR}/${file_prefix}.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl\npython sample.py \\\n    --input_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup_sample${N}.jsonl \\\n    -n $N\nfile_prefix=\"gsm8k_train_cot_sample_offline_sft_k100_ep2\"\npython dedup.py \\\n    --input_path ${INPUT_DIR}/${file_prefix}.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl\npython sample.py \\\n    --input_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup_sample${N}.jsonl \\\n    -n $N\nfile_prefix=\"gsm8k_train_cot_sample_offline_sft_k100_ep3\"\npython dedup.py \\\n    --input_path ${INPUT_DIR}/${file_prefix}.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl\n# split_two_test.py will choose files encswith \"dedup\"",
+        "type": "code",
+        "location": "/tsllm/offline_rl/gsm8k_data/process.sh:1-32"
+    },
+    "723": {
+        "file_id": 79,
+        "content": "This script processes GSM8K data by deduplicating and sampling data files. It creates processed output files for three different episodes, each containing deduplicated and sampled data. The resulting files are named with the prefix \"gsm8k_train_cot_sample_offline_sft_k100_ep\" followed by the episode number, deduped, and then sampled with a sample size of 17. These files will be chosen by split_two_test.py if their names contain \"dedup\".",
+        "type": "comment"
+    },
+    "724": {
+        "file_id": 79,
+        "content": "python split_two_test.py \\\n    --train_data_prefix ${OUTPUT_DIR}/${file_prefix} \\\n    --train_num $N \\\n    --train_test_num 3\npython merge.py \\\n    --input_paths ${OUTPUT_DIR}/gsm8k_train_cot_sample_offline_sft_k100_ep1_dedup_sample17.jsonl \\\n    ${OUTPUT_DIR}/gsm8k_train_cot_sample_offline_sft_k100_ep2_dedup_sample17.jsonl \\\n    ${OUTPUT_DIR}/gsm8k_train_cot_sample_offline_sft_k100_ep3_dedup_sample17.jsonl \\\n    --output_path ${OUTPUT_DIR}/gsm8k_train_cot_sample_sft_k100_merged_dedup_sample17x3.jsonl",
+        "type": "code",
+        "location": "/tsllm/offline_rl/gsm8k_data/process.sh:33-42"
+    },
+    "725": {
+        "file_id": 79,
+        "content": "This code executes two Python scripts: \"split_two_test.py\" and \"merge.py\". The former splits the data into training and testing sets, and the latter merges three training files into one. It uses environment variables such as ${OUTPUT_DIR}, ${file_prefix}, $N, and sample17x3.jsonl.",
+        "type": "comment"
+    },
+    "726": {
+        "file_id": 80,
+        "content": "/tsllm/offline_rl/prontoqa/gen_3.sh",
+        "type": "filepath"
+    },
+    "727": {
+        "file_id": 80,
+        "content": "The code is setting environment variables, defining parameters (K, T, N_WORKER), specifying output and cache directories, and running a Python script (generate_data.py) to generate data for offline RL with ProntoQA. The Python script uses LLama2 model, SFTP, tokenizer, and generates output in JSONL format for training.",
+        "type": "summary"
+    },
+    "728": {
+        "file_id": 80,
+        "content": "set -e\nK=100\nT=0.7\nN_WORKER=16\nOUTPUT_DIR=./prontoqa/cot_sample/\nCUDA_DEVICES=0,1,2,3,4,5,6,7\nCT2_CACHE=$1\nTOKENIZER_PATH=$2\npython generate_data.py \\\n    -k $K \\\n    -t $T \\\n    --num_workers $N_WORKER \\\n    --gpu_ids $CUDA_DEVICES \\\n    --ct2_dir ${CT2_CACHE}/llama2_sft_ep1_ct2 \\\n    --tokenizer_path $TOKENIZER_PATH \\\n    --output_path ${OUTPUT_DIR}/prontoqa_train_cot_sample_offline_sft_k${K}_ep1.jsonl \\\n    --env_name prontoqa",
+        "type": "code",
+        "location": "/tsllm/offline_rl/prontoqa/gen_3.sh:1-20"
+    },
+    "729": {
+        "file_id": 80,
+        "content": "The code is setting environment variables, defining parameters (K, T, N_WORKER), specifying output and cache directories, and running a Python script (generate_data.py) to generate data for offline RL with ProntoQA. The Python script uses LLama2 model, SFTP, tokenizer, and generates output in JSONL format for training.",
+        "type": "comment"
+    },
+    "730": {
+        "file_id": 81,
+        "content": "/tsllm/offline_rl/prontoqa/process.sh",
+        "type": "filepath"
+    },
+    "731": {
+        "file_id": 81,
+        "content": "The code sets up a directory, creates a dedup file, and then splits it into training and testing data for offline RL.",
+        "type": "summary"
+    },
+    "732": {
+        "file_id": 81,
+        "content": "set -e\nINPUT_DIR=\"prontoqa/cot_sample\"\nOUTPUT_DIR=\"prontoqa/processed\"\nmkdir -p $OUTPUT_DIR\nN=50\nfile_prefix=\"prontoqa_train_cot_sample_offline_sft_k100_ep1\"\npython dedup.py \\\n    --input_path ${INPUT_DIR}/${file_prefix}.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl\n# split_two_test.py will choose files encswith \"dedup\"\npython split_two_test.py \\\n    --train_data_prefix ${OUTPUT_DIR}/${file_prefix} \\\n    --train_num $N \\\n    --train_test_num 3",
+        "type": "code",
+        "location": "/tsllm/offline_rl/prontoqa/process.sh:1-16"
+    },
+    "733": {
+        "file_id": 81,
+        "content": "The code sets up a directory, creates a dedup file, and then splits it into training and testing data for offline RL.",
+        "type": "comment"
+    },
+    "734": {
+        "file_id": 82,
+        "content": "/tsllm/offline_rl/rlhf/gen_3.sh",
+        "type": "filepath"
+    },
+    "735": {
+        "file_id": 82,
+        "content": "This script sets environment variables and runs a test for RLHF using specific paths, cache, and settings. It uses 8 processes, tokenizer path, CT2 cache, critic model path, save directory, environment name (rlhf), and trains the model.",
+        "type": "summary"
+    },
+    "736": {
+        "file_id": 82,
+        "content": "set -e\n# export TEST_NO_TERMINAL=1\n# export TEST_WITH_TERMINAL=1\n# export TEST_COT_GREEDY=1\nexport TEST_COT_SC=1\n# export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7\nCT2_CACHE=$1\nTOKENIZER_PATH=$2\n# just None critic because we only use cot-sc sample\nCRITIC_PATH=\"None\"\n# also don't forget to set k_maj as 50 in test_sft_and_v_rlhf.py\ntorchrun --nproc_per_node=8 --master-port 29503 ../test_sft_and_v_rlhf.py \\\n    --critic_model_path $CRITIC_PATH \\\n    --tokenizer_path $TOKENIZER_PATH \\\n    --ct2_dir $CT2_CACHE \\\n    --save_dir ./rlhf/cot_sample \\\n    --env_name rlhf\n    --train",
+        "type": "code",
+        "location": "/tsllm/offline_rl/rlhf/gen_3.sh:1-21"
+    },
+    "737": {
+        "file_id": 82,
+        "content": "This script sets environment variables and runs a test for RLHF using specific paths, cache, and settings. It uses 8 processes, tokenizer path, CT2 cache, critic model path, save directory, environment name (rlhf), and trains the model.",
+        "type": "comment"
+    },
+    "738": {
+        "file_id": 83,
+        "content": "/tsllm/offline_rl/rlhf/process.py",
+        "type": "filepath"
+    },
+    "739": {
+        "file_id": 83,
+        "content": "This code loads and merges data from JSONL files, allowing users to specify input and output directories through command-line arguments. It processes all 8 JSONL files in the input directory, creating a new JSONL file in the specified output directory with each entry separated by newline characters.",
+        "type": "summary"
+    },
+    "740": {
+        "file_id": 83,
+        "content": "import json\nfrom argparse import ArgumentParser\ndef load_jsonl(file_path):\n    data_list = []\n    with open(file_path, \"r\", encoding=\"utf-8\") as file:\n        for line in file:\n            data = json.loads(line.strip())\n            data_list.append(data)\n    return data_list\nif __name__ == \"__main__\":\n    parser = ArgumentParser()\n    parser.add_argument(\"--input_dir\", type=str, required=True)\n    parser.add_argument(\"--output_dir\", type=str, required=True)\n    config = parser.parse_args()\n    all_data = []\n    for i in range(8):\n        # merge all data, you can modify the path to your save path\n        all_data.extend(load_jsonl(f\"{config.input_dir}/rlhf/args0/cot_sc/{i}.jsonl\"))\n    d = []\n    for data_dict in all_data:\n        question = data_dict['prompt']\n        answer_list = []\n        for o in data_dict['output']:\n            answer_list.append({'text': o[0], 'reward':o[1]})\n        data_dict_new = {'question': question, 'answer': answer_list}\n        d.append(data_dict_new)\n    save_dir = config.output_dir + \"/rlhf_data.jsonl\"",
+        "type": "code",
+        "location": "/tsllm/offline_rl/rlhf/process.py:1-32"
+    },
+    "741": {
+        "file_id": 83,
+        "content": "This code loads JSONL files, merges data into a list, and then formats it for saving. The user specifies the input and output directories using command-line arguments, and the code processes all 8 JSONL files in the input directory to create a new JSONL file in the specified output directory.",
+        "type": "comment"
+    },
+    "742": {
+        "file_id": 83,
+        "content": "    with open(save_dir, 'w') as file:\n        for data in d:\n            json_str = json.dumps(data)\n            file.write(json_str + '\\n')",
+        "type": "code",
+        "location": "/tsllm/offline_rl/rlhf/process.py:33-36"
+    },
+    "743": {
+        "file_id": 83,
+        "content": "Writes data to file in JSON format with newline character separating each entry.",
+        "type": "comment"
+    },
+    "744": {
+        "file_id": 84,
+        "content": "/tsllm/offline_rl/rlhf/process.sh",
+        "type": "filepath"
+    },
+    "745": {
+        "file_id": 84,
+        "content": "This code sets up environment variables, creates an output directory if it doesn't exist, and runs a Python script to process input files in the specified directory. The processed data is saved in the output directory.",
+        "type": "summary"
+    },
+    "746": {
+        "file_id": 84,
+        "content": "set -e\nINPUT_DIR=\"./rlhf/cot_sample\"\nOUTPUT_DIR=\"./rlhf/processed\"\nmkdir -p $OUTPUT_DIR\npython3 process.py --input_dir=$INPUT_DIR --output_dir=$OUTPUT_DIR",
+        "type": "code",
+        "location": "/tsllm/offline_rl/rlhf/process.sh:1-6"
+    },
+    "747": {
+        "file_id": 84,
+        "content": "This code sets up environment variables, creates an output directory if it doesn't exist, and runs a Python script to process input files in the specified directory. The processed data is saved in the output directory.",
+        "type": "comment"
+    },
+    "748": {
+        "file_id": 85,
+        "content": "/tsllm/rl/config.py",
+        "type": "filepath"
+    },
+    "749": {
+        "file_id": 85,
+        "content": "The code provides a configurable RLConfig class with options for reinforcement learning tasks, including model, optimizer, scheduler, tokenizer, train settings, MCTS configuration, environment settings, and optional FSDP configuration. It also includes methods to convert dictionary to RLConfig object and serialize it back into dictionary.",
+        "type": "summary"
+    },
+    "750": {
+        "file_id": 85,
+        "content": "from typing import Dict, List, Optional, Any\nfrom dataclasses import dataclass, field\nfrom torch.distributed.fsdp import ShardingStrategy\nfrom torch.distributed.fsdp.fully_sharded_data_parallel import StateDictType\nfrom peft import PeftConfig\n@dataclass\nclass BaseConfig:\n    @classmethod\n    def from_dict(cls, config: Dict[str, Any]):\n        return cls(**config)\n    def __getitem__(self, k):\n        if hasattr(self, k):\n            return getattr(self, k)\n        else:\n            raise KeyError(\"Have no attribute named {}.\".format(k))\n    def get(self, k, default):\n        if hasattr(self, k):\n            return getattr(self, k)\n        else:\n            return default\n@dataclass\nclass ModelConfig(BaseConfig):\n    model_path: str\n    critic_model_path: Optional[str] = None\n    cache_dir: Optional[str] = None\n    model_arch_type: str = \"causal\"\n    peft_config: Optional[Dict] = None\n    value_state_dict_path: Optional[Dict] = None\n    # config for critic model, \n    #  since we have \"ValueHeadLLM\" and \"AutoModelForCausalLMWithValueHead\"",
+        "type": "code",
+        "location": "/tsllm/rl/config.py:1-37"
+    },
+    "751": {
+        "file_id": 85,
+        "content": "This code defines two classes, `BaseConfig` and `ModelConfig`, using the `dataclass` decorator for creating Python data classes. The `from_dict` class method allows objects of these classes to be instantiated from dictionaries. The `__getitem__` and `get` methods provide dictionary-like access to config attributes. The `ModelConfig` also includes optional fields for model path, critic model path, cache dir, model arch type, peft configuration, and value state dict path.",
+        "type": "comment"
+    },
+    "752": {
+        "file_id": 85,
+        "content": "    #  this may be removed in future versions.\n    value_model_type_name: str=\"ValueHeadLLM\"\n    def __post_init__(self):\n        from peft import get_peft_config\n        if isinstance(self.peft_config, dict):\n            self.peft_config = get_peft_config(self.peft_config)\n@dataclass\nclass TokenizerConfig(BaseConfig):\n    tokenizer_path: str\n    padding_side: str = \"left\"\n    truncation_side: str = \"right\"\n@dataclass\nclass TrainConfig(BaseConfig):\n    seq_length: int\n    epochs: int\n    micro_batch_size: Optional[int] = 4\n    sft_micro_batch_size: Optional[int] = 4\n    gradient_accumulation_steps: Optional[int] = 4\n    n_rollout: int = 10\n    n_problem_per_gpu_rollout: Optional[int] = 100\n    n_step_per_rollout: Optional[int] = 20\n    eval_interval: Optional[int] = 1\n    eval_n_problem: Optional[int] = 1\n    checkpoint_interval: int = 1\n    gamma: float = 0.99\n    gae_lambda: float = 0.95\n    pure_sft: bool = False\n    sft_loss_coef: Optional[float] = 1.0\n    value_loss_coef: Optional[float] = 0.5\n    train_epoch: Optional[int] = 1",
+        "type": "code",
+        "location": "/tsllm/rl/config.py:38-78"
+    },
+    "753": {
+        "file_id": 85,
+        "content": "This code defines several classes and configuration settings for a machine learning model. It includes options for the value model type, tokenizer path, training epochs, sequence length, and more. These settings allow users to customize their model's behavior and parameters during training and inference.",
+        "type": "comment"
+    },
+    "754": {
+        "file_id": 85,
+        "content": "    project_name: str = \"MCTS_train\"\n    entity_name: Optional[str] = None\n    group_name: Optional[str] = None\n    checkpoint_dir: Optional[str] = \"ckpts\"\n    save_optimizer: bool = True\n    rollout_logging_dir: Optional[str] = None\n    tracker: Optional[str] = \"wandb\"\n    logging_dir: Optional[str] = None\n    tags: Optional[List[str]] = field(default_factory=list)\n    seed: int = 42\n    minibatch_size: Optional[int] = None\n    pre_sft_datapath: Optional[str] = None\n    pre_onpolicy_datapath: Optional[str] = None\n    pre_onpolicy_datapath_train_test: Optional[str] = None\n    pre_onpolicy_datapath_test: Optional[str] = None\n    onpolicy_per_problem_max_size: Optional[int] = 3\n    sft_per_problem_max_size: Optional[int] = 5\n    env_name: str = \"\"\n    task_dataset_kwargs: dict = field(default_factory=dict)\n    # task_dataset_kwargs is a dict that should store task-specific\n    # kwargs for task_module.get_train_test_dataset\n    # e.g. num_train_data: Optional[int] = 1000 is for envs.gsm8k\n@dataclass\nclass MCTSConfig(BaseConfig):",
+        "type": "code",
+        "location": "/tsllm/rl/config.py:80-112"
+    },
+    "755": {
+        "file_id": 85,
+        "content": "This code defines a class \"MCTSConfig\" which contains various configuration options for the MCTS_train project. It includes options like project name, entity and group names, checkpoint directory, optimizer saving, logging directories, tracker usage, seed value, minibatch size, and task-specific dataset kwargs. These settings can be used to customize the behavior of the MCTS_train project according to specific needs.",
+        "type": "comment"
+    },
+    "756": {
+        "file_id": 85,
+        "content": "    num_simulations: int = 20\n    pb_c_base: float = 19652\n    pb_c_init: float = 10\n    root_dirichlet_alpha: float = 0.3\n    root_noise_weight: float = 0.25\n@dataclass\nclass OptimizerConfig(BaseConfig):\n    name: str\n    kwargs: Dict[str, Any] = field(default_factory=dict)\n@dataclass\nclass SchedulerConfig(BaseConfig):\n    name: str\n    kwargs: Dict[str, Any] = field(default_factory=dict)\n    warmup_ratio: Optional[float] = None\n    num_warmup_steps: Optional[int] = None\n# CAUTION: keep an eye on extra comma\n@dataclass\nclass EnvConfig(BaseConfig):\n    stop_str: str = \"The answer is \"\n    max_actions: int = 2\n    max_length: int = 6\n    is_few_shot: bool = False\n    generation_config: dict = field(default_factory=dict)\n@dataclass\nclass FSDPConfig(BaseConfig):\n    mixed_precision: bool = True\n    use_fp16: bool = False\n    sharding_strategy: ShardingStrategy = ShardingStrategy.FULL_SHARD\n    checkpoint_type: StateDictType = StateDictType.SHARDED_STATE_DICT\n    # alternatively can use SHARDED_STATE_DICT save one file per rank, and can resize the world-size.",
+        "type": "code",
+        "location": "/tsllm/rl/config.py:113-152"
+    },
+    "757": {
+        "file_id": 85,
+        "content": "This code defines several config classes for different model components such as OptimizerConfig, SchedulerConfig, EnvConfig, and FSDPConfig. Each class has attributes that control various aspects of the model's behavior and training process. The classes inherit from BaseConfig and use dataclasses for easy configuration handling. Some optional parameters are specified with \"Optional\" types to allow flexibility in their usage.",
+        "type": "comment"
+    },
+    "758": {
+        "file_id": 85,
+        "content": "    fsdp_activation_checkpointing: bool = True\n    pure_bf16: bool = True\n    optimizer: str = \"AdamW\"\n@dataclass\nclass RLConfig:\n    model: ModelConfig\n    optimizer: OptimizerConfig\n    scheduler: SchedulerConfig\n    tokenizer: TokenizerConfig\n    train: TrainConfig\n    mcts: MCTSConfig\n    env: EnvConfig\n    fsdp: Optional[FSDPConfig] = None\n    @classmethod\n    def from_dict(cls, config: Dict):\n        \"\"\"\n        Convert dictionary to TRLConfig.\n        \"\"\"\n        return cls(\n            model=ModelConfig.from_dict(config[\"model\"]),\n            tokenizer=TokenizerConfig.from_dict(config[\"tokenizer\"]),\n            optimizer=OptimizerConfig.from_dict(config[\"optimizer\"]),\n            scheduler=SchedulerConfig.from_dict(config[\"scheduler\"]),\n            train=TrainConfig.from_dict(config[\"train\"]),\n            mcts=MCTSConfig.from_dict(config[\"mcts\"]),\n            env=EnvConfig.from_dict(config[\"env\"]),\n            fsdp=FSDPConfig.from_dict(config[\"fsdp\"]) if \"fsdp\" in config else None,\n        )\n    def to_dict(self):",
+        "type": "code",
+        "location": "/tsllm/rl/config.py:153-185"
+    },
+    "759": {
+        "file_id": 85,
+        "content": "This code defines a class `RLConfig` with various configuration options for reinforcement learning tasks, including model, optimizer, scheduler, tokenizer, train settings, MCTS configuration, and environment settings. It also includes an optional FSDP configuration if present in the input dictionary. The class has two methods: `from_dict` to convert a dictionary into an `RLConfig` object, and `to_dict` to serialize the config back into a dictionary.",
+        "type": "comment"
+    },
+    "760": {
+        "file_id": 85,
+        "content": "        data = {\n            \"model\": self.model.__dict__,\n            \"tokenizer\": self.tokenizer.__dict__,\n            \"optimizer\": self.optimizer.__dict__,\n            \"scheduler\": self.scheduler.__dict__,\n            \"train\": self.train.__dict__,\n            \"mcts\": self.mcts.__dict__,\n            \"env\": self.env.__dict__,\n        }\n        if self.fsdp is not None:\n            data[\"fsdp\"] = self.fsdp.__dict__\n        return data",
+        "type": "code",
+        "location": "/tsllm/rl/config.py:186-198"
+    },
+    "761": {
+        "file_id": 85,
+        "content": "This function creates a dictionary 'data' containing the attributes of model, tokenizer, optimizer, scheduler, train, mcts, and environment objects. If fsdp is not None, it also includes 'fsdp'. It then returns this data dictionary.",
+        "type": "comment"
+    },
+    "762": {
+        "file_id": 86,
+        "content": "/tsllm/rl/data/buffer.py",
+        "type": "filepath"
+    },
+    "763": {
+        "file_id": 86,
+        "content": "The function handles variable-length inputs and validates padding sides, while the code defines a class for managing data with methods to add/clear experiences, retrieve items by index, and create DataLoader objects.",
+        "type": "summary"
+    },
+    "764": {
+        "file_id": 86,
+        "content": "from typing import List, Sequence\nimport torch\nimport torch.nn.functional as F\nfrom torch.utils.data import Dataset, DataLoader\nfrom tsllm.distributed.utils import print_with_rank\nfrom tsllm.rl.data.node_types import TimeStep, Trajectory, MCTSBatch\nfrom functools import partial\nfrom torch.nn.utils.rnn import pad_sequence\ndef collate_fn(\n    padding_side: str,\n    pad_token_id: int,\n    max_action_length: int,\n    max_num_actions: int,\n    elems: Sequence[TimeStep],\n) -> MCTSBatch:\n    if padding_side == \"left\":\n        # Left padding of already left-padded queries\n        query_tensors = pad_sequence(\n            [elem.query_tensor.flip(0) for elem in elems],\n            padding_value=pad_token_id,\n            batch_first=True,\n        ).flip(1)\n    elif padding_side == \"right\":\n        query_tensors = pad_sequence(\n            [elem.query_tensor for elem in elems],\n            padding_value=pad_token_id,\n            batch_first=True,\n        )\n    else:\n        raise ValueError(f\"Invalid padding side: {padding_side}\")",
+        "type": "code",
+        "location": "/tsllm/rl/data/buffer.py:1-32"
+    },
+    "765": {
+        "file_id": 86,
+        "content": "This function collates a sequence of TimeStep elements into an MCTSBatch. It uses pad_sequence to handle padding, depending on the 'padding_side' argument. If 'padding_side' is 'left', it pads the start of each query tensor; if 'right', it pads the end of each query tensor. Raises ValueError for invalid padding side.",
+        "type": "comment"
+    },
+    "766": {
+        "file_id": 86,
+        "content": "    for elem in elems:\n        # pad from [flexible_n_action, flexible_act_len] to [n_action, max_action_length]\n        elem.legal_actions_tensor = F.pad(\n            elem.legal_actions_tensor,\n            (\n                0,\n                max_action_length - elem.legal_actions_tensor.shape[1],\n                0,\n                max_num_actions - elem.legal_actions_tensor.shape[0],\n            ),\n            mode=\"constant\",\n            value=pad_token_id,\n        )\n        # pad from [flexible_n_action] to [n_action]\n        elem.action_probs = F.pad(\n            elem.action_probs,\n            (0, max_num_actions - elem.action_probs.shape[0]),\n            mode=\"constant\",\n            value=0.0,\n        )\n    try:\n        padded_response_tensor = pad_sequence(\n            [elem.response_tensor for elem in elems],\n            padding_value=pad_token_id,\n            batch_first=True,\n        )\n    except Exception as e:\n        print_with_rank([elem.response_tensor.shape for elem in elems])\n        print_with_rank([elem.response_tensor for elem in elems])",
+        "type": "code",
+        "location": "/tsllm/rl/data/buffer.py:34-63"
+    },
+    "767": {
+        "file_id": 86,
+        "content": "This code pads tensors for elements in a list to match the standard tensor dimensions. It handles variable-length legal actions, action probabilities, and response tensors. If there's an error during padding, it prints the shape of the input tensors and the individual tensors.",
+        "type": "comment"
+    },
+    "768": {
+        "file_id": 86,
+        "content": "        raise e\n    return MCTSBatch(\n        query_tensors,\n        # Right pad the rest, to have a single horizontal query/response split\n        padded_response_tensor,\n        torch.stack([elem.reward for elem in elems]),\n        torch.stack([elem.value for elem in elems]),\n        torch.stack([elem.returns for elem in elems]),\n        torch.stack([elem.legal_actions_tensor for elem in elems]),\n        torch.stack([elem.action_probs for elem in elems]),\n        torch.stack([elem.termiated for elem in elems]),\n        torch.stack([elem.truncated for elem in elems]),\n    )\nclass MCTSBuffer(Dataset):\n    def __init__(self, padding_side, pad_token_id, max_action_length, max_num_actions):\n        super().__init__()\n        self.history: List[TimeStep] = []\n        self.padding_side = padding_side\n        self.pad_token_id = pad_token_id\n        self.max_action_length = max_action_length\n        self.max_num_actions = max_num_actions\n    def __len__(self):\n        return len(self.history)\n    def push(self, exps: Sequence[TimeStep]):",
+        "type": "code",
+        "location": "/tsllm/rl/data/buffer.py:64-92"
+    },
+    "769": {
+        "file_id": 86,
+        "content": "This code is raising an exception 'e' if it occurs and then returns a MCTSBatch object containing various tensors including query_tensors, padded_response_tensor, rewards, values, returns, legal_actions_tensors, action_probs, terminated flags, and truncated flags.\n\nThe class MCTSBuffer is initialized with a list of TimeStep history, padding side, pad_token_id, max_action_length, and max_num_actions. It also returns the length of the history and pushes a sequence of TimeStep experiences into the history.",
+        "type": "comment"
+    },
+    "770": {
+        "file_id": 86,
+        "content": "        self.history += exps\n    def clear(self):\n        self.history = []\n    def __getitem__(self, index: int) -> TimeStep:\n        return self.history[index]\n    def create_loader(\n        self,\n        batch_size: int,\n        shuffle: bool,\n    ) -> DataLoader:\n        return DataLoader(\n            self,\n            batch_size,\n            shuffle=shuffle,\n            collate_fn=partial(\n                collate_fn,\n                self.padding_side,\n                self.pad_token_id,\n                self.max_action_length,\n                self.max_num_actions,\n            ),\n        )",
+        "type": "code",
+        "location": "/tsllm/rl/data/buffer.py:93-117"
+    },
+    "771": {
+        "file_id": 86,
+        "content": "The code defines a class for managing and accessing data. It has methods to add experiences to the history, clear the history, get items from the history by index, and create a DataLoader object with specified batch size and shuffle option.",
+        "type": "comment"
+    },
+    "772": {
+        "file_id": 87,
+        "content": "/tsllm/rl/data/node_types_new.py",
+        "type": "filepath"
+    },
+    "773": {
+        "file_id": 87,
+        "content": "The code defines dataclasses for TimeStep and neural network data, utilizing scipy's lfilter for returns calculation. It includes tokenizing input strings and policy-based reinforcement learning for values and returns. The class also handles tensors and calculates rewards based on value index.",
+        "type": "summary"
+    },
+    "774": {
+        "file_id": 87,
+        "content": "from dataclasses import dataclass\nimport numpy as np\nimport torch\nfrom torchtyping import TensorType\nfrom typing import Optional, Sequence, List\nfrom transformers import AutoTokenizer\nfrom tsllm.distributed.utils import print_with_rank, print_rank_0\ndef _tokenize_fn(s, tokenizer, drop_bos: bool = False):\n    input_ids = tokenizer(s, return_tensors=\"pt\", padding=True).input_ids\n    if drop_bos and torch.all(input_ids[:, 0] == tokenizer.bos_token_id):\n        input_ids = input_ids[:, 1:]\n    return input_ids\n@dataclass\nclass TimeStep:\n    query_tensor: TensorType[\"query_length\"]\n    response_tensor: TensorType[\"response_length\"]\n    reward: TensorType\n    value: TensorType\n    returns: TensorType\n    legal_actions_tensor: TensorType[\"num_action\", \"max_action_length\"]\n    # legal_actions_attn_mask: TensorType[\"num_action\", \"max_action_length\"]\n    action_probs: TensorType[\"num_action\"]\n    termiated: TensorType\n    truncated: TensorType\n    @classmethod\n    def from_string(\n        cls,\n        tokenizer: AutoTokenizer,",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:1-33"
+    },
+    "775": {
+        "file_id": 87,
+        "content": "This code defines a dataclass called \"TimeStep\" that contains various tensors such as query_tensor, response_tensor, reward, value, returns, legal_actions_tensor, action_probs, terminated and truncated. The class also has a classmethod named from_string which takes an AutoTokenizer instance and likely converts a string into a TimeStep object using the given tokenizer.",
+        "type": "comment"
+    },
+    "776": {
+        "file_id": 87,
+        "content": "        query_str: str,\n        response_str: str,\n        reward: float,\n        value: float,\n        legal_actions: List[str],\n        action_probs: TensorType[\"num_action\"],\n        terminated: bool,\n        truncated: bool,\n    ):\n        assert (\n            tokenizer.padding_side == \"right\"\n        ), \"the tokenizer's padding side should be right.\"\n        assert tokenizer.pad_token != None, \"Your tokenizer's pad_token is None\"\n        # here only squeeze the first batch dimension\n        query_tensor = _tokenize_fn(query_str, tokenizer, False).squeeze_(0)\n        total_tensor = _tokenize_fn(\n            query_str + response_str, tokenizer, False\n        ).squeeze_(0)\n        response_tensor = total_tensor[len(query_tensor) :]\n        total_legal_action_qa_tensor = _tokenize_fn(\n            [query_str + action_str for action_str in legal_actions], tokenizer, False\n        )\n        legal_action_tensor = total_legal_action_qa_tensor[:, len(query_tensor) :]\n        # yapf: disable\n        return cls(query_tensor,",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:34-61"
+    },
+    "777": {
+        "file_id": 87,
+        "content": "This function tokenizes input strings, applies padding, and creates tensors for query, response, and legal actions. It asserts the tokenizer's padding side and checks if the pad_token is not None. It then uses the _tokenize_fn to create query, total, response, and legal_action_tensors by passing the necessary strings and tokenizer.",
+        "type": "comment"
+    },
+    "778": {
+        "file_id": 87,
+        "content": "                   response_tensor,\n                   torch.tensor(reward),\n                   torch.tensor(value),\n                   torch.tensor(0.),\n                   legal_action_tensor,\n                   torch.tensor(action_probs),\n                   torch.tensor(terminated),\n                   torch.tensor(truncated))\n        # yapf: enable\nimport scipy.signal\ndef discount_cumsum(x, discount):\n    if isinstance(x, torch.Tensor):\n        x = x.numpy()\n        return torch.tensor(\n            scipy.signal.lfilter([1], [1, float(-discount)], x[::-1], axis=0)[\n                ::-1\n            ].copy()\n        )\n    else:\n        return scipy.signal.lfilter([1], [1, float(-discount)], x[::-1], axis=0)[::-1]\ndef _compute_return_fn(rews, vals, gamma, gae_lambda, last_value):\n    last_gae_lam = 0\n    reversed_adv = []\n    for t in reversed(range(len(rews))):\n        next_v = vals[t + 1] if t < len(rews) - 1 else last_value\n        delta = rews[t] + gamma * next_v - vals[t]\n        last_gae_lam = delta + gamma * gae_lambda * last_gae_lam",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:62-94"
+    },
+    "779": {
+        "file_id": 87,
+        "content": "This code defines a function \"discount_cumsum\" that computes the cumulative discounted sum of a list of numbers using scipy.signal's lfilter function. It also defines another function \"_compute_return_fn\" which takes in a list of rewards, values, gamma (discount factor), gae_lambda, and last_value as parameters. This function calculates the Generalized Advantage Estimation (GAE) by iterating over the reversed range of the length of rewards and updating the delta value for each time step.",
+        "type": "comment"
+    },
+    "780": {
+        "file_id": 87,
+        "content": "        reversed_adv.append(last_gae_lam)\n    adv = torch.tensor(reversed_adv[::-1])\n    ret = adv + vals\n    return ret\n@dataclass\nclass Trajectory:\n    timesteps: Sequence[TimeStep]\n    def compute_returns(\n        self, gamma: float = 0.99, gae_lambda: float = 0.95, last_value: float = 0\n    ):\n        rews = torch.tensor([ts.reward for ts in self.timesteps])\n        vals = torch.tensor([ts.value for ts in self.timesteps])\n        ret = _compute_return_fn(rews, vals, gamma, gae_lambda, last_value)\n        ## ========= trlx PPO's implementation ===========\n        # lastgaelam = 0\n        # advantages_reversed = []\n        # for t in reversed(range(response_length)):\n        #     nextvalues = values[:, t + 1] if t < response_length - 1 else 0.0\n        #     delta = rewards[:, t] + self.gamma * nextvalues - values[:, t]\n        #     lastgaelam = delta + self.gamma * self.lam * lastgaelam\n        #     advantages_reversed.append(lastgaelam)\n        # advantages = torch.stack(advantages_reversed[::-1], dim=1)",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:95-120"
+    },
+    "781": {
+        "file_id": 87,
+        "content": "This code computes returns for a trajectory by taking rewards and values from the timesteps, applying a function to compute advantages based on gamma and lambda, and then adds these advantages to the values. This is done using a reversed approach where lastgaelam (last generalized advantage estimation lambda) is updated in reverse order. Finally, the advantages are stacked in reverse order for each timestep.",
+        "type": "comment"
+    },
+    "782": {
+        "file_id": 87,
+        "content": "        # returns = advantages + values\n        # if use_whitening:\n        #     advantages = whiten(advantages)\n        ## ========= OpenAI SpinningUp PPO's implementation ===========\n        # rews = [ts.reward for ts in self.timesteps] + [last_value]\n        # vals = [ts.value for ts in self.timesteps] + [last_value]\n        # rews = np.array(rews)\n        # vals = np.array(vals)\n        # deltas = rews[:-1] + gamma * vals[1:] - vals[:-1]\n        # adv = discount_cumsum(deltas, gamma * gae_lambda)\n        # ret = discount_cumsum(rews, gamma)[:-1]\n        for i in range(len(self.timesteps)):\n            self.timesteps[i].returns = ret[i]\n@dataclass\nclass MCTSBatch:\n    query_tensor: TensorType[\"bsz\", \"query_length\"]\n    response_tensor: TensorType[\"bsz\", \"response_length\"]\n    reward: TensorType[\"bsz\"]\n    value: TensorType[\"bsz\"]\n    returns: TensorType[\"bsz\"]\n    legal_actions_tensor: TensorType[\"bsz\", \"num_action\", \"max_action_length\"]\n    # legal_actions_attn_mask: TensorType[\"bsz\", \"num_action\", \"max_action_length\"]",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:121-147"
+    },
+    "783": {
+        "file_id": 87,
+        "content": "This code snippet is calculating the returns for each timestep in a batch of data. It uses rewards and values from the timesteps to calculate the deltas, then computes the advantages using discounted cumulative sums. The returns are stored in the corresponding timestep object. The MCTSBatch class represents a batch of data with query tensor, response tensor, reward, value, returns, legal_actions_tensor (and potentially legal_actions_attn_mask).",
+        "type": "comment"
+    },
+    "784": {
+        "file_id": 87,
+        "content": "    action_probs: TensorType[\"bsz\", \"num_action\"]\n    termiated: TensorType[\"bsz\"]\n    truncated: TensorType[\"bsz\"]\n    def to(self, *args, **kwargs):\n        self.query_tensor = self.query_tensor.to(*args, **kwargs)\n        self.response_tensor = self.response_tensor.to(*args, **kwargs)\n        self.reward = self.reward.to(*args, **kwargs)\n        self.value = self.value.to(*args, **kwargs)\n        self.returns = self.returns.to(*args, **kwargs)\n        self.legal_actions_tensor = self.legal_actions_tensor.to(*args, **kwargs)\n        self.action_probs = self.action_probs.to(*args, **kwargs)\n        self.termiated = self.termiated.to(*args, **kwargs)\n        self.truncated = self.truncated.to(*args, **kwargs)\n@dataclass\nclass SftInstance:\n    input_ids: TensorType[\"seq_len\"]\n    label: TensorType[\"seq_len\"]\n    returns: TensorType[\"seq_len\"]\n    mask: TensorType[\"seq_len\"]\n    @classmethod\n    def from_string(\n        cls,\n        q_str: str,\n        r_str: str,\n        tokenizer: AutoTokenizer,\n        policy_forward_seq_value: callable,",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:148-177"
+    },
+    "785": {
+        "file_id": 87,
+        "content": "This code is defining classes for handling data in a neural network model. It includes methods for converting strings to tensors and moving tensors to specific devices (e.g., GPU). The SftInstance class takes input IDs, labels, returns, and mask as input.",
+        "type": "comment"
+    },
+    "786": {
+        "file_id": 87,
+        "content": "        gamma: float,\n        gae_lambda: float,\n        IGNORE_IDX=-100,\n    ):\n        q_ids = _tokenize_fn(q_str, tokenizer, False).squeeze(0)\n        r_ids = _tokenize_fn(r_str, tokenizer, True).squeeze(0)\n        total_ids = _tokenize_fn(q_str + r_str, tokenizer, False).squeeze(0)\n        assert len(total_ids) == len(q_ids) + len(r_ids)\n        label = total_ids.clone()\n        label[: len(q_ids)] = IGNORE_IDX\n        input_ids = total_ids\n        answer_steps = r_str.split(\"\\n\")\n        vs = []\n        mask = torch.zeros_like(input_ids)\n        current_str = q_str\n        value_seq = policy_forward_seq_value(q_str + r_str).squeeze(0)\n        for i, a in enumerate(answer_steps):\n            if len(a) == 0:\n                if i != len(answer_steps) - 1:\n                    print_with_rank(\n                        \"possible problems met in sft instance building. {}\".format(\n                            answer_steps\n                        )\n                    )\n                continue\n            current_str += a + \"\\n\"",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:178-206"
+    },
+    "787": {
+        "file_id": 87,
+        "content": "This code tokenizes input strings, creates labels and input_ids for a language model, and initializes necessary variables for a policy-based reinforcement learning algorithm. It handles potential problems in answer steps of the instance being built.",
+        "type": "comment"
+    },
+    "788": {
+        "file_id": 87,
+        "content": "            current_ids = _tokenize_fn(current_str, tokenizer, False).squeeze(0)\n            # current_value = policy_forward_value_fn(current_str).item()\n            current_value = value_seq[len(current_ids) - 1]\n            mask[len(current_ids) - 1] = 1\n            vs.append(current_value)\n        vs = torch.tensor(vs)\n        rews = torch.zeros_like(vs)\n        rews[-1] = 1.0  # sft instance is corrent.\n        rets = _compute_return_fn(\n            rews=rews, vals=vs, gamma=gamma, gae_lambda=gae_lambda, last_value=0\n        )  # sft instances always terminate.\n        returns = torch.zeros_like(input_ids)\n        nonzero_indices = mask.nonzero()\n        assert len(nonzero_indices) == len(vs), (\n            len(nonzero_indices),\n            len(vs),\n            nonzero_indices,\n            vs,\n        )\n        for i, idx in enumerate(nonzero_indices):\n            returns[idx.item()] = rets[i]\n        return cls(input_ids, label, returns, mask)\n@dataclass\nclass SftBatch:\n    input_ids: TensorType[\"bsz\", \"seq_len\"]",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:207-233"
+    },
+    "789": {
+        "file_id": 87,
+        "content": "The code defines a function that processes Sentence-Fragment Transformer (SFT) instances by tokenizing the input string, calculating values and returns for each instance, and creating a batch of data with input IDs, labels, and returns. The returns are calculated based on computed returns using a given gamma and gae_lambda parameters. The code also includes a class definition for SftBatch to store this processed batch data.",
+        "type": "comment"
+    },
+    "790": {
+        "file_id": 87,
+        "content": "    label: TensorType[\"bsz\", \"seq_len\"]\n    attn_mask: TensorType[\"bsz\", \"seq_len\"]\n    returns: TensorType[\"bsz\", \"seq_len\"]\n    mask: TensorType[\"bsz\", \"seq_len\"]  # value_mask\n    def to(self, *args, **kwargs):\n        self.input_ids = self.input_ids.to(*args, **kwargs)\n        self.label = self.label.to(*args, **kwargs)\n        self.attn_mask = self.attn_mask.to(*args, **kwargs)\n        self.returns = self.returns.to(*args, **kwargs)\n        self.mask = self.mask.to(*args, **kwargs)\n@dataclass\nclass TrajInstance:\n    input_ids: TensorType[\"seq_len\"]\n    label: TensorType[\"seq_len\"]\n    returns: TensorType[\"seq_len\"]\n    mask: TensorType[\"seq_len\"]\n    question: str\n    response: str\n    @classmethod\n    def from_string(\n        cls,\n        q_str: str,\n        r_str: str,\n        value_index: np.array,\n        reward_list: np.array,\n        tokenizer: AutoTokenizer,\n        policy_forward_seq_value: callable,\n        gamma: float,\n        gae_lambda: float,\n        cal_value: bool,\n        use_gae=True,\n        IGNORE_IDX=-100,",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:234-269"
+    },
+    "791": {
+        "file_id": 87,
+        "content": "The code defines a class that takes input, label, returns, and mask tensors of shape \"bsz\", \"seq_len\". It also has a question and response string attributes. The classmethod from_string creates an instance of the class using a question string, response string, value index array, reward list array, tokenizer, policy forward sequence value function, gamma, gae_lambda, cal_value, use_gae, and IGNORE_IDX parameters.",
+        "type": "comment"
+    },
+    "792": {
+        "file_id": 87,
+        "content": "    ):\n        q_ids = _tokenize_fn(q_str, tokenizer, False).squeeze(0)\n        r_ids = _tokenize_fn(r_str, tokenizer, True).squeeze(0)\n        total_ids = _tokenize_fn(q_str + r_str, tokenizer, False).squeeze(0)\n        # Check whether q_str + r_str creates some new tokens\n        # assert len(total_ids) == len(q_ids) + len(r_ids)\n        label = total_ids.clone()\n        label[: len(q_ids)] = IGNORE_IDX\n        input_ids = total_ids\n        if cal_value:\n            value_index = torch.tensor(value_index).int()\n            reward_list = torch.tensor(reward_list).float()\n            mask = torch.zeros_like(input_ids)\n            # Check value index dimension is correct\n            assert value_index[0] == len(q_ids) - 1\n            assert value_index[-1] == len(mask) - 1\n            # assert r_str.split(\"\\n\")[-1] == \"\"\n            # answer_steps = r_str.split(\"\\n\")[:-1]  # The last one is null or eos\n            vs = []\n            # current_str = q_str\n            # TODO: Organize code and check logic\n            if use_gae:",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:270-296"
+    },
+    "793": {
+        "file_id": 87,
+        "content": "This code segment tokenizes input questions and references, concatenates them, checks if new tokens are created, creates a label tensor with ignore values for the question part, assigns input_ids with total_ids, calculates rewards based on value index, asserts that the value index is correct, and initializes a list vs for further processing.",
+        "type": "comment"
+    },
+    "794": {
+        "file_id": 87,
+        "content": "                value_seq = policy_forward_seq_value(q_str + r_str).squeeze(0)\n                # mask and reward for the final answer\n                # Value index\n                mask[value_index[:-1]] = 1\n                # Final reward index\n                mask[value_index[-1]] = 2\n                vs = value_seq[value_index[:-1]]\n                rews = reward_list\n                rets = _compute_return_fn(\n                    rews=rews, vals=vs, gamma=gamma, gae_lambda=gae_lambda, last_value=0\n                )  # sft instances always terminate.\n                # add the final reward\n                rets = torch.cat([rets, reward_list[-1:]])\n                returns = torch.zeros(len(input_ids))\n                nonzero_indices = mask.nonzero()\n                assert len(nonzero_indices) == len(rets) == len(vs) + 1\n                for i, idx in enumerate(nonzero_indices):\n                    returns[idx.item()] = rets[i]\n                # result = torch.tensor([result])\n            else:\n                # conduct MC return calculation",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:297-323"
+    },
+    "795": {
+        "file_id": 87,
+        "content": "This code calculates returns for a sequence of values and rewards. It applies a mask to select the value index and final reward, then computes returns using MC method. The function handles both terminating and non-terminating instances separately.",
+        "type": "comment"
+    },
+    "796": {
+        "file_id": 87,
+        "content": "                # Value index\n                mask[value_index[:-1]] = 1\n                # Final reward index\n                mask[value_index[-1]] = 2\n                assert value_index[-1] == len(mask) - 1\n                rets = discount_cumsum(reward_list, gamma)\n                # append the final reward\n                rets = torch.cat([rets, reward_list[-1:]])\n                returns = torch.zeros(len(input_ids))\n                nonzero_indices = mask.nonzero()\n                assert len(nonzero_indices) == len(rets)\n                for i, idx in enumerate(nonzero_indices):\n                    returns[idx.item()] = rets[i]\n        else:\n            # add padding tensor if not calculate value\n            # result = torch.tensor([result])\n            returns = torch.zeros(len(input_ids))\n            mask = torch.zeros_like(input_ids)\n        return cls(input_ids, label, returns, mask, q_str, r_str)\n@dataclass\nclass TrajBatch:\n    input_ids: TensorType[\"bsz\", \"seq_len\"]\n    label: TensorType[\"bsz\", \"seq_len\"]",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:324-352"
+    },
+    "797": {
+        "file_id": 87,
+        "content": "Creates a mask for value and final reward indices, calculates cumulative rewards, appends final reward, initializes returns tensor with zeros, assigns returns to nonzero indices in mask, and creates TrajBatch object with input_ids, label, returns, mask, q_str, r_str.",
+        "type": "comment"
+    },
+    "798": {
+        "file_id": 87,
+        "content": "    attn_mask: TensorType[\"bsz\", \"seq_len\"]\n    returns: TensorType[\"bsz\", \"seq_len\"]\n    mask: TensorType[\"bsz\", \"seq_len\"]  # value_mask\n    def to(self, *args, **kwargs):\n        self.input_ids = self.input_ids.to(*args, **kwargs)\n        self.label = self.label.to(*args, **kwargs)\n        self.attn_mask = self.attn_mask.to(*args, **kwargs)\n        self.returns = self.returns.to(*args, **kwargs)\n        self.mask = self.mask.to(*args, **kwargs)",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:353-362"
+    },
+    "799": {
+        "file_id": 87,
+        "content": "This code defines a class method \"to\" that transfers the input_ids, label, attn_mask, and returns tensors to specified device. The attn_mask and returns tensors are of type TensorType[\"bsz\", \"seq_len\"], and the mask tensor is an alias for value_mask.",
+        "type": "comment"
+    }
+}

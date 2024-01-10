@@ -1,0 +1,537 @@
+{
+    "100": {
+        "file_id": 17,
+        "content": "set -e\nexport TEST_NO_TERMINAL=1\n# export TEST_WITH_TERMINAL=1\n# export TEST_COT_GREEDY=1\n# export TEST_COT_SC=1\n# export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7\nCT2_DIR={your ct2 model cache}\nCRITIC_PATH={your critic model cache}\ntorchrun --nproc_per_node=8 --master-port 29503 ../../tsllm/offline_rl/test_sft_and_v.py \\\n    --critic_model_path $CRITIC_PATH \\\n    --tokenizer_path $CRITIC_PATH \\\n    --ct2_dir $CT2_DIR \\\n    --save_dir $1/policy_ep1 \\\n    --env_name prontoqa \\\n    --test True \\\n    --is_few_shot False",
+        "type": "code",
+        "location": "/train_mcts_scripts/prontoqa/test_policy_and_value.sh:1-18"
+    },
+    "101": {
+        "file_id": 17,
+        "content": "The script is running a test on the prontoqa environment using an offline reinforcement learning model. It uses multiple GPUs and specifies various environment test configurations, such as no terminal, with terminal, greedy, and soft target updates. The script also sets the number of processes per node to 8 and runs it with torchrun for distributed computing. The code calls the \"test_sft_and_v\" Python script from the \"tsllm/offline_rl\" directory. It specifies the critic model path, tokenizer path, CT2 directory, save directory for policy tests, and environment name. The test is not a few-shot learning scenario.",
+        "type": "comment"
+    },
+    "102": {
+        "file_id": 18,
+        "content": "/train_mcts_scripts/prontoqa/train_prontoqa_critic.py",
+        "type": "filepath"
+    },
+    "103": {
+        "file_id": 18,
+        "content": "This code imports modules, sets up Lora and Flash Attention for Llama fine-tuning, initializes AccelerateMCTSTrainer with training details, and trains the model using the \"learn\" method.",
+        "type": "summary"
+    },
+    "104": {
+        "file_id": 18,
+        "content": "from tsllm.rl.trainer.mcts_trainer_traj_ct2_value import AccelerateMCTSTrainer\nfrom tsllm.rl.config import RLConfig\nfrom peft import LoraConfig, PeftType\nfrom tsllm.model.llama_flash_attn_monkey_patch import replace_llama_attn_with_flash_attn\nreplace_llama_attn_with_flash_attn()\nconfig = {\n    \"model\": {\n        \"model_path\": \"meta-llama/Llama-2-7b-hf\",\n    },\n    \"tokenizer\": {\n        \"tokenizer_path\": \"meta-llama/Llama-2-7b-hf\",\n        \"padding_side\": \"right\",\n    },\n    \"optimizer\": {\n        \"name\": \"adamw\",\n        \"kwargs\": dict(lr=2.0e-5, betas=(0.9, 0.999), eps=1.0e-8, weight_decay=0.0),\n    },\n    \"scheduler\": {\"name\": \"cosine_warmup\", \"kwargs\": dict(warmup_ratio=0.03)},\n    \"train\": {\n        \"pre_onpolicy_datapath\": \"../../tsllm/offline_rl/prontoqa/processed/prontoqa_train_cot_sample_offline_sft_k100_ep1_dedup_sample50.jsonl\",\n        \"pre_onpolicy_datapath_train_test\": \"../../tsllm/offline_rl/prontoqa/processed/prontoqa_train_cot_sample_offline_sft_k100_ep1_dedup_sample50_train_test_sample_3.jsonl\",",
+        "type": "code",
+        "location": "/train_mcts_scripts/prontoqa/train_prontoqa_critic.py:1-23"
+    },
+    "105": {
+        "file_id": 18,
+        "content": "This code imports necessary modules, sets up a Lora config and PeftType for model fine-tuning. It replaces the attention mechanism in Llama with Flash Attention. The configuration includes the model path, tokenizer path, optimizer settings, scheduler settings, and training data paths.",
+        "type": "comment"
+    },
+    "106": {
+        "file_id": 18,
+        "content": "        \"env_name\": \"prontoqa\",\n        \"epochs\": 3,  # this is the epoch for the whole sampling/training process\n        \"train_epoch\": 1,  # this is the epoch for training process after each sampling\n        \"gamma\": 1.0,\n        \"gae_lambda\": 0.95,\n        \"seq_length\": 1024,\n        \"micro_batch_size\": 4,\n        \"gradient_accumulation_steps\": 4,\n        \"value_loss_coef\": 1.0,\n        \"eval_interval\": 1,\n        \"checkpoint_interval\": 1,\n        \"checkpoint_dir\": tmp_for_check,\n        \"save_optimizer\": False,\n        \"project_name\": \"tmp_for_check\",\n        \"tracker\": \"tensorboard\",\n        \"logging_dir\": \"logs/\",\n        \"onpolicy_per_problem_max_size\": 1000,\n    },\n    \"mcts\": {},\n    \"env\": {},\n}\nconfig = RLConfig.from_dict(config)\ntrainer = AccelerateMCTSTrainer(config)\ntrainer.learn()",
+        "type": "code",
+        "location": "/train_mcts_scripts/prontoqa/train_prontoqa_critic.py:24-49"
+    },
+    "107": {
+        "file_id": 18,
+        "content": "This code initializes an AccelerateMCTSTrainer with the given configuration and then calls the \"learn\" method to train the model. The configuration includes details such as epochs, training epoch, gamma, GAE lambda, sequence length, micro batch size, and more.",
+        "type": "comment"
+    },
+    "108": {
+        "file_id": 19,
+        "content": "/train_mcts_scripts/prontoqa/train_prontoqa_sft.py",
+        "type": "filepath"
+    },
+    "109": {
+        "file_id": 19,
+        "content": "A summary of the given comments is: Both comments discuss initializing and configuring an AccelerateMCTSTrainer for training a ProntoQA model, replacing Llama's attention with Flash Attention, setting paths, parameters, and other related settings.",
+        "type": "summary"
+    },
+    "110": {
+        "file_id": 19,
+        "content": "from tsllm.rl.trainer.mcts_trainer_traj_ct2_sft import AccelerateMCTSTrainer\nfrom tsllm.rl.config import RLConfig\nfrom tsllm.model.llama_flash_attn_monkey_patch import replace_llama_attn_with_flash_attn\nreplace_llama_attn_with_flash_attn()\nconfig = {\n    \"model\": {\n        \"model_path\": \"meta-llama/Llama-2-7b-hf\",\n    },\n    \"tokenizer\": {\n        \"tokenizer_path\": \"meta-llama/Llama-2-7b-hf\",\n        \"padding_side\": \"right\",\n    },\n    \"optimizer\": {\n        \"name\": \"adamw\",\n        \"kwargs\": dict(lr=2.0e-5, betas=(0.9, 0.999), eps=1.0e-8, weight_decay=0.0),\n    },\n    \"scheduler\": {\"name\": \"cosine_warmup\", \"kwargs\": dict(warmup_ratio=0.03)},\n    \"train\": {\n        \"pre_sft_datapath\": \"../../tsllm/envs/prontoqa/train_data/train.jsonl\",\n        \"env_name\": \"prontoqa\",\n        \"epochs\": 1,\n        \"train_epoch\": 1,\n        \"sft_micro_batch_size\": 4,\n        \"gradient_accumulation_steps\": 4,\n        \"seq_length\": 1024,\n        \"eval_interval\": 1,\n        \"sft_loss_coef\": 1.0,\n        \"checkpoint_interval\": 1,\n        \"checkpoint_dir\": tmp_for_check,",
+        "type": "code",
+        "location": "/train_mcts_scripts/prontoqa/train_prontoqa_sft.py:1-30"
+    },
+    "111": {
+        "file_id": 19,
+        "content": "This code initializes an AccelerateMCTSTrainer object with specific configurations for training the ProntoQA model. It replaces Llama's attention with Flash Attention, sets the model path, tokenizer path, optimizer parameters, scheduler parameters, and train-related settings. The code also specifies the pre-SFT data path, environment name, number of epochs, micro-batch size, gradient accumulation steps, sequence length, evaluation interval, SFT loss coefficient, checkpoint interval, and checkpoint directory.",
+        "type": "comment"
+    },
+    "112": {
+        "file_id": 19,
+        "content": "        \"save_optimizer\": False,\n        \"project_name\": \"tmp_for_check\",\n        \"tracker\": \"tensorboard\",\n        \"logging_dir\": \"logs/\",\n        \"sft_per_problem_max_size\": 1000,\n    },\n    \"mcts\": {},\n    \"env\": {},\n}\nconfig = RLConfig.from_dict(config)\ntrainer = AccelerateMCTSTrainer(config)\ntrainer.learn()",
+        "type": "code",
+        "location": "/train_mcts_scripts/prontoqa/train_prontoqa_sft.py:31-44"
+    },
+    "113": {
+        "file_id": 19,
+        "content": "Defining and initializing a configuration for RL training, specifying options for saving optimizer, project name, tracker, logging directory, maximum SFT size per problem, MCTS, and environment. Instantiating an AccelerateMCTSTrainer with the given config and calling learn() to begin training.",
+        "type": "comment"
+    },
+    "114": {
+        "file_id": 20,
+        "content": "/train_mcts_scripts/rlhf/README.md",
+        "type": "filepath"
+    },
+    "115": {
+        "file_id": 20,
+        "content": "This code outlines the process of training a reinforcement learning model using preprocessed data. It involves modifying and running specific scripts to apply RLHF, filter rollout data, and mix value datasets for policy and value training.",
+        "type": "summary"
+    },
+    "116": {
+        "file_id": 20,
+        "content": "## Iterative update of RLHF\nHere we describe how to rollout and training iteratively for RLHF.\n### Rollout\nuse `tsllm/offline_rl/test_sft_and_v_rlhf.py` to sample examples on training dataset. Rollout hyperparameters for RLHF:\n```python\n{\n    \"temperature\": 1.0, \n    \"max_length\": 64, \n    \"pb_c_init\": 3, \n    \"num_simulations\": 5, \n    \"num_mcts_aggregation\": 10, \n    \"rollout_method\": \"mcts.get_next_action\", # this is mcts-alpha\n    \"mcts_sample\": True,\n    \"clear_tree\": True,\n    \"reset_total_tree\": False,\n    \"select_by_prior\": False, \n}\n```\nIn addition to these hyperparameters,, you need also to modify the hyperparameters in `test_policy_and_value.sh` with `--train`, which means we conduct rollouts on training dataset. After rollouts, you can refer to `ts_llm/offline_rlhf/process.sh` (convert rollout data to a corresponding format), `filter_top_data_policy_training.py` (filter top k data from rollouts to construct policy training data) and `mix_value_data.py` (mix original value dataset and new sampled value dataset, to construct the value training data) to get the final processed training data.",
+        "type": "code",
+        "location": "/train_mcts_scripts/rlhf/README.md:1-21"
+    },
+    "117": {
+        "file_id": 20,
+        "content": "This code describes the iterative update of RLHF (Reinforcement Learning from Human Feedback) in a codebase. It outlines the rollout process using `tsllm/offline_rl/test_sft_and_v_rlhf.py` and specifies hyperparameters for RLHF. Additionally, it mentions modifying `test_policy_and_value.sh` with `--train`, converting rollout data using `process.sh`, filtering top k data from rollouts to construct policy training data with `filter_top_data_policy_training.py`, and mixing original value dataset with new sampled data to create the value training data with `mix_value_data.py`.",
+        "type": "comment"
+    },
+    "118": {
+        "file_id": 20,
+        "content": "### Training\nAfter getting the data in rollout, check `train_mcts_scripts/rlhf` for `train_rlhf_{sft/critic}.py`, modify args in `config`, then train it. (we use accelerate so we also provide the accelerate config in `train_mcts_scripts/rlhf/accelerate_config.yaml`)",
+        "type": "code",
+        "location": "/train_mcts_scripts/rlhf/README.md:24-25"
+    },
+    "119": {
+        "file_id": 20,
+        "content": "This code is providing instructions for training a reinforcement learning model using preprocessed data. The user should first obtain the necessary data from rollout, then locate and modify the `train_rlhf_{sft/critic}.py` file in the designated directory. After modifying the arguments within the `config`, the user can proceed with training the model using the provided accelerate configuration.",
+        "type": "comment"
+    },
+    "120": {
+        "file_id": 21,
+        "content": "/train_mcts_scripts/rlhf/accelerate_config.yaml",
+        "type": "filepath"
+    },
+    "121": {
+        "file_id": 21,
+        "content": "This configuration file sets the compute environment to local machine, uses DeepSpeed for distributed training with no offloading, and has one machine with eight processes. It also includes options for RDZV backend, network usage, TPU settings, and disables CPU use.",
+        "type": "summary"
+    },
+    "122": {
+        "file_id": 21,
+        "content": "compute_environment: LOCAL_MACHINE\ndeepspeed_config:\n  deepspeed_config_file: ./ds_config_no_offload.json\n  zero3_init_flag: false\ndistributed_type: DEEPSPEED\ndowncast_bf16: 'no'\nmachine_rank: 0\nmain_training_function: main\nnum_machines: 1\nnum_processes: 8\nrdzv_backend: static\nsame_network: true\ntpu_env: []\ntpu_use_cluster: false\ntpu_use_sudo: false\nuse_cpu: false",
+        "type": "code",
+        "location": "/train_mcts_scripts/rlhf/accelerate_config.yaml:1-16"
+    },
+    "123": {
+        "file_id": 21,
+        "content": "This configuration file sets the compute environment to local machine, uses DeepSpeed for distributed training with no offloading, and has one machine with eight processes. It also includes options for RDZV backend, network usage, TPU settings, and disables CPU use.",
+        "type": "comment"
+    },
+    "124": {
+        "file_id": 22,
+        "content": "/train_mcts_scripts/rlhf/ds_config_no_offload.json",
+        "type": "filepath"
+    },
+    "125": {
+        "file_id": 22,
+        "content": "This JSON configuration file sets various parameters for training a machine learning model. It specifies the micro-batch size per GPU, gradient accumulation steps, whether to use BF16 and FP16, and zero optimization settings. The goal is likely to optimize the training process and improve performance.",
+        "type": "summary"
+    },
+    "126": {
+        "file_id": 22,
+        "content": "{\n    \"train_micro_batch_size_per_gpu\": \"auto\",\n    \"gradient_accumulation_steps\": 8,\n    \"bf16\": {\n      \"enabled\": true\n    },\n    \"fp16\": {\n      \"enabled\": false,\n      \"min_loss_scale\": 0.0001,\n      \"fp16_scale_tolerance\": 0.0,\n      \"opt_level\": \"O1\"\n    },\n    \"zero_optimization\": {\n      \"stage\": 2,\n      \"allgather_partitions\": true,\n      \"allgather_bucket_size\": 5e8,\n      \"contiguous_gradients\": true\n    }\n  }",
+        "type": "code",
+        "location": "/train_mcts_scripts/rlhf/ds_config_no_offload.json:1-19"
+    },
+    "127": {
+        "file_id": 22,
+        "content": "This JSON configuration file sets various parameters for training a machine learning model. It specifies the micro-batch size per GPU, gradient accumulation steps, whether to use BF16 and FP16, and zero optimization settings. The goal is likely to optimize the training process and improve performance.",
+        "type": "comment"
+    },
+    "128": {
+        "file_id": 23,
+        "content": "/train_mcts_scripts/rlhf/filter_top_data_policy_training.py",
+        "type": "filepath"
+    },
+    "129": {
+        "file_id": 23,
+        "content": "This code reads MCTS rollout data from a JSONL file, filters the top 5 answers based on their reward value, and saves the policy data to another JSONL file.",
+        "type": "summary"
+    },
+    "130": {
+        "file_id": 23,
+        "content": "import json\ntopk = 5\ndef load_jsonl(file_path):\n    data_list = []\n    with open(file_path, \"r\", encoding=\"utf-8\") as file:\n        for line in file:\n            data = json.loads(line.strip())\n            data_list.append(data)\n    return data_list\ndata_mcts = load_jsonl('') # your mcts rollout path here\nfor data in data_mcts:\n    data['answer'] = sorted(data['answer'], key=lambda item: item['reward'], reverse=True)[:topk] # topk\n# save policy data\nwith open('./rlhf_data_best5_mcts.jsonl', 'w') as file:\n    for data in data_mcts:\n        json_str = json.dumps(data)\n        file.write(json_str + '\\n')",
+        "type": "code",
+        "location": "/train_mcts_scripts/rlhf/filter_top_data_policy_training.py:1-21"
+    },
+    "131": {
+        "file_id": 23,
+        "content": "This code reads MCTS rollout data from a JSONL file, filters the top 5 answers based on their reward value, and saves the policy data to another JSONL file.",
+        "type": "comment"
+    },
+    "132": {
+        "file_id": 24,
+        "content": "/train_mcts_scripts/rlhf/mix_value_data.py",
+        "type": "filepath"
+    },
+    "133": {
+        "file_id": 24,
+        "content": "The code loads and mixes two sets of data, sorts by question, shuffles answers, and saves in JSONL format for training a reinforcement learning critic module.",
+        "type": "summary"
+    },
+    "134": {
+        "file_id": 24,
+        "content": "import json\ndef load_jsonl(file_path):\n    data_list = []\n    with open(file_path, \"r\", encoding=\"utf-8\") as file:\n        for line in file:\n            data = json.loads(line.strip())\n            data_list.append(data)\n    return data_list\ndata_direct = load_jsonl('')# Your direct sampling data\ndata_mcts = load_jsonl('')# Your MCTS sampling data\nsorted_direct = sorted(data_direct, key=lambda item: item['question'])\nsorted_mcts =  sorted(data_mcts, key=lambda item: item['question'])\nimport random\nrandom.seed(42)\ndata_mixed = []\nfor data_d, data_m in zip(sorted_direct, sorted_mcts):\n    assert data_d['question'] == data_m['question']\n    answer_d = random.sample(data_d['answer'], 40)\n    answer_d.extend(data_m['answer'])\n    random.shuffle(answer_d)\n    data = {'question': data_d['question'], 'answer': answer_d}\n    assert len(answer_d) == 50 # make sure the number of data equals to 50\n    data_mixed.append(data)\n# save critic training data\nwith open('./rlhf_data_mixed_value.jsonl', 'w') as file:\n    for data in data_mixed:",
+        "type": "code",
+        "location": "/train_mcts_scripts/rlhf/mix_value_data.py:1-27"
+    },
+    "135": {
+        "file_id": 24,
+        "content": "The code loads two sets of data from JSONL files, one for direct sampling and another for MCTS sampling. It then sorts the data by question, creates a new list with mixed answers from both datasets, shuffles the answers, and saves the result in a JSONL file called 'rlhf_data_mixed_value.jsonl'. This code is preparing training data for critic module in reinforcement learning.",
+        "type": "comment"
+    },
+    "136": {
+        "file_id": 24,
+        "content": "        json_str = json.dumps(data)\n        file.write(json_str + '\\n')",
+        "type": "code",
+        "location": "/train_mcts_scripts/rlhf/mix_value_data.py:28-29"
+    },
+    "137": {
+        "file_id": 24,
+        "content": "This code serializes the data using json.dumps() and then appends it to a file along with a newline character, likely for storing data in a JSON format.",
+        "type": "comment"
+    },
+    "138": {
+        "file_id": 25,
+        "content": "/train_mcts_scripts/rlhf/test_policy_and_value.sh",
+        "type": "filepath"
+    },
+    "139": {
+        "file_id": 25,
+        "content": "This script sets up an environment for testing policy and value functions using a CT2 model cache, critic model cache, and runs the test with specified arguments. It uses 8 processors per node and saves policy results in the given directory. The environment is set to rlhf.",
+        "type": "summary"
+    },
+    "140": {
+        "file_id": 25,
+        "content": "set -e\n# export TEST_NO_TERMINAL=1\nexport TEST_WITH_TERMINAL=1\n# export TEST_COT_GREEDY=1\n# export TEST_COT_SC=1\n# export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7\nCT2_DIR={your ct2 model cache}\nCRITIC_PATH={your critic model cache}\ntorchrun --nproc_per_node=8 --master-port 29503 ../../tsllm/offline_rl/test_sft_and_v_rlhf.py \\\n    --critic_model_path $CRITIC_PATH \\\n    --tokenizer_path $CRITIC_PATH \\\n    --ct2_dir $CT2_DIR \\\n    --save_dir $1/policy_ep1 \\\n    --env_name rlhf",
+        "type": "code",
+        "location": "/train_mcts_scripts/rlhf/test_policy_and_value.sh:1-16"
+    },
+    "141": {
+        "file_id": 25,
+        "content": "This script sets up an environment for testing policy and value functions using a CT2 model cache, critic model cache, and runs the test with specified arguments. It uses 8 processors per node and saves policy results in the given directory. The environment is set to rlhf.",
+        "type": "comment"
+    },
+    "142": {
+        "file_id": 26,
+        "content": "/train_mcts_scripts/rlhf/train_rlhf_critic.py",
+        "type": "filepath"
+    },
+    "143": {
+        "file_id": 26,
+        "content": "Both comments describe code that initializes an RL trainer with specific configurations for training a model using MCTS. They specify various parameters and call the 'learn' function to start the training process.",
+        "type": "summary"
+    },
+    "144": {
+        "file_id": 26,
+        "content": "from tsllm.rl.trainer.mcts_trainer_traj_ct2_value import AccelerateMCTSTrainer\nfrom tsllm.rl.config import RLConfig\nfrom peft import LoraConfig, PeftType\nconfig = {\n    \"model\": {\n        \"model_path\": \"vicgalle/gpt2-open-instruct-v1\",\n        \"value_model_type_name\": \"AutoModelForCausalLMWithValueHead\"\n    },\n    \"tokenizer\": {\n        \"tokenizer_path\": \"vicgalle/gpt2-open-instruct-v1\",\n        \"padding_side\": \"right\"\n    },\n    \"mcts\": {},\n    \"env\": {},\n    \"optimizer\": {\n        \"name\":\n            \"adamw\",\n        \"kwargs\":\n            dict(lr=2e-5, betas=(0.9, 0.999), eps=1.0e-8, weight_decay=0.0)\n    },\n    \"scheduler\": {\n        \"name\": \"cosine_warmup\",\n        \"kwargs\": dict(warmup_ratio=0.03)\n    },\n    \"train\": {\n        \"gamma\": 1.0,\n        \"gae_lambda\": 0.95,\n        \"seq_length\": 1024,\n        \"epochs\": 2, # this is the epoch for the whole sampling/training process\n        \"micro_batch_size\": 4,\n        \"gradient_accumulation_steps\": 4,\n        \"train_epoch\": 1, #  this is the epoch for training process after each sampling",
+        "type": "code",
+        "location": "/train_mcts_scripts/rlhf/train_rlhf_critic.py:1-33"
+    },
+    "145": {
+        "file_id": 26,
+        "content": "This code initializes an AccelerateMCTSTrainer with specified configurations for RL training. It uses the Vicgalle/gpt2-open-instruct-v1 model, AdamW optimizer, and CosineWarmupScheduler. It also specifies training parameters like gamma, GAE lambda, sequence length, epochs, micro batch size, and gradient accumulation steps.",
+        "type": "comment"
+    },
+    "146": {
+        "file_id": 26,
+        "content": "        \"value_loss_coef\": 1.0,\n        \"eval_interval\": 1,\n        \"checkpoint_interval\": 1,\n        \"checkpoint_dir\": # Your checkpoint path,\n        \"save_optimizer\": False,\n        \"tracker\": \"tensorboard\",\n        \"logging_dir\": \"logs/\",\n        \"project_name\": # Your project name,\n        \"pre_onpolicy_datapath\": # Your onpolicy value data,\n        \"pre_onpolicy_datapath_train_test\": None,\n        \"pre_onpolicy_datapath_test\": None,\n        \"onpolicy_per_problem_max_size\": 1000,\n        \"sft_per_problem_max_size\": 1000,\n        \"env_name\": 'rlhf',\n        \"task_dataset_kwargs\":{\n            \"path\": 'Dahoas/synthetic-instruct-gptj-pairwise',\n            \"num_train_data\": 30000,\n        }\n    },\n}\nconfig = RLConfig.from_dict(config)\ntrainer = AccelerateMCTSTrainer(config)\ntrainer.learn()",
+        "type": "code",
+        "location": "/train_mcts_scripts/rlhf/train_rlhf_critic.py:34-58"
+    },
+    "147": {
+        "file_id": 26,
+        "content": "This code initializes an RL trainer with specific configurations for reinforcement learning. It trains a model using MCTS (Monte Carlo Tree Search) and defines various parameters such as value loss coefficient, evaluation interval, checkpoint directories, logging, dataset paths, and more. The 'learn' function is then called to start the training process.",
+        "type": "comment"
+    },
+    "148": {
+        "file_id": 27,
+        "content": "/train_mcts_scripts/rlhf/train_rlhf_policy.py",
+        "type": "filepath"
+    },
+    "149": {
+        "file_id": 27,
+        "content": "The code configures reinforcement learning (RL) for language modeling tasks, specifying paths, parameters, and initializing a trainer to train the RL model using the MCTS algorithm.",
+        "type": "summary"
+    },
+    "150": {
+        "file_id": 27,
+        "content": "import os\nimport math\nfrom datetime import timedelta\nfrom typing import Dict\nfrom dataclasses import dataclass\nimport torch\nfrom traitlets import Any\nfrom tsllm.rl.trainer.mcts_trainer_traj_ct2_sft import AccelerateMCTSTrainer, loop_iter\nfrom tsllm.rl.config import RLConfig\nfrom peft import LoraConfig, PeftType\nconfig = {\n    \"model\": {\n        \"model_path\": \"vicgalle/gpt2-open-instruct-v1\",\n    },\n    \"tokenizer\": {\n        \"tokenizer_path\": \"vicgalle/gpt2-open-instruct-v1\",\n        \"padding_side\": \"right\"\n    },\n    \"mcts\": {},\n    \"env\": {},\n    \"optimizer\": {\n        \"name\":\n            \"adamw\",\n        \"kwargs\":\n            dict(lr=2.0e-5, betas=(0.9, 0.999), eps=1.0e-8, weight_decay=0.0)\n    },\n    \"scheduler\": {\n        \"name\": \"cosine_warmup\",\n        \"kwargs\": dict(warmup_ratio=0.03)\n    },\n    \"train\": {\n        \"gamma\": 1.0,\n        \"gae_lambda\": 0.9,\n        \"seq_length\": 1024,\n        \"epochs\": 3, # this is the epoch for the whole sampling/training process\n        \"sft_micro_batch_size\": 4,\n        \"gradient_accumulation_steps\": 4,",
+        "type": "code",
+        "location": "/train_mcts_scripts/rlhf/train_rlhf_policy.py:1-39"
+    },
+    "151": {
+        "file_id": 27,
+        "content": "This code imports necessary libraries and defines a configuration for training a reinforcement learning (RL) policy using the MCTS algorithm. It specifies the model path, tokenizer path, and other parameters such as optimizer, scheduler, and training epochs. The code is part of a larger RL framework for language modeling tasks.",
+        "type": "comment"
+    },
+    "152": {
+        "file_id": 27,
+        "content": "        \"train_epoch\": 1, # this is the epoch for training process after each sampling\n        \"sft_loss_coef\": 1.0,\n        \"eval_interval\": 1,\n        \"checkpoint_interval\": 1,\n        \"checkpoint_dir\": # Your checkpoint dir,\n        \"save_optimizer\": False,\n        \"tracker\": \"tensorboard\",\n        \"logging_dir\": \"logs/\",\n        \"project_name\": # Your project name,\n        \"pre_sft_datapath\": # Your SFT jsonl datapath,\n        \"pre_onpolicy_datapath\": None,      \n        \"onpolicy_per_problem_max_size\": 1000,\n        \"sft_per_problem_max_size\": 1000,\n        \"env_name\": 'rlhf',\n        \"task_dataset_kwargs\":{\n            \"path\": 'Dahoas/synthetic-instruct-gptj-pairwise', # or call \"dataset_path\": Your dataset path,\n            \"num_train_data\": 30000,\n        }\n    },\n}\nconfig = RLConfig.from_dict(config)\ntrainer = AccelerateMCTSTrainer(config)\ntrainer.learn()",
+        "type": "code",
+        "location": "/train_mcts_scripts/rlhf/train_rlhf_policy.py:40-64"
+    },
+    "153": {
+        "file_id": 27,
+        "content": "The code sets up an RL configuration and initializes a trainer to train a reinforcement learning model. It specifies the training epoch, loss coefficient, evaluation and checkpoint intervals, directories for checkpoints and logging, project name, data paths for supervised fine-tuning (SFT) and on-policy learning, maximum problem sizes for each method, the environment name, and task dataset parameters. Finally, it trains the model using the trainer's learn() function.",
+        "type": "comment"
+    },
+    "154": {
+        "file_id": 28,
+        "content": "/tsllm/argparse_utils.py",
+        "type": "filepath"
+    },
+    "155": {
+        "file_id": 28,
+        "content": "This code defines two functions: `str2bool`, which converts a string input to a boolean, and `list_of_ints`, which parses a comma-separated list of integers into a list. The `str2bool` function checks if the input is \"True\" or \"False\", returning the corresponding boolean value; otherwise, it raises a ValueError with an appropriate error message. The `list_of_ints` function splits the input string by commas and converts each part to an integer, then returns the resulting list.",
+        "type": "summary"
+    },
+    "156": {
+        "file_id": 28,
+        "content": "def str2bool(x: str):\n    if x == \"False\":\n        return False\n    elif x == \"True\":\n        return True\n    else:\n        raise ValueError(\n            'you should either input \"True\" or \"False\" but not {}'.format(x)\n        )\ndef list_of_ints(arg):\n    return list(map(int, arg.split(\",\")))",
+        "type": "code",
+        "location": "/tsllm/argparse_utils.py:1-13"
+    },
+    "157": {
+        "file_id": 28,
+        "content": "This code defines two functions: `str2bool`, which converts a string input to a boolean, and `list_of_ints`, which parses a comma-separated list of integers into a list. The `str2bool` function checks if the input is \"True\" or \"False\", returning the corresponding boolean value; otherwise, it raises a ValueError with an appropriate error message. The `list_of_ints` function splits the input string by commas and converts each part to an integer, then returns the resulting list.",
+        "type": "comment"
+    },
+    "158": {
+        "file_id": 29,
+        "content": "/tsllm/merge_jsonl.py",
+        "type": "filepath"
+    },
+    "159": {
+        "file_id": 29,
+        "content": "This Python script merges multiple JSONL files in a target directory, excluding any file named \"merged.jsonl\". It reads each JSONL file, creates a dictionary with the index as key and object as value, then writes the merged data to a \"merged.jsonl\" file within the target directory. The script also handles KeyError exceptions that may occur when processing.",
+        "type": "summary"
+    },
+    "160": {
+        "file_id": 29,
+        "content": "import jsonlines\nimport pathlib\nimport argparse\ndef merge_jsonl_files(target_dir):\n    target_dir = pathlib.Path(target_dir)\n    total_data = dict()\n    for jl_file in target_dir.glob(r\"*.jsonl\"):\n        if \"merged.jsonl\" in str(jl_file):\n            print(\"WARNING!!: SKIP {}\".format(jl_file))\n            continue\n        print(jl_file)\n        with jsonlines.open(jl_file, \"r\") as reader:\n            for obj in reader:\n                total_data[obj[\"i\"]] = obj\n    with jsonlines.open(target_dir / \"merged.jsonl\", \"w\") as writer:\n        for i in range(len(total_data)):\n            try:\n                writer.write(total_data[i])\n            except KeyError as e:\n                print(\"key i not exist: \", i)\n                raise e\nif __name__ == \"__main__\":\n    parser = argparse.ArgumentParser()\n    parser.add_argument(\"--target_dir\", type=str, required=True)\n    args = parser.parse_args()\n    merge_jsonl_files(args.target_dir)",
+        "type": "code",
+        "location": "/tsllm/merge_jsonl.py:1-32"
+    },
+    "161": {
+        "file_id": 29,
+        "content": "This Python script merges multiple JSONL files in a target directory, excluding any file named \"merged.jsonl\". It reads each JSONL file, creates a dictionary with the index as key and object as value, then writes the merged data to a \"merged.jsonl\" file within the target directory. The script also handles KeyError exceptions that may occur when processing.",
+        "type": "comment"
+    },
+    "162": {
+        "file_id": 30,
+        "content": "/tsllm/distributed/utils.py",
+        "type": "filepath"
+    },
+    "163": {
+        "file_id": 30,
+        "content": "The code contains functions for distributed computation, with capabilities to initialize the process group, gather scalar values, and print messages from specific processes. It collects tensor values in a distributed environment, returning them as a list after gathering across all processes.",
+        "type": "summary"
+    },
+    "164": {
+        "file_id": 30,
+        "content": "import torch.distributed as dist\nimport torch\nfrom datetime import timedelta\ndef print_rank_0(message):\n    \"\"\"If distributed is initialized, print only on rank 0.\"\"\"\n    if dist.is_initialized():\n        if dist.get_rank() == 0:\n            print(message, flush=True)\n    else:\n        print(message, flush=True)\ndef print_with_rank(message):\n    if dist.is_initialized():\n        rank = dist.get_rank()\n        world_size = dist.get_world_size()\n        print(\"[{}/{}]: {}\".format(rank, world_size, message), flush=True)\n    else:\n        print(message, flush=True)\ndef init_distributed(timeout=timedelta(seconds=3 * 60 * 60)):\n    if not dist.is_initialized():\n        dist.init_process_group(backend=\"nccl\", timeout=timeout)\n    world_size = dist.get_world_size()\n    local_rank = dist.get_rank()\n    return local_rank, world_size\ndef gather_scalar(x, rank, world_size):\n    x_tensor = torch.tensor(x).to(f\"cuda:{rank}\")\n    if rank == 0:\n        x_list = [torch.zeros_like(x_tensor) for _ in range(world_size)]\n        dist.gather(x_tensor, x_list, 0)",
+        "type": "code",
+        "location": "/tsllm/distributed/utils.py:1-37"
+    },
+    "165": {
+        "file_id": 30,
+        "content": "This code contains functions for distributed computation, including initializing the distributed process group using NCCL backend, gathering scalar values from different processes, and providing methods to print messages only on rank 0 or with ranks included in the message.",
+        "type": "comment"
+    },
+    "166": {
+        "file_id": 30,
+        "content": "        return [x.item() for x in x_list]\n    else:\n        dist.gather(x_tensor)",
+        "type": "code",
+        "location": "/tsllm/distributed/utils.py:38-40"
+    },
+    "167": {
+        "file_id": 30,
+        "content": "This code block is responsible for collecting distributed tensor values and returning them as a list or gathering the values in a distributed environment. If the tensor is not distributed, it will return a list of itemized values; otherwise, it will gather the values across all processes in the distributed system.",
+        "type": "comment"
+    },
+    "168": {
+        "file_id": 31,
+        "content": "/tsllm/envs/__init__.py",
+        "type": "filepath"
+    },
+    "169": {
+        "file_id": 31,
+        "content": "The code creates a function to import environment modules, define tasks with datasets or data builders, and construct query/response strings for judging correct answers.",
+        "type": "summary"
+    },
+    "170": {
+        "file_id": 31,
+        "content": "from importlib import import_module\nfrom functools import partial\nfrom transformers import PreTrainedTokenizer\nfrom typing import Optional, Callable, Dict\nfrom .utils import build_critic_data_component, build_sft_data_component\ndef get_env_datasets(env_name: str, **kwargs):\n    task_module = import_module(f\"tsllm.envs.{env_name}\")\n    return task_module.get_train_test_dataset(**kwargs)\ndef get_default_sft_data_builder(env_name: str, **kwargs):\n    task_module = import_module(f\"tsllm.envs.{env_name}\")\n    return partial(\n        build_sft_data_component,\n        build_query_str_fn=task_module.Env.build_query_str,\n        build_response_str_fn=task_module.Env.build_response_str,\n        sep=task_module.SEP,\n        cot_task_desc_str=task_module.COT_TASK_DESC,\n        cot_example_str=task_module.COT_EXAMPLES,\n        problem_format_str=task_module.PROBLEM_FORMAT_STR,\n    )\ndef get_default_critic_data_builder(env_name: str, **kwargs):\n    task_module = import_module(f\"tsllm.envs.{env_name}\")\n    return partial(",
+        "type": "code",
+        "location": "/tsllm/envs/__init__.py:1-28"
+    },
+    "171": {
+        "file_id": 31,
+        "content": "The code defines three functions: `get_env_datasets`, `get_default_sft_data_builder`, and `get_default_critic_data_builder`. These functions are used to import a specific environment module (`env_name`) and return the training and testing datasets, or default data builders for sequence-to-sequence tasks and critic tasks. The functions use `importlib` to import the specified environment module and `functools.partial` to create partial function applications with the necessary arguments for building data components.",
+        "type": "comment"
+    },
+    "172": {
+        "file_id": 31,
+        "content": "        build_critic_data_component,\n        build_query_str_fn=task_module.Env.build_query_str,\n        sep=task_module.SEP,\n        cot_task_desc_str=task_module.COT_TASK_DESC,\n        cot_example_str=task_module.COT_EXAMPLES,\n        problem_format_str=task_module.PROBLEM_FORMAT_STR,\n    )\ndef get_default_query_str_builder(env_name: str, **kwargs):\n    task_module = import_module(f\"tsllm.envs.{env_name}\")\n    def fn(problem_input: str, is_few_shot: bool):\n        return task_module.Env.build_query_str(\n            cot_task_desc=task_module.COT_TASK_DESC,\n            cot_examples=task_module.COT_EXAMPLES,\n            problem_format_str=task_module.PROBLEM_FORMAT_STR,\n            problem_input=problem_input,\n            sep=task_module.SEP,\n            is_few_shot=is_few_shot,\n        )\n    return fn\ndef get_default_response_str_builder(env_name: str, **kwargs):\n    task_module = import_module(f\"tsllm.envs.{env_name}\")\n    def fn(problem_input: str, tokenizer: PreTrainedTokenizer, add_eos_token: bool):\n        return task_module.Env.build_response_str(",
+        "type": "code",
+        "location": "/tsllm/envs/__init__.py:29-58"
+    },
+    "173": {
+        "file_id": 31,
+        "content": "The function `get_default_query_str_builder` takes an environment name (env_name) and optional keyword arguments, imports the corresponding task module, and returns a function that builds a query string based on provided parameters. The returned function uses methods from the imported task module to construct the query string. Similarly, `get_default_response_str_builder` does something similar but for building response strings.",
+        "type": "comment"
+    },
+    "174": {
+        "file_id": 31,
+        "content": "            problem_input,\n            tokenizer,\n            add_eos_token,\n        )\n    return fn\ndef get_env_answer_checker(env_name):\n    task_module = import_module(f\"tsllm.envs.{env_name}\")\n    def judge_answer(problem_str, groundtruth_str, answer_completion: str):\n        # should feed the unprocessed `groundtruth_str` and `answer_completion_str`\n        return task_module.judge_correct(\n            problem_str,\n            task_module.extract_groundtruth(groundtruth_str),\n            task_module.extract_answer(answer_completion),\n        )\n    return judge_answer",
+        "type": "code",
+        "location": "/tsllm/envs/__init__.py:59-77"
+    },
+    "175": {
+        "file_id": 31,
+        "content": "This code defines a function \"get_env_answer_checker\" that takes an environment name as input and returns a judging function for the given task. The function imports the relevant module, and then creates another function \"judge_answer\" which takes problem statement, groundtruth, and answer completion as inputs and calls relevant methods from the imported module to judge if the answer is correct or not.",
+        "type": "comment"
+    },
+    "176": {
+        "file_id": 32,
+        "content": "/tsllm/envs/base_env.py",
+        "type": "filepath"
+    },
+    "177": {
+        "file_id": 32,
+        "content": "The code introduces `BaseEnv` and \"CoTEnv\" classes for Monte Carlo Tree Search, supporting few-shot learning, environment resetting, managing game states, actions, rewards, termination, and language model-generated text in text-based games. It handles tasks, termination, copying instances, natural language problems at the token level, and includes features for LLM tree search implementation such as action history, instance building checks, and cumulative indices.",
+        "type": "summary"
+    },
+    "178": {
+        "file_id": 32,
+        "content": "import abc\nfrom typing import Dict, List, Optional\nimport numpy as np\nimport copy\nimport pdb\nimport torch\nfrom tsllm.distributed.utils import print_with_rank\nfrom transformers import PreTrainedTokenizer\nINVALID_ANS = \"[invalid]\"\nclass NoLegalActionException(Exception):\n    pass\nclass ResetException(Exception):\n    pass\nclass BaseEnv(abc.ABC):\n    \"\"\"Basic environment to use for MCTS\"\"\"\n    @abc.abstractmethod\n    def reset(self, update_legal_action: bool):\n        raise NotImplementedError\n    @abc.abstractmethod\n    def step(self):\n        raise NotImplementedError\n    @abc.abstractproperty\n    def legal_actions(self):\n        raise NotImplementedError\n    @abc.abstractmethod\n    def copy(self):\n        raise NotImplementedError\n    @staticmethod\n    def build_query_str(\n        cot_task_desc: Optional[str],\n        cot_examples: Optional[str],\n        problem_format_str: str,\n        problem_input: str,\n        sep: str,\n        is_few_shot: bool = False,\n    ):\n        \"\"\"a wrap function that wrap the problem text with certrain format",
+        "type": "code",
+        "location": "/tsllm/envs/base_env.py:1-49"
+    },
+    "179": {
+        "file_id": 32,
+        "content": "This code defines a base environment class, `BaseEnv`, for Monte Carlo Tree Search (MCTS) in a transformers-based context. It includes abstract methods like `reset`, `step`, and `legal_actions` that must be implemented by derived classes. The class also contains a static method `build_query_str` for wrapping the problem text with certain formats. The code uses various imported modules such as `abc`, `numpy`, `torch`, and `transformers`.",
+        "type": "comment"
+    },
+    "180": {
+        "file_id": 32,
+        "content": "        e.g. prompt_str = \"Input: \" + join_numbers(\" \", xs) + \"\\nSteps:\\n\"\n        >>> query_str = Game24Env.build_query_str(\"1 1 1 1\")\n        >>> print(query_str)\n        >>> Use numbers and basic arithmetic operations (+ - * /) to obtain 24. Each step, you are only allowed to choose two of the remaining numbers to obtain a new number.\n        Input: 1 1 1 1\n        Steps:\n        >>>\n        \"\"\"\n        ret = \"\"\n        if cot_task_desc:\n            ret += cot_task_desc + \"\\n\"\n        if is_few_shot:\n            ret += cot_examples + \"\\n\"\n        ret += problem_format_str.format(question=problem_input)\n        # THIS is because CoTEnv.answer/get_state() append \"\\n\"\n        ret += sep\n        return ret\n    @staticmethod\n    def build_response_str(\n        answer_str: str, tokenizer: PreTrainedTokenizer, add_eos_token: bool\n    ):\n        raise NotImplementedError\nclass CoTEnv(BaseEnv):\n    \"\"\"The basic environment for solving natural language problems using CoT\"\"\"\n    sep: str\n    @staticmethod\n    def build_response_str(",
+        "type": "code",
+        "location": "/tsllm/envs/base_env.py:50-84"
+    },
+    "181": {
+        "file_id": 32,
+        "content": "This code defines a class \"CoTEnv\" for solving natural language problems using Chain of Thought (CoT) approach. The method \"build_query_str\" is used to generate a query string containing the problem input and steps. The \"build_response_str\" is a static method that builds a response string based on answer and tokenizer, but it raises NotImplementedError as it hasn't been implemented yet.",
+        "type": "comment"
+    },
+    "182": {
+        "file_id": 32,
+        "content": "        answer_str: str, tokenizer: PreTrainedTokenizer, add_eos_token: bool\n    ):\n        if add_eos_token:\n            # if text ends with </s>, remove it so the follwing strip can remove \\n\n            #  and in latter add_traj, \\n and </s> will be added again\n            if answer_str.endswith(tokenizer.eos_token):\n                answer_str = answer_str.replace(tokenizer.eos_token, \"\")\n            answer_str = answer_str.strip()\n            answer_str += tokenizer.eos_token\n        return answer_str\n    @property\n    def stop_str(self):\n        return NotImplementedError\n    def _is_correct(self, completion) -> bool:\n        raise NotImplementedError\n    def get_reward(self):\n        \"\"\"To implement based on learned reward model\"\"\"\n        raise NotImplementedError\n    def __init__(\n        self,\n        config,\n        math_problems,\n        llm_gen_fn,\n        tokenizer,\n        task_desc_str: str,\n        cot_example_str: str,\n        problem_format_str: str,\n        reset=True,\n    ):\n        self.config = config",
+        "type": "code",
+        "location": "/tsllm/envs/base_env.py:85-118"
+    },
+    "183": {
+        "file_id": 32,
+        "content": "This code defines a base environment class for a task involving text completion using a language model. The `answer_str` method adds an end-of-sentence token if necessary, and the `stop_str` method returns NotImplementedError. The `_is_correct` method also returns NotImplementedError. The `get_reward` method needs to be implemented based on a learned reward model. The class is initialized with config, math problems, llm generation function, tokenizer, task description string, context example string, and problem format string. The `reset` parameter is optional and defaults to True.",
+        "type": "comment"
+    },
+    "184": {
+        "file_id": 32,
+        "content": "        self.mcts_mode = \"play_with_bot_mode\"\n        self.math_problems = math_problems\n        self.llm_gen_fn = llm_gen_fn\n        self.tokenizer = tokenizer\n        self.action_history = None\n        self.math_problem = None\n        self._legal_actions = None\n        self.is_few_shot = config.get(\"is_few_shot\", False)\n        self._task_desc_str = task_desc_str\n        self._cot_example_str = cot_example_str\n        self._problem_format_str = problem_format_str\n        prefixes = []\n        if self._task_desc_str is not None:\n            prefixes.append(self._task_desc_str)\n        if self.is_few_shot:\n            prefixes.append(self._cot_example_str)\n        if len(prefixes) > 0:\n            self.task_prefix = \"\\n\".join(prefixes)\n        else:\n            self.task_prefix = None\n        if reset:\n            self.reset(update_legal_action=True)\n    def reset(self, update_legal_action=True):\n        # reset environment to problem idx\n        self.set_problem(idx=0)\n        self.action_history = self.init_action_history()",
+        "type": "code",
+        "location": "/tsllm/envs/base_env.py:119-148"
+    },
+    "185": {
+        "file_id": 32,
+        "content": "This code initializes a base environment for the LLM tree search algorithm. It sets attributes like mcts_mode, math_problems, and llm_gen_fn. It also checks if it's a few-shot learning scenario and generates task prefixes to be used. The reset() function resets the environment to problem index 0 and initializes the action history.",
+        "type": "comment"
+    },
+    "186": {
+        "file_id": 32,
+        "content": "        if update_legal_action:\n            cnt = 0\n            while cnt < 3:\n                cnt += 1\n                try:\n                    self._legal_actions = self.update_legal_actions()\n                    break\n                except NoLegalActionException as e:\n                    if cnt == 3:\n                        raise ResetException\n        return self.get_state()\n    def step(self, action, update_legal_action=True):\n        self.action_history.append(action)\n        state = self.get_state()\n        reward = self.get_reward()\n        terminated, truncated, info = self.get_done_and_info()\n        # update legal actions\n        if not (terminated or truncated) and update_legal_action:\n            try:\n                self._legal_actions = self.update_legal_actions()\n            except NoLegalActionException as e:\n                terminated = True\n                reward = 0\n                self._legal_actions = None\n                info[\"winner\"] = 2\n        else:\n            self._legal_actions = None",
+        "type": "code",
+        "location": "/tsllm/envs/base_env.py:149-176"
+    },
+    "187": {
+        "file_id": 32,
+        "content": "The code defines a base environment for the game and provides methods to update legal actions, get state, reward, and done status. If there are no legal actions left after a step, the game is terminated and reward set to 0. If not terminated or truncated, it updates legal actions. The \"info\" dictionary includes the winner if the game ended due to no legal actions.",
+        "type": "comment"
+    },
+    "188": {
+        "file_id": 32,
+        "content": "            if info[\"winner\"] == 1:\n                reward = 1.0\n        return state, reward, terminated, truncated, info\n    def get_state(self):\n        return \"\\n\".join(self.action_history) + \"\\n\"\n    def init_action_history(self):\n        # add the first prompted questions\n        return ([self.task_prefix] if self.task_prefix is not None else []) + [\n            # f\"Question: {self.math_problem['question']}\\nAnswer: Let's think step by step\"\n            self._problem_format_str.format(question=self.math_problem[\"question\"])\n        ]\n    def update_legal_actions(self):\n        def reduce_prob_list(prob_list: List[List]) -> List:\n            ans_list = []\n            for scores in prob_list:\n                ans_list.append(np.exp(np.mean(scores)))\n            return ans_list\n        prefix = (\n            (self.action_history[0] + \"\\n\") if self.task_prefix is not None else None\n        )\n        act_hist_start_i = 0 if self.task_prefix is None else 1\n        unprefixed_state = \"\\n\".join(self.action_history[act_hist_start_i:]) + \"\\n\"",
+        "type": "code",
+        "location": "/tsllm/envs/base_env.py:177-202"
+    },
+    "189": {
+        "file_id": 32,
+        "content": "In this code snippet, we have a base_env class with methods for handling game states and actions. It checks if the player won the game, returns the current state, initializes the action history, and updates legal actions based on the action history. The reward is assigned if the player wins.",
+        "type": "comment"
+    },
+    "190": {
+        "file_id": 32,
+        "content": "        texts, logps = self.llm_gen_fn(\n            static_prompt=prefix,\n            prompt=unprefixed_state,\n            num_sequence=self.config[\"max_actions\"],\n            stop=[13, self.tokenizer.eos_token_id],\n            **self.config[\"generation_config\"],\n        )\n        text_list, prob_list = [], []\n        for i in range(len(texts)):\n            if len(texts[i]) > 0 and texts[i] not in text_list:\n                text_list.append(texts[i])\n                prob_list.append(logps[i])\n        if len(prob_list) == 0:\n            print_with_rank(\n                \"{} {} {}\".format(prefix, act_hist_start_i, unprefixed_state)\n            )\n            raise NoLegalActionException(\"No possible action have been generated.\")\n        prob_list = reduce_prob_list(prob_list)\n        prob_list = np.array(prob_list)\n        # normalize probability\n        prob_list = prob_list / np.sum(prob_list)\n        # set add special tokens as False to remove bos/eos tokens\n        num_token_list = [\n            len(self.tokenizer.encode(txt, add_special_tokens=False))",
+        "type": "code",
+        "location": "/tsllm/envs/base_env.py:203-230"
+    },
+    "191": {
+        "file_id": 32,
+        "content": "This code is using a language model to generate text based on a prefix and an unprefixed state. It checks for valid actions and raises an exception if none are generated. The code then normalizes the generated probabilities, removes special tokens like BOS/EOS, and stores the results in lists for later use.",
+        "type": "comment"
+    },
+    "192": {
+        "file_id": 32,
+        "content": "            for txt in text_list\n        ]\n        _legal_actions = [\n            {\"action\": action, \"prob\": prob, \"num_token\": n_token}\n            for action, prob, n_token in zip(text_list, prob_list, num_token_list)\n        ]\n        return _legal_actions\n    def set_problem(self, idx):\n        self.math_problem = self.math_problems[idx]\n    @property\n    def question(self):\n        return (\n            \"\\n\".join(self.action_history[:1]) + \"\\n\"\n            if self.task_prefix is None\n            else \"\\n\".join(self.action_history[:2]) + \"\\n\"\n        )\n    @property\n    def answer(self):\n        return (\n            \"\\n\".join(self.action_history[1:]) + \"\\n\"\n            if self.task_prefix is None\n            else \"\\n\".join(self.action_history[2:]) + \"\\n\"\n        )\n    def get_done_and_info(self):\n        info = {\"winner\": 0}\n        # done when reaches maximum length or LLM generates stop words\n        terminated = self.stop_str in self.action_history[-1]\n        truncated = len(self.action_history) >= self.config[\"max_length\"] + (",
+        "type": "code",
+        "location": "/tsllm/envs/base_env.py:231-264"
+    },
+    "193": {
+        "file_id": 32,
+        "content": "This code defines a base environment class for a text-based game. It sets the legal actions based on input texts, allows setting and getting problems, and provides properties to get the question and answer in different formats depending on whether there is a task prefix or not. The done status depends on reaching maximum length or encountering stop words, and the environment can also be truncated if it exceeds the maximum length set in the configuration.",
+        "type": "comment"
+    },
+    "194": {
+        "file_id": 32,
+        "content": "            2 if self.task_prefix is not None else 1\n        )\n        assert len(self.action_history) <= self.config[\"max_length\"] + (\n            2 if self.task_prefix is not None else 1\n        ), \"action history length: {}, max length: {}\".format(\n            len(self.action_history),\n            self.config[\"max_length\"] + (2 if self.task_prefix is not None else 1),\n        )\n        if terminated or truncated:\n            if self._is_correct(self.action_history[-1]):\n                info[\"winner\"] = 1\n            else:\n                info[\"winner\"] = 2\n            return terminated, truncated, info\n        return terminated, truncated, info\n    def copy(self):\n        env = self.__class__(\n            self.config,\n            self.math_problems,\n            self.llm_gen_fn,\n            self.tokenizer,\n            self._task_desc_str,\n            self._cot_example_str,\n            self._problem_format_str,\n            reset=False,\n        )\n        env.math_problem = copy.deepcopy(self.math_problem)\n        env._legal_actions = copy.deepcopy(self._legal_actions)",
+        "type": "code",
+        "location": "/tsllm/envs/base_env.py:265-294"
+    },
+    "195": {
+        "file_id": 32,
+        "content": "The code is part of a class-based environment, responsible for setting up and running tasks. It checks the length of action history and terminates/truncates the task if necessary. It also includes a copy method that creates an identical instance of the environment without resetting it.",
+        "type": "comment"
+    },
+    "196": {
+        "file_id": 32,
+        "content": "        env.action_history = copy.deepcopy(self.action_history)\n        return env\n    @property\n    def legal_actions(self):\n        return self._legal_actions\nclass TokenEnv(BaseEnv):\n    \"\"\"The Token-level environment for solving natural language problems\"\"\"\n    sep: str\n    @property\n    def stop_str(self):\n        raise NotImplementedError\n    def _is_correct(self, completion) -> bool:\n        raise NotImplementedError\n    def get_reward(self, state):\n        \"\"\"To implement based on learned reward model\"\"\"\n        raise NotImplementedError\n    def __init__(\n        self,\n        config,\n        problems,\n        llm_forward_fn,\n        tokenizer,\n        task_desc_str: str,\n        cot_example_str: str,\n        problem_format_str: str,\n        reset=True,\n    ):\n        self.config = config\n        # do not use sep in config, but use sep defined in each env.prompt.SEP\n        # self.sep = config[\"sep\"]\n        self.mcts_mode = \"play_with_bot_mode\"\n        self.problems = problems\n        self.llm_forward_fn = llm_forward_fn",
+        "type": "code",
+        "location": "/tsllm/envs/base_env.py:295-335"
+    },
+    "197": {
+        "file_id": 32,
+        "content": "This code defines a TokenEnv class, a subclass of BaseEnv, for solving natural language problems at the token level. It overrides methods for determining legal actions, checking correctness, and getting rewards. The class takes in configuration, problems, LLM forward function, tokenizer, task description, example, and problem format string.",
+        "type": "comment"
+    },
+    "198": {
+        "file_id": 32,
+        "content": "        self.tokenizer = tokenizer\n        self.action_history = None\n        self.problem = None\n        self._legal_actions = None\n        self.is_few_shot = config.get(\"is_few_shot\", False)\n        self._task_desc_str = task_desc_str\n        self._cot_example_str = cot_example_str\n        self._problem_format_str = problem_format_str\n        prefixes = []\n        if self._task_desc_str is not None:\n            prefixes.append(self._task_desc_str)\n        if self.is_few_shot:\n            prefixes.append(self._cot_example_str)\n        if len(prefixes) > 0:\n            self.task_prefix = \"\\n\".join(prefixes)\n        else:\n            self.task_prefix = None\n        if reset:\n            self.reset(update_legal_action=True)\n    def reset(self, update_legal_action=True):\n        # reset environment to problem idx\n        self.set_problem(idx=0)\n        self.action_history = self.init_action_history()\n        if update_legal_action:\n            self._legal_actions = self.update_legal_actions()\n        return self.get_state()",
+        "type": "code",
+        "location": "/tsllm/envs/base_env.py:336-365"
+    },
+    "199": {
+        "file_id": 32,
+        "content": "The code initializes the environment for a task and resetting it. It sets up the tokenizer, action history, problem, legal actions, few-shot flag, and task prefix based on provided parameters. The `reset` function resets the environment to its initial state by setting the problem index, updating the action history, and updating the legal actions if necessary.",
+        "type": "comment"
+    }
+}

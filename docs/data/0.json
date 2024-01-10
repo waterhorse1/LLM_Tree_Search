@@ -1,0 +1,534 @@
+{
+    "0": {
+        "file_id": 0,
+        "content": "/README.md",
+        "type": "filepath"
+    },
+    "1": {
+        "file_id": 0,
+        "content": "The TS_LLM framework accelerates language model inference through AlphaZero-like techniques, offers training instructions for various tasks, and utilizes SFT or pretrained models. It also provides guidance on testing, iterative updates, and emphasizes proper usage of SearchArguments.",
+        "type": "summary"
+    },
+    "2": {
+        "file_id": 0,
+        "content": "# TS_LLM: AlphaZero-like tree-search learning framework for LLMs \nThe official implementation of paper: [Alphazero-like Tree-Search can guide large language model decoding and training](https://arxiv.org/pdf/2309.17179.pdf)\n# Enviroment Installation\nplease use correct version of `transformers` and `ctranlate2`\n```\nconda create -n tsllm python==3.10\nconda activate tsllm\npip install -r requirement.txt\npip install -e .\n```\n# Runnable Scripts\nWe show examples of one task, other tasks are similar and we provide the corresponding scripts.\n## Start\nWe use [Ctranslate2(3.17.1)](https://github.com/OpenNMT/CTranslate2) to speedup LLM inference, which is implemented in C++ and much faster than python huggingface. To use Ctranslate2, you need first transform your LLM model, here is an example:\n```bash\nct2-transformers-converter --model {your huggingface model path} --quantization bfloat16 --output_dir {your ct2_cache target path}\n# We use bfloat 16 for LLaMA model and float32 for GPT2 model\n```\nNote that we use Ctr",
+        "type": "code",
+        "location": "/README.md:1-26"
+    },
+    "3": {
+        "file_id": 0,
+        "content": "TS_LLM is an AlphaZero-like tree search learning framework for large language models (LLMs). It's based on a paper titled \"Alphazero-like Tree-Search can guide large language model decoding and training.\" The code requires specific versions of transformers and Ctranslate2, with installation instructions provided. The framework accelerates LLM inference by converting HuggingFace models to Ctranslate2 using bfloat16 quantization for LLaMA or float32 for GPT2.",
+        "type": "comment"
+    },
+    "4": {
+        "file_id": 0,
+        "content": "anslate2 for all policy inference, so for any policy in our codebase, do not forget to convert to ct2 model first.\n## Training of Value and Policy\nExamples are shown in `tran_mcts_scripts`, use GSM8k as example\n```bash\ncd train_mcts_scripts/gsm8k\n# SFT for GSM8K, Game24 and ProntoQA\n# Note that For RLHF we do not conduct SFT training, we directly utilize vicgalle/gpt2-open-instruct-v1.\naccelerate launch --config_file mcts_gsm8k_llama_deepspeed.yaml train_gsm8k_sft.py \n# Critic training for all four tasks, data is collected by data collection section.\naccelerate launch --config_file mcts_gsm8k_llama_deepspeed.yaml train_gsm8k_critic.py\n```\nYou can customize `config` in each py files, e.g. `config[\"train\"][\"checkpoint_dir\"]` and `config[\"train\"][\"project_name\"]`. (we use accelerate so we also provide the accelerate config in `accelerate_config.yaml`)\n## Data Collection for Value Training\nExamples are shown in `tsllm/offline_rl`, use GSM8k as example \n```bash\ncd tsllm/offline_rl\n# please check the scripts, for gsm8k and game24, we use 3 checkpoints to rollout data",
+        "type": "code",
+        "location": "/README.md:26-47"
+    },
+    "5": {
+        "file_id": 0,
+        "content": "The code outlines the training process for value and policy inference using a specific model, ct2. It provides instructions to train the model on tasks such as GSM8K, Game24, and ProntoQA. The code also mentions that SFT (text-conditioned finetuning) is used for some tasks, while others utilize VicGalle's pretrained model directly. Furthermore, it describes the data collection process for value training and specifies using three checkpoints to collect rollout data for GSM8K and Game24.",
+        "type": "comment"
+    },
+    "6": {
+        "file_id": 0,
+        "content": "# which is named as ${CT2_CACHE}/llama2_sft_ep${i}_ct2\nsh gsm8k_data/gen_3.sh {your ct2 transformed path} {your model tokenizer path} # This is for dataset generation\nsh gsm8k_data/process.sh # This is for dataset processing\n```\n## Testing over CoT, CoT-SC and TS-LLM\nFor GSM8K, Game24, ProtoQA, you should use `tsllm/offline_rl/test_sft_and_v.py` to test the policy model and value function.\nTo run the tests, you should know 2 key concepts used in the code, the first one is 4 test settings, which is controlled by setting environment variables; the other is search arguments, which is set in `tsllm/offline_rl/test_sft_and_v.py` as elements in `arg_list`\nThere are four types of test setting:\n- `TEST_NO_TERMINAL` is MCTS/other tree search methods in GSM8K/ProntoQA/Game24 (we assume we do not know the final reward in these 3 tasks)\n- `TEST_WITH_TERMINAL` is MCTS/other tree search methods in RLHF (we assume we know the final reward in RLHF)\n- `TEST_COT_GREEDY` is CoT greedy decoding\n- `TEST_COT_SC` is CoT-SC",
+        "type": "code",
+        "location": "/README.md:48-62"
+    },
+    "7": {
+        "file_id": 0,
+        "content": "The code provides instructions for generating and processing datasets for GSM8K, Game24, and ProtoQA using specific scripts. The testing of policy models and value functions is done using `tsllm/offline_rl/test_sft_and_v.py`. Four test settings (`TEST_NO_TERMINAL`, `TEST_WITH_TERMINAL`, `TEST_COT_GREEDY`, `TEST_COT_SC`) are controlled by environment variables, and search arguments are set in the Python script as elements in `arg_list`.",
+        "type": "comment"
+    },
+    "8": {
+        "file_id": 0,
+        "content": "There are several args to control CoT-SC and Tree Search methods, see `tsllm/offline_rl/test_sft_and_v.py::SearchArgs` for more information.\nTo run the test, using the following scripts (examples in `train_mcts_scripts/gsm8k/test_policy_and_value.sh`)\n```\ncd train_mcts_scripts/gsm8k/\nsh test_policy_and_value_sh {your save dir}\n```\n**Please make sure the SearchArguments you are using are correct, e.g. check `\"max_action\"`, `\"max_length\"`, etc.**\nFor RLHF environment, it is basically similar except that you should use `tsllm/offline_rl/test_sft_and_v_rlhf.py`. We assume we have a reward function in RLHF setting, so you shoud set `TEST_WITH_TERMINAL=1` for rlhf experiment. \nThere are several args to control CoT-SC and Tree Search methods, see `tsllm/offline_rl/test_sft_and_v_rlhf.py::SearchArgs` for more information.\nTo run the test, we provide an example in `train_mcts_scripts/rlhf/test_policy_and_value.sh`.\n## Iterative Update\nFor iterative update, please refer to `train_mcts_scripts/gsm8k` and `train_mcts_scripts/rlhf` for more instructions.",
+        "type": "code",
+        "location": "/README.md:64-82"
+    },
+    "9": {
+        "file_id": 0,
+        "content": "This code explains how to test and run a language model's policy and value functions using tree search and CoT-SC methods. It provides examples of scripts and instructions for both general and RLHF environments, with emphasis on proper usage of SearchArguments and setting TEST_WITH_TERMINAL for the reward function in RLHF setting. Additionally, it offers guidance on how to perform iterative updates using provided instructions in specific folders.",
+        "type": "comment"
+    },
+    "10": {
+        "file_id": 0,
+        "content": "## Citation\nIf you find our repo useful, please cite it in your publications.\n```bibtex\n@article{feng2023alphazero,\n  title={Alphazero-like Tree-Search can Guide Large Language Model Decoding and Training},\n  author={Feng, Xidong and Wan, Ziyu and Wen, Muning and Wen, Ying and Zhang, Weinan and Wang, Jun},\n  journal={arXiv preprint arXiv:2309.17179},\n  year={2023}\n}\n```\n## Acknowledgement\nOur code implementation refers to code from [lightzero](https://github.com/opendilab/LightZero).",
+        "type": "code",
+        "location": "/README.md:84-97"
+    },
+    "11": {
+        "file_id": 0,
+        "content": "This code provides a citation for the repo and acknowledges the use of code from lightzero repository.",
+        "type": "comment"
+    },
+    "12": {
+        "file_id": 1,
+        "content": "/requirement.txt",
+        "type": "filepath"
+    },
+    "13": {
+        "file_id": 1,
+        "content": "This code specifies the required Python packages for a project. \"ctranslate2\" version 3.17.1 is needed, as well as \"transformers\" version 4.29.2. The project also requires \"torch\" version 2.0.1+cu117 and \"numpy\" version 1.25.0. It depends on \"flash-attn\" version 1.0.9 and \"dm-tree\" version 0.1.8. These packages are used for machine translation, attention mechanism, and data manipulation.",
+        "type": "summary"
+    },
+    "14": {
+        "file_id": 1,
+        "content": "ctranslate2==3.17.1\ntransformers==4.29.2\ntorch==2.0.1+cu117\nnumpy==1.25.0\nflash-attn==1.0.9\ndm-tree==0.1.8",
+        "type": "code",
+        "location": "/requirement.txt:1-6"
+    },
+    "15": {
+        "file_id": 1,
+        "content": "This code specifies the required Python packages for a project. \"ctranslate2\" version 3.17.1 is needed, as well as \"transformers\" version 4.29.2. The project also requires \"torch\" version 2.0.1+cu117 and \"numpy\" version 1.25.0. It depends on \"flash-attn\" version 1.0.9 and \"dm-tree\" version 0.1.8. These packages are used for machine translation, attention mechanism, and data manipulation.",
+        "type": "comment"
+    },
+    "16": {
+        "file_id": 2,
+        "content": "/setup.py",
+        "type": "filepath"
+    },
+    "17": {
+        "file_id": 2,
+        "content": "This code sets up a Python package for an AlphaZero-like tree search learning framework using LLMs. It imports necessary modules, specifies the name, version, description, and other relevant details, finds packages to include, and requires Python 3.10 or higher.",
+        "type": "summary"
+    },
+    "18": {
+        "file_id": 2,
+        "content": "import os\nfrom setuptools import setup, find_packages\nimport setuptools\nsetup(\n    name=\"tsllm\",  # Replace with your own username\n    version=\"0.1.0\",\n    description=\"TS_LLM: AlphaZero-like tree-search learning framework for LLMs\",\n    long_description=open(\"README.md\", encoding=\"utf8\").read(),\n    long_description_content_type=\"text/markdown\",\n    author=\"tmp\",\n    author_email=\"tmp\",\n    packages=setuptools.find_packages(),\n    classifiers=[],\n    keywords=\"large language model, tree search, reinforcement learning, value function\",\n    python_requires='>=3.10',\n)",
+        "type": "code",
+        "location": "/setup.py:1-18"
+    },
+    "19": {
+        "file_id": 2,
+        "content": "This code sets up a Python package for an AlphaZero-like tree search learning framework using LLMs. It imports necessary modules, specifies the name, version, description, and other relevant details, finds packages to include, and requires Python 3.10 or higher.",
+        "type": "comment"
+    },
+    "20": {
+        "file_id": 3,
+        "content": "/train_mcts_scripts/game24/ds_config.json",
+        "type": "filepath"
+    },
+    "21": {
+        "file_id": 3,
+        "content": "This JSON configuration file sets various training parameters for a machine learning model, including micro-batch size per GPU, gradient accumulation steps, mixed precision settings (FP16 and BF16), and zero optimization stage with specific configurations.",
+        "type": "summary"
+    },
+    "22": {
+        "file_id": 3,
+        "content": "{\n  \"train_micro_batch_size_per_gpu\": \"auto\",\n  \"gradient_accumulation_steps\": 2,\n  \"bf16\": {\n    \"enabled\": true\n  },\n  \"fp16\": {\n    \"enabled\": false,\n    \"min_loss_scale\": 0.0001,\n    \"fp16_scale_tolerance\": 0.0,\n    \"opt_level\": \"O1\"\n  },\n  \"zero_optimization\": {\n    \"stage\": 2,\n    \"allgather_partitions\": true,\n    \"allgather_bucket_size\": 5e8,\n    \"contiguous_gradients\": true\n  }\n}",
+        "type": "code",
+        "location": "/train_mcts_scripts/game24/ds_config.json:1-19"
+    },
+    "23": {
+        "file_id": 3,
+        "content": "This JSON configuration file sets various training parameters for a machine learning model, including micro-batch size per GPU, gradient accumulation steps, mixed precision settings (FP16 and BF16), and zero optimization stage with specific configurations.",
+        "type": "comment"
+    },
+    "24": {
+        "file_id": 4,
+        "content": "/train_mcts_scripts/game24/mcts_game24_llama_deepspeed.yaml",
+        "type": "filepath"
+    },
+    "25": {
+        "file_id": 4,
+        "content": "This code configures a DeepSpeed training setup for MCTS on game24 with LOCAL_MACHINE, 1 machine, and 8 processes. It uses deepspeed_config_file for configuration, disables downcast bf16, sets main_training_function, and enables same_network.",
+        "type": "summary"
+    },
+    "26": {
+        "file_id": 4,
+        "content": "compute_environment: LOCAL_MACHINE\ndeepspeed_config:\n  deepspeed_config_file: ./ds_config.json\n  zero3_init_flag: false\ndistributed_type: DEEPSPEED\ndowncast_bf16: 'no'\nmachine_rank: 0\nmain_training_function: main\nnum_machines: 1\nnum_processes: 8\nrdzv_backend: static\nsame_network: true\ntpu_env: []\ntpu_use_cluster: false\ntpu_use_sudo: false\nuse_cpu: false",
+        "type": "code",
+        "location": "/train_mcts_scripts/game24/mcts_game24_llama_deepspeed.yaml:1-16"
+    },
+    "27": {
+        "file_id": 4,
+        "content": "This code configures a DeepSpeed training setup for MCTS on game24 with LOCAL_MACHINE, 1 machine, and 8 processes. It uses deepspeed_config_file for configuration, disables downcast bf16, sets main_training_function, and enables same_network.",
+        "type": "comment"
+    },
+    "28": {
+        "file_id": 5,
+        "content": "/train_mcts_scripts/game24/test_policy_and_value.sh",
+        "type": "filepath"
+    },
+    "29": {
+        "file_id": 5,
+        "content": "The script runs a test on an offline reinforcement learning model for game24, using specified CT2 and critic models, saving policy results in the provided directory. It uses TorchRun with 8 processes per node and sets environment variables to control testing options.",
+        "type": "summary"
+    },
+    "30": {
+        "file_id": 5,
+        "content": "set -e\nexport TEST_NO_TERMINAL=1\n# export TEST_WITH_TERMINAL=1\n# export TEST_COT_GREEDY=1\n# export TEST_COT_SC=1\n# export CUDA_VISIBLE_DEVICES=1,2,3,4,5,6,7\nCT2_DIR={your ct2 model cache}\nCRITIC_PATH={your critic model cache}\ntorchrun --nproc_per_node=8 --master-port 29522 ../../tsllm/offline_rl/test_sft_and_v.py \\\n    --critic_model_path $CRITIC_PATH \\\n    --tokenizer_path $CRITIC_PATH \\\n    --ct2_dir $CT2_DIR \\\n    --save_dir $1/policy_ep3 \\\n    --env_name game24 \\\n    --test True",
+        "type": "code",
+        "location": "/train_mcts_scripts/game24/test_policy_and_value.sh:1-18"
+    },
+    "31": {
+        "file_id": 5,
+        "content": "The script runs a test on an offline reinforcement learning model for game24, using specified CT2 and critic models, saving policy results in the provided directory. It uses TorchRun with 8 processes per node and sets environment variables to control testing options.",
+        "type": "comment"
+    },
+    "32": {
+        "file_id": 6,
+        "content": "/train_mcts_scripts/game24/train_game24_critic.py",
+        "type": "filepath"
+    },
+    "33": {
+        "file_id": 6,
+        "content": "The code imports modules, replaces Llama attention with Flash attention for game24 task, sets up configurations, initializes AccelerateMCTSTrainer, and trains MCTS algorithm to learn from the environment through sampling and training processes. It updates parameters, evaluates performance, and saves checkpoints at specified intervals.",
+        "type": "summary"
+    },
+    "34": {
+        "file_id": 6,
+        "content": "from tsllm.rl.trainer.mcts_trainer_traj_ct2_value import AccelerateMCTSTrainer\nfrom tsllm.rl.config import RLConfig\nfrom peft import LoraConfig, PeftType\nfrom tsllm.model.llama_flash_attn_monkey_patch import replace_llama_attn_with_flash_attn\nreplace_llama_attn_with_flash_attn()\nconfig = {\n    \"model\": {\n        \"model_path\": \"meta-llama/Llama-2-7b-hf\",\n    },\n    \"tokenizer\": {\n        \"tokenizer_path\": \"meta-llama/Llama-2-7b-hf\",\n        \"padding_side\": \"right\",\n    },\n    \"optimizer\": {\n        \"name\": \"adamw\",\n        \"kwargs\": dict(lr=2.0e-5, betas=(0.9, 0.999), eps=1.0e-8, weight_decay=0.0),\n    },\n    \"scheduler\": {\"name\": \"cosine_warmup\", \"kwargs\": dict(warmup_ratio=0.03)},\n    \"train\": {\n        \"pre_onpolicy_datapath\": \"../../tsllm/offline_rl/game24/processed/game24_train_cot_sample_offline_sft_k100_merged_dedup_sample17x3.jsonl\",\n        \"pre_onpolicy_datapath_train_test\": \"../../tsllm/offline_rl/game24/processed/game24_train_cot_sample_offline_sft_k100_ep3_dedup_sample17_train_test_sample_3.jsonl\",",
+        "type": "code",
+        "location": "/train_mcts_scripts/game24/train_game24_critic.py:1-22"
+    },
+    "35": {
+        "file_id": 6,
+        "content": "This code imports necessary modules, replaces Llama attention with Flash attention, and sets up configurations for a training script. The model path, tokenizer path, optimizer settings, scheduler parameters, and pre-onpolicy data paths are defined for the game24 task.",
+        "type": "comment"
+    },
+    "36": {
+        "file_id": 6,
+        "content": "        \"env_name\": \"game24\",\n        \"epochs\": 3,  # this is the epoch for the whole sampling/training process\n        \"train_epoch\": 1,  # this is the epoch for training process after each sampling\n        \"gamma\": 1.0,\n        \"gae_lambda\": 0.95,\n        \"seq_length\": 1024,\n        \"micro_batch_size\": 4,\n        \"gradient_accumulation_steps\": 4,\n        \"value_loss_coef\": 1.0,\n        \"eval_interval\": 1,\n        \"checkpoint_interval\": 1,\n        \"checkpoint_dir\": tmp_for_check,\n        \"save_optimizer\": False,\n        \"tracker\": \"tensorboard\",\n        \"logging_dir\": \"logs/\",\n        \"project_name\": \"tmp_for_check\",\n        \"onpolicy_per_problem_max_size\": 1000,\n    },\n    \"mcts\": {},\n    \"env\": {},\n}\nconfig = RLConfig.from_dict(config)\ntrainer = AccelerateMCTSTrainer(config)\ntrainer.learn()",
+        "type": "code",
+        "location": "/train_mcts_scripts/game24/train_game24_critic.py:23-48"
+    },
+    "37": {
+        "file_id": 6,
+        "content": "This code initializes an AccelerateMCTSTrainer with provided config, then trains the MCTS algorithm to learn from the environment \"game24\" through sampling and training processes. The trainer updates its parameters and evaluates performance after each epoch, while saving checkpoints at specified intervals for potential future reference.",
+        "type": "comment"
+    },
+    "38": {
+        "file_id": 7,
+        "content": "/train_mcts_scripts/game24/train_game24_sft.py",
+        "type": "filepath"
+    },
+    "39": {
+        "file_id": 7,
+        "content": "The code initializes a training configuration for game24 RL model, using Llama-2-7b as base model and sets up parameters like epochs, batch size, and attention mechanism. It then trains the AccelerateMCTSTrainer with the provided config and learn() method.",
+        "type": "summary"
+    },
+    "40": {
+        "file_id": 7,
+        "content": "from tsllm.rl.trainer.mcts_trainer_traj_ct2_sft import AccelerateMCTSTrainer\nfrom tsllm.rl.config import RLConfig\nfrom tsllm.model.llama_flash_attn_monkey_patch import replace_llama_attn_with_flash_attn\nreplace_llama_attn_with_flash_attn()\nconfig = {\n    \"model\": {\n        \"model_path\": \"meta-llama/Llama-2-7b-hf\",\n    },\n    \"tokenizer\": {\n        \"tokenizer_path\": \"meta-llama/Llama-2-7b-hf\",\n        \"padding_side\": \"right\",\n    },\n    \"optimizer\": {\n        \"name\": \"adamw\",\n        \"kwargs\": dict(lr=2.0e-5, betas=(0.9, 0.999), eps=1.0e-8, weight_decay=0.0),\n    },\n    \"scheduler\": {\"name\": \"cosine_warmup\", \"kwargs\": dict(warmup_ratio=0.03)},\n    \"train\": {\n        \"pre_sft_datapath\": \"../../tsllm/envs/game24/train_data/train_dedup.jsonl\",\n        \"env_name\": \"game24\",\n        \"epochs\": 3,\n        \"train_epoch\": 1,\n        \"sft_micro_batch_size\": 4,\n        \"gradient_accumulation_steps\": 4,\n        \"seq_length\": 1024,\n        \"eval_interval\": 1,\n        \"sft_loss_coef\": 1.0,\n        \"checkpoint_interval\": 1,\n        \"checkpoint_dir\": tmp_for_check,",
+        "type": "code",
+        "location": "/train_mcts_scripts/game24/train_game24_sft.py:1-30"
+    },
+    "41": {
+        "file_id": 7,
+        "content": "This code is initializing a training configuration for the game24 RL model using Llama-2-7b as the base model. It sets up the model path, tokenizer path, optimizer, scheduler, and training parameters such as epochs, micro batch size, gradient accumulation steps, sequence length, and evaluation intervals. The code also applies a monkey patch to replace Llama's attention mechanism with Flash Attention for improved performance.",
+        "type": "comment"
+    },
+    "42": {
+        "file_id": 7,
+        "content": "        \"save_optimizer\": False,\n        \"project_name\": \"tmp_for_check\",\n        \"tracker\": \"tensorboard\",\n        \"logging_dir\": \"logs/\",\n        \"sft_per_problem_max_size\": 1000,\n    },\n    \"mcts\": {},\n    \"env\": {},\n}\nconfig = RLConfig.from_dict(config)\ntrainer = AccelerateMCTSTrainer(config)\ntrainer.learn()",
+        "type": "code",
+        "location": "/train_mcts_scripts/game24/train_game24_sft.py:31-44"
+    },
+    "43": {
+        "file_id": 7,
+        "content": "The code initializes an RLConfig object with several parameters, then creates and trains an AccelerateMCTSTrainer using the config, and finally calls the learn() method.",
+        "type": "comment"
+    },
+    "44": {
+        "file_id": 8,
+        "content": "/train_mcts_scripts/gsm8k/README.md",
+        "type": "filepath"
+    },
+    "45": {
+        "file_id": 8,
+        "content": "The code describes an iterative update process for GSM8k using rollout and training. Rollout hyperparameters are provided, and the process involves sampling examples on a training dataset using `test_sft_and_v.py`. After rollout, data is merged and then used for SFT and critic training following instructions in `it1_gsm8k.ipynb`. Training scripts can be found in `train_mcts_scripts/gsm8k/`, where arguments are modified within the `config` file before starting the training process.",
+        "type": "summary"
+    },
+    "46": {
+        "file_id": 8,
+        "content": "## iterative update of GSM8k\nHere we describe how to rollout and training iteratively, taking GSM8k for example,\n### Rollout\nuse `test_sft_and_v.py` to sample examples on training dataset. Rollout hyperparameters for GSM8k:\n```python\n{\n    \"temperature\": 1.0, \n    \"max_length\": 8, \n    \"max_action\": 10, \n    \"pb_c_init\": 3, \n    \"num_simulations\": 5, \n    \"num_mcts_aggregation\": 12, \n    \"rollout_method\": \"mcts.get_next_action\", \n    \"mcts_sample\": True,\n    \"clear_tree\": True,\n    \"reset_total_tree\": False,\n    # # useless hyperparameters in SearchArgs\n    # \"prune_ratio\": 0.7,\n    # \"prune_value\": None,\n    # \"select_by_prior\": False,\n    # \"max_simulation\": None,\n    # \"max_token\": 51200,\n    # \"k_maj\": 100,\n}\n```\nRun `test_sft_and_v.py` with `--test False`, which means testing on training dataset.\nAfter rollout, first merge all data, using `tsllm/merge_jsonl.py`.\nThen check `it1_gsm8k.ipynb` to merge data for SFT and critic training.\n### Training\ncheck `train_mcts_scripts/gsm8k/` for `train_gsm8k_{sft/critic}.py`, modify args in `config`, then train it.",
+        "type": "code",
+        "location": "/train_mcts_scripts/gsm8k/README.md:1-33"
+    },
+    "47": {
+        "file_id": 8,
+        "content": "The code describes an iterative update process for GSM8k using rollout and training. Rollout hyperparameters are provided, and the process involves sampling examples on a training dataset using `test_sft_and_v.py`. After rollout, data is merged and then used for SFT and critic training following instructions in `it1_gsm8k.ipynb`. Training scripts can be found in `train_mcts_scripts/gsm8k/`, where arguments are modified within the `config` file before starting the training process.",
+        "type": "comment"
+    },
+    "48": {
+        "file_id": 9,
+        "content": "/train_mcts_scripts/gsm8k/ds_config.json",
+        "type": "filepath"
+    },
+    "49": {
+        "file_id": 9,
+        "content": "This JSON configuration file sets various training parameters for a machine learning model, including micro-batch size per GPU, gradient accumulation steps, mixed precision settings (FP16 and BF16), and zero optimization stage with specific configurations.",
+        "type": "summary"
+    },
+    "50": {
+        "file_id": 9,
+        "content": "{\n  \"train_micro_batch_size_per_gpu\": \"auto\",\n  \"gradient_accumulation_steps\": 2,\n  \"bf16\": {\n    \"enabled\": true\n  },\n  \"fp16\": {\n    \"enabled\": false,\n    \"min_loss_scale\": 0.0001,\n    \"fp16_scale_tolerance\": 0.0,\n    \"opt_level\": \"O1\"\n  },\n  \"zero_optimization\": {\n    \"stage\": 2,\n    \"allgather_partitions\": true,\n    \"allgather_bucket_size\": 5e8,\n    \"contiguous_gradients\": true\n  }\n}",
+        "type": "code",
+        "location": "/train_mcts_scripts/game24/ds_config.json:1-19"
+    },
+    "51": {
+        "file_id": 9,
+        "content": "This JSON configuration file sets various training parameters for a machine learning model, including micro-batch size per GPU, gradient accumulation steps, mixed precision settings (FP16 and BF16), and zero optimization stage with specific configurations.",
+        "type": "comment"
+    },
+    "52": {
+        "file_id": 10,
+        "content": "/train_mcts_scripts/gsm8k/it1_gsm8k.ipynb",
+        "type": "filepath"
+    },
+    "53": {
+        "file_id": 10,
+        "content": "The code reads JSONL files, performs deduplication and calculates average tokens, merges two input files based on questions, counts new instances added, stores merged data in an output file while printing the total count of instances, subsamples objects based on condition, counts answers, checks answer length, prints progress, and outputs the result to an output file or JSONLines in a Jupyter notebook setting compatible with Python 3.10.12 using IPython3 lexer and nbformat version 4.",
+        "type": "summary"
+    },
+    "54": {
+        "file_id": 10,
+        "content": "{\n \"cells\": [\n  {\n   \"cell_type\": \"code\",\n   \"execution_count\": 1,\n   \"metadata\": {},\n   \"outputs\": [],\n   \"source\": [\n    \"import jsonlines\\n\",\n    \"import json\\n\",\n    \"from tsllm.envs import get_env_answer_checker\\n\",\n    \"import numpy as np\\n\",\n    \"import random\"\n   ]\n  },\n  {\n   \"cell_type\": \"markdown\",\n   \"metadata\": {},\n   \"source\": [\n    \"## Deduplication\"\n   ]\n  },\n  {\n   \"cell_type\": \"code\",\n   \"execution_count\": 26,\n   \"metadata\": {},\n   \"outputs\": [\n    {\n     \"name\": \"stdout\",\n     \"output_type\": \"stream\",\n     \"text\": [\n      \"5199.825371336812\\n\",\n      \"89676 -> 78732 after deduplicate.\\n\",\n      \"correct: 0.732091144642585\\n\"\n     ]\n    }\n   ],\n   \"source\": [\n    \"input_file_path = \\\"train_mcts_scripts/gsm8k/iteration1/mcts_rollout-k12.jsonl\\\"\\n\",\n    \"output_file_path = \\\"train_mcts_scripts/gsm8k/iteration1/mcts_rollout-k12-dedup.jsonl\\\"\\n\",\n    \"\\n\",\n    \"check_fn = get_env_answer_checker(\\\"gsm8k\\\")\\n\",\n    \"\\n\",\n    \"total_tokens = 0\\n\",\n    \"cnt = 0\\n\",\n    \"dedup_objs = []\\n\",\n    \"cnt_before_dedup, cnt_after_dedup = 0, 0\\n\",",
+        "type": "code",
+        "location": "/train_mcts_scripts/gsm8k/it1_gsm8k.ipynb:1-47"
+    },
+    "55": {
+        "file_id": 10,
+        "content": "This code block is importing necessary libraries and defining functions for deduplication. It reads data from a JSONL file, checks the correctness using a specified checker function, and removes duplicates while counting total tokens. The deduplicated objects are stored in a list, and the number of items before and after deduplication is also tracked.",
+        "type": "comment"
+    },
+    "56": {
+        "file_id": 10,
+        "content": "    \"correct_cnt = 0\\n\",\n    \"with jsonlines.open(input_file_path, \\\"r\\\") as reader:\\n\",\n    \"    for obj in reader:\\n\",\n    \"        total_tokens += obj[\\\"result\\\"][\\\"#token\\\"]\\n\",\n    \"        cnt += 1\\n\",\n    \"        texts = set()\\n\",\n    \"        new_output_list = []\\n\",\n    \"        for o in obj[\\\"output\\\"]:\\n\",\n    \"            cnt_before_dedup += 1\\n\",\n    \"            txt = o[\\\"text\\\"]\\n\",\n    \"            if txt not in texts:\\n\",\n    \"                cnt_after_dedup += 1\\n\",\n    \"                o[\\\"correct\\\"] = check_fn(obj[\\\"question\\\"], obj[\\\"groundtruth\\\"], txt)\\n\",\n    \"                if o[\\\"correct\\\"]:\\n\",\n    \"                    correct_cnt += 1\\n\",\n    \"                new_output_list.append(o)\\n\",\n    \"                texts.add(txt)\\n\",\n    \"        obj.pop(\\\"output\\\")\\n\",\n    \"        obj[\\\"answer\\\"] = new_output_list\\n\",\n    \"        dedup_objs.append(obj)\\n\",\n    \"\\n\",\n    \"print(total_tokens / cnt)\\n\",\n    \"print(\\\"{} -> {} after deduplicate.\\\".format(cnt_before_dedup, cnt_after_dedup))\\n\",",
+        "type": "code",
+        "location": "/train_mcts_scripts/gsm8k/it1_gsm8k.ipynb:48-70"
+    },
+    "57": {
+        "file_id": 10,
+        "content": "This code reads input data, iterates over objects within the data, checks for duplicate text values and removes them using deduplication. It counts total tokens, counts the number of times a correct answer is found, and finally prints the average tokens per object and the count of objects before/after deduplication.",
+        "type": "comment"
+    },
+    "58": {
+        "file_id": 10,
+        "content": "    \"print(\\\"correct: {}\\\".format(correct_cnt / cnt_after_dedup))\\n\",\n    \"\\n\",\n    \"\\n\",\n    \"with jsonlines.open(output_file_path, \\\"w\\\") as writer:\\n\",\n    \"    for obj in dedup_objs:\\n\",\n    \"        writer.write(obj)\\n\",\n    \"\\n\",\n    \"del input_file_path, output_file_path\"\n   ]\n  },\n  {\n   \"cell_type\": \"markdown\",\n   \"metadata\": {},\n   \"source\": [\n    \"## Merge previous rollout data and current rollout data for policy training\\n\",\n    \"\\n\",\n    \"set `input_file_path_0` to be the path of previous rollout data, `input_file_path_1` to be the path of current rollout_data\\n\",\n    \"\\n\",\n    \"set `output_file_path` to be where you store the merged data\"\n   ]\n  },\n  {\n   \"cell_type\": \"code\",\n   \"execution_count\": 3,\n   \"metadata\": {},\n   \"outputs\": [\n    {\n     \"name\": \"stdout\",\n     \"output_type\": \"stream\",\n     \"text\": [\n      \"ADD 6504 new instances\\n\",\n      \"TOTAL DATA: 64134\\n\"\n     ]\n    }\n   ],\n   \"source\": [\n    \"input_file_path_1 = \\\"train_mcts_scripts/gsm8k/iteration1/mcts_rollout-k12-dedup.jsonl\\\"\\n\",\n    \"input_file_path_0 = \\\"tslmm/envs/gsm8k/train_data/sft_init.jsonl\\\"\\n\",",
+        "type": "code",
+        "location": "/train_mcts_scripts/gsm8k/it1_gsm8k.ipynb:71-108"
+    },
+    "59": {
+        "file_id": 10,
+        "content": "This code reads two input files (previous and current rollout data) and merges them before storing the merged data in an output file. It also calculates and prints the number of new instances added during the merge process, as well as the total count of instances after the merge.",
+        "type": "comment"
+    },
+    "60": {
+        "file_id": 10,
+        "content": "    \"output_file_path = \\\"train_mcts_scripts/gsm8k/iteration1/mcts_rollout-k12-merge_train-dedup.jsonl\\\"\\n\",\n    \"\\n\",\n    \"obj_dict = {}\\n\",\n    \"cnt = 0\\n\",\n    \"total_cnt = 0\\n\",\n    \"with jsonlines.open(input_file_path_1, \\\"r\\\") as reader:\\n\",\n    \"    for obj in reader:\\n\",\n    \"        obj_dict[obj[\\\"i\\\"]] = obj\\n\",\n    \"\\n\",\n    \"with jsonlines.open(input_file_path_0, \\\"r\\\") as reader:\\n\",\n    \"    for i, obj in enumerate(reader):\\n\",\n    \"        obj_to_merge = obj_dict[i]\\n\",\n    \"        assert obj_to_merge[\\\"question\\\"] == obj[\\\"question\\\"]\\n\",\n    \"        current_texts = set([o[\\\"text\\\"] for o in obj_to_merge[\\\"answer\\\"]])\\n\",\n    \"\\n\",\n    \"        come_in_output = obj[\\\"answer\\\"][0]\\n\",\n    \"        if come_in_output[\\\"text\\\"] not in current_texts:\\n\",\n    \"            obj_to_merge[\\\"answer\\\"].append(come_in_output)\\n\",\n    \"            cnt += 1\\n\",\n    \"        total_cnt += len([x for x in obj_to_merge[\\\"answer\\\"] if x[\\\"correct\\\"]])\\n\",\n    \"\\n\",\n    \"print(\\\"ADD {} new instances\\\".format(cnt))\\n\",",
+        "type": "code",
+        "location": "/train_mcts_scripts/gsm8k/it1_gsm8k.ipynb:109-130"
+    },
+    "61": {
+        "file_id": 10,
+        "content": "This code reads two JSONL files and merges their content based on the question. It counts the number of new instances added and prints the count.",
+        "type": "comment"
+    },
+    "62": {
+        "file_id": 10,
+        "content": "    \"print(\\\"TOTAL DATA: {}\\\".format(total_cnt))\\n\",\n    \"\\n\",\n    \"# SL sft training data\\n\",\n    \"with jsonlines.open(output_file_path, \\\"w\\\") as writer:\\n\",\n    \"    for obj in obj_dict.values():\\n\",\n    \"        writer.write(obj)\\n\",\n    \"\\n\",\n    \"del input_file_path, output_file_path\"\n   ]\n  },\n  {\n   \"cell_type\": \"markdown\",\n   \"metadata\": {},\n   \"source\": [\n    \"## Merge previous rollout data and current rollout data for critic training\\n\",\n    \"\\n\",\n    \"set `input_file_path_0` to be the path of previous rollout data, `input_file_path_1` to be the path of current rollout_data\\n\",\n    \"\\n\",\n    \"set `output_file_path` to be where you store the merged data\"\n   ]\n  },\n  {\n   \"cell_type\": \"code\",\n   \"execution_count\": 24,\n   \"metadata\": {},\n   \"outputs\": [\n    {\n     \"name\": \"stdout\",\n     \"output_type\": \"stream\",\n     \"text\": [\n      \"ADD 280037/345945 NEW DATA, NOW 358769\\n\"\n     ]\n    }\n   ],\n   \"source\": [\n    \"input_file_path_0 = \\\"tsllm/offline_rl/gsm8k_data/processed/gsm8k_train_cot_sample_sft_k100_merged_dedup_sample17x3.jsonl\\\"\\n\",",
+        "type": "code",
+        "location": "/train_mcts_scripts/gsm8k/it1_gsm8k.ipynb:131-166"
+    },
+    "63": {
+        "file_id": 10,
+        "content": "This code reads in two input files containing data, merges them, and outputs the merged result to an output file. The input files are paths of previous and current rollout data, and the output file is where the merged data is stored. It also prints a message indicating the total number of items in the dataset after the merge operation.",
+        "type": "comment"
+    },
+    "64": {
+        "file_id": 10,
+        "content": "    \"input_file_path_1 = \\\"train_mcts_scripts/gsm8k/iteration1/mcts_rollout-k12-dedup.jsonl\\\"\\n\",\n    \"output_file_path = \\\"train_mcts_scripts/gsm8k/iteration1/mcts_rollout-k12-value-sl_train-dedup.jsonl\\\"\\n\",\n    \"\\n\",\n    \"seed = 1\\n\",\n    \"random.seed(seed)\\n\",\n    \"np.random.seed(seed)\\n\",\n    \"\\n\",\n    \"obj_dict = {}\\n\",\n    \"with jsonlines.open(input_file_path_1, \\\"r\\\") as reader:\\n\",\n    \"    for obj in reader:\\n\",\n    \"        obj_dict[obj[\\\"i\\\"]] = obj\\n\",\n    \"        \\n\",\n    \"\\n\",\n    \"cnt = 0\\n\",\n    \"total_cnt = 0\\n\",\n    \"merged_dedup_cnt = 0\\n\",\n    \"K = 51 - 12\\n\",\n    \"subsample_obj_dict = {}\\n\",\n    \"with jsonlines.open(input_file_path_0, \\\"r\\\") as reader:\\n\",\n    \"    for i, obj in enumerate(reader):\\n\",\n    \"        assert obj[\\\"question\\\"] == obj_dict[i][\\\"question\\\"]\\n\",\n    \"        current_texts = set([o[\\\"text\\\"] for o in obj_dict[i][\\\"answer\\\"]])\\n\",\n    \"        total_cnt += len(obj[\\\"answer\\\"])        \\n\",\n    \"        print(len(obj[\\\"answer\\\"]), end=\\\"\\\\r\\\")\\n\",\n    \"        if len(obj[\\\"answer\\\"]) > K:\\n\",",
+        "type": "code",
+        "location": "/train_mcts_scripts/gsm8k/it1_gsm8k.ipynb:167-191"
+    },
+    "65": {
+        "file_id": 10,
+        "content": "The code initializes variables, sets random seed for reproducibility, reads input and output file paths, creates an object dictionary from the input file, counts total answer count, subsample objects based on condition, checks if 'answer' length is greater than K, and prints progress.",
+        "type": "comment"
+    },
+    "66": {
+        "file_id": 10,
+        "content": "    \"            subsample_list = np.random.choice(obj[\\\"answer\\\"], K, replace=False)\\n\",\n    \"        else:\\n\",\n    \"            subsample_list = obj[\\\"answer\\\"]\\n\",\n    \"\\n\",\n    \"        for o in subsample_list:\\n\",\n    \"            if o[\\\"text\\\"] not in current_texts:\\n\",\n    \"                current_texts.add(o[\\\"text\\\"])\\n\",\n    \"                obj_dict[i][\\\"answer\\\"].append(o)\\n\",\n    \"                cnt += 1\\n\",\n    \"        merged_dedup_cnt += len(obj_dict[i][\\\"answer\\\"])\\n\",\n    \"print(\\\"ADD {}/{} NEW DATA, NOW {}\\\".format(cnt, total_cnt, merged_dedup_cnt))\\n\",\n    \"\\n\",\n    \"# SL sft training data\\n\",\n    \"with jsonlines.open(output_file_path, \\\"w\\\") as writer:\\n\",\n    \"    for obj in obj_dict.values():\\n\",\n    \"        writer.write(obj)\"\n   ]\n  }\n ],\n \"metadata\": {\n  \"kernelspec\": {\n   \"display_name\": \"mcts\",\n   \"language\": \"python\",\n   \"name\": \"python3\"\n  },\n  \"language_info\": {\n   \"codemirror_mode\": {\n    \"name\": \"ipython\",\n    \"version\": 3\n   },\n   \"file_extension\": \".py\",\n   \"mimetype\": \"text/x-python\",",
+        "type": "code",
+        "location": "/train_mcts_scripts/gsm8k/it1_gsm8k.ipynb:192-223"
+    },
+    "67": {
+        "file_id": 10,
+        "content": "This code is part of a Jupyter notebook and is responsible for processing data. It sub-samples objects from the input list, adds new text to a set and appends them to the answer list. The code then calculates the number of newly added data and prints this information. Finally, it writes the updated data to a JSONLines file.",
+        "type": "comment"
+    },
+    "68": {
+        "file_id": 10,
+        "content": "   \"name\": \"python\",\n   \"nbconvert_exporter\": \"python\",\n   \"pygments_lexer\": \"ipython3\",\n   \"version\": \"3.10.12\"\n  },\n  \"orig_nbformat\": 4\n },\n \"nbformat\": 4,\n \"nbformat_minor\": 2\n}",
+        "type": "code",
+        "location": "/train_mcts_scripts/gsm8k/it1_gsm8k.ipynb:224-233"
+    },
+    "69": {
+        "file_id": 10,
+        "content": "Code snippet defines the kernel version and settings for a Jupyter notebook, ensuring compatibility with Python 3.10.12 using IPython3 lexer and supports nbformat version 4.",
+        "type": "comment"
+    },
+    "70": {
+        "file_id": 11,
+        "content": "/train_mcts_scripts/gsm8k/mcts_gsm8k_llama_deepspeed.yaml",
+        "type": "filepath"
+    },
+    "71": {
+        "file_id": 11,
+        "content": "This code configures a DeepSpeed training setup for MCTS on game24 with LOCAL_MACHINE, 1 machine, and 8 processes. It uses deepspeed_config_file for configuration, disables downcast bf16, sets main_training_function, and enables same_network.",
+        "type": "summary"
+    },
+    "72": {
+        "file_id": 11,
+        "content": "compute_environment: LOCAL_MACHINE\ndeepspeed_config:\n  deepspeed_config_file: ./ds_config.json\n  zero3_init_flag: false\ndistributed_type: DEEPSPEED\ndowncast_bf16: 'no'\nmachine_rank: 0\nmain_training_function: main\nnum_machines: 1\nnum_processes: 8\nrdzv_backend: static\nsame_network: true\ntpu_env: []\ntpu_use_cluster: false\ntpu_use_sudo: false\nuse_cpu: false",
+        "type": "code",
+        "location": "/train_mcts_scripts/game24/mcts_game24_llama_deepspeed.yaml:1-16"
+    },
+    "73": {
+        "file_id": 11,
+        "content": "This code configures a DeepSpeed training setup for MCTS on game24 with LOCAL_MACHINE, 1 machine, and 8 processes. It uses deepspeed_config_file for configuration, disables downcast bf16, sets main_training_function, and enables same_network.",
+        "type": "comment"
+    },
+    "74": {
+        "file_id": 12,
+        "content": "/train_mcts_scripts/gsm8k/test_policy_and_value.sh",
+        "type": "filepath"
+    },
+    "75": {
+        "file_id": 12,
+        "content": "The code is running a machine learning model training script with specific environment settings and exported variables. It utilizes multiple GPUs, tests policy and value functions, and saves the results in a specified directory.",
+        "type": "summary"
+    },
+    "76": {
+        "file_id": 12,
+        "content": "set -e\nexport TEST_NO_TERMINAL=1\n# export TEST_WITH_TERMINAL=1\n# export TEST_COT_GREEDY=1\n# export TEST_COT_SC=1\n# export CUDA_VISIBLE_DEVICES=4,5,6,7\nCT2_DIR={your ct2 model cache}\nCRITIC_PATH={your critic model cache}\ntorchrun --nproc_per_node=8 --master-port 29503 ../../tsllm/offline_rl/test_sft_and_v.py \\\n    --ct2_dir $CT2_DIR \\\n    --critic_model_path $CRITIC_PATH \\\n    --tokenizer_path $CRITIC_PATH \\\n    --save_dir $1/pi_sftep3_v_sftep1 \\\n    --env_name gsm8k \\\n    --test True",
+        "type": "code",
+        "location": "/train_mcts_scripts/gsm8k/test_policy_and_value.sh:1-18"
+    },
+    "77": {
+        "file_id": 12,
+        "content": "The code is running a machine learning model training script with specific environment settings and exported variables. It utilizes multiple GPUs, tests policy and value functions, and saves the results in a specified directory.",
+        "type": "comment"
+    },
+    "78": {
+        "file_id": 13,
+        "content": "/train_mcts_scripts/gsm8k/train_gsm8k_critic.py",
+        "type": "filepath"
+    },
+    "79": {
+        "file_id": 13,
+        "content": "The code imports necessary modules, defines a configuration for an MCTS-based language model trainer using PeFT framework with LoraConfig and FlashAttn, sets up optimizer and scheduler parameters, provides data paths, and trains the model using AccelerateMCTSTrainer.",
+        "type": "summary"
+    },
+    "80": {
+        "file_id": 13,
+        "content": "from tsllm.rl.trainer.mcts_trainer_traj_ct2_value import AccelerateMCTSTrainer\nfrom tsllm.rl.config import RLConfig\nfrom peft import LoraConfig, PeftType\nfrom tsllm.model.llama_flash_attn_monkey_patch import replace_llama_attn_with_flash_attn\nreplace_llama_attn_with_flash_attn()\nconfig = {\n    \"model\": {\n        \"model_path\": \"meta-llama/Llama-2-7b-hf\",\n    },\n    \"tokenizer\": {\n        \"tokenizer_path\": \"meta-llama/Llama-2-7b-hf\",\n        \"padding_side\": \"right\",\n    },\n    \"optimizer\": {\n        \"name\": \"adamw\",\n        \"kwargs\": dict(lr=2.0e-5, betas=(0.9, 0.999), eps=1.0e-8, weight_decay=0.0),\n    },\n    \"scheduler\": {\"name\": \"cosine_warmup\", \"kwargs\": dict(warmup_ratio=0.03)},\n    \"train\": {\n        \"pre_onpolicy_datapath\": \"../../tsllm/offline_rl/gsm8k_data/processed/gsm8k_train_cot_sample_sft_k100_merged_dedup_sample17x3.jsonl\",\n        \"pre_onpolicy_datapath_train_test\": \"../../tsllm/offline_rl/gsm8k_data/processed/gsm8k_train_cot_sample_offline_sft_k100_ep3_dedup_sample17_train_test_sample_3.jsonl\",",
+        "type": "code",
+        "location": "/train_mcts_scripts/gsm8k/train_gsm8k_critic.py:1-22"
+    },
+    "81": {
+        "file_id": 13,
+        "content": "This code is importing necessary modules and defining a configuration for training an MCTS-based language model using the PeFT framework with LoraConfig, replacing Llama's attention mechanism with FlashAttn, setting up optimizer and scheduler parameters, and providing data paths for pre-onpolicy and train-test datasets.",
+        "type": "comment"
+    },
+    "82": {
+        "file_id": 13,
+        "content": "        \"env_name\": \"gsm8k\",\n        \"epochs\": 3,  # this is the epoch for the whole sampling/training process\n        \"train_epoch\": 1,  # this is the epoch for training process after each sampling\n        \"gamma\": 1.0,\n        \"gae_lambda\": 0.95,\n        \"seq_length\": 1024,\n        \"micro_batch_size\": 4,\n        \"gradient_accumulation_steps\": 4,\n        \"value_loss_coef\": 1.0,\n        \"eval_interval\": 1,\n        \"checkpoint_interval\": 1,\n        \"checkpoint_dir\": tmp_for_check,\n        \"save_optimizer\": False,\n        \"project_name\": \"tmp_for_check\",\n        \"tracker\": \"tensorboard\",\n        \"logging_dir\": \"logs/\",\n        \"onpolicy_per_problem_max_size\": 1000,\n    },\n    \"mcts\": {},\n    \"env\": {},\n}\nconfig = RLConfig.from_dict(config)\ntrainer = AccelerateMCTSTrainer(config)\ntrainer.learn()",
+        "type": "code",
+        "location": "/train_mcts_scripts/gsm8k/train_gsm8k_critic.py:23-48"
+    },
+    "83": {
+        "file_id": 13,
+        "content": "The code defines a configuration dictionary for an MCTS trainer. It contains parameters such as env_name, epochs, train_epoch, gamma, gae_lambda, seq_length, micro_batch_size, gradient_accumulation_steps, value_loss_coef, eval_interval, checkpoint_interval, checkpoint_dir, save_optimizer, project_name, tracker, logging_dir, and onpolicy_per_problem_max_size. The configuration is then used to create an instance of AccelerateMCTSTrainer and the learn() function is called to train the model.",
+        "type": "comment"
+    },
+    "84": {
+        "file_id": 14,
+        "content": "/train_mcts_scripts/gsm8k/train_gsm8k_sft.py",
+        "type": "filepath"
+    },
+    "85": {
+        "file_id": 14,
+        "content": "The code imports modules, sets up configurations for language model training using Llama-2-7b, AdamW optimizer, and cosine scheduler. It trains on GSM8K environment for 3 epochs with SFT data initialized from a predefined path. Another code initializes a trainer with an RLConfig from a JSON file and trains the model using accelerate MCTS algorithm with checkpoint settings and logging directory.",
+        "type": "summary"
+    },
+    "86": {
+        "file_id": 14,
+        "content": "from tsllm.rl.trainer.mcts_trainer_traj_ct2_sft import AccelerateMCTSTrainer\nfrom tsllm.rl.config import RLConfig\nfrom tsllm.model.llama_flash_attn_monkey_patch import replace_llama_attn_with_flash_attn\nreplace_llama_attn_with_flash_attn()\nconfig = {\n    \"model\": {\n        \"model_path\": \"meta-llama/Llama-2-7b-hf\",\n    },\n    \"tokenizer\": {\n        \"tokenizer_path\": \"meta-llama/Llama-2-7b-hf\",\n        \"padding_side\": \"right\",\n    },\n    \"optimizer\": {\n        \"name\": \"adamw\",\n        \"kwargs\": {\n            \"lr\": 2e-05,\n            \"betas\": [0.9, 0.999],\n            \"eps\": 1e-08,\n            \"weight_decay\": 0.0,\n        },\n    },\n    \"scheduler\": {\"name\": \"cosine_warmup\", \"kwargs\": {\"warmup_ratio\": 0.03}},\n    \"train\": {\n        \"pre_sft_datapath\": \"../../tsllm/envs/gsm8k/train_data/sft_init.jsonl\",\n        \"env_name\": \"gsm8k\",\n        \"epochs\": 3,\n        \"train_epoch\": 1,\n        \"sft_micro_batch_size\": 4,\n        \"gradient_accumulation_steps\": 4,\n        \"seq_length\": 1024,\n        \"eval_interval\": 1,\n        \"sft_loss_coef\": 1.0,",
+        "type": "code",
+        "location": "/train_mcts_scripts/gsm8k/train_gsm8k_sft.py:1-33"
+    },
+    "87": {
+        "file_id": 14,
+        "content": "This code imports necessary modules and sets up configurations for a language model training task. It uses the Llama-2-7b model, AdamW optimizer with a learning rate of 2e-05, cosine scheduler with warmup ratio 0.03, trains on GSM8K environment, and performs Softmax Factorization Training (SFT) for 3 epochs. The SFT data is initialized from a predefined path.",
+        "type": "comment"
+    },
+    "88": {
+        "file_id": 14,
+        "content": "        \"checkpoint_interval\": 1,\n        \"checkpoint_dir\": tmp_for_check,\n        \"save_optimizer\": False,\n        \"project_name\": \"tmp_for_check\",\n        \"tracker\": \"tensorboard\",\n        \"logging_dir\": \"logs/\",\n        \"sft_per_problem_max_size\": 1000,\n    },\n    \"mcts\": {},\n    \"env\": {},\n}\n# config = RLConfig.from_json(\"gsm8k_sft_config.json\")\nconfig = RLConfig.from_dict(config)\ntrainer = AccelerateMCTSTrainer(config)\ntrainer.learn()",
+        "type": "code",
+        "location": "/train_mcts_scripts/gsm8k/train_gsm8k_sft.py:34-50"
+    },
+    "89": {
+        "file_id": 14,
+        "content": "The code initializes a trainer with an RLConfig from a JSON file, then trains the model using the accelerate MCTS algorithm. The config includes checkpoint settings and logging directory.",
+        "type": "comment"
+    },
+    "90": {
+        "file_id": 15,
+        "content": "/train_mcts_scripts/prontoqa/ds_config.json",
+        "type": "filepath"
+    },
+    "91": {
+        "file_id": 15,
+        "content": "This JSON configuration file sets various training parameters for a machine learning model, including micro-batch size per GPU, gradient accumulation steps, mixed precision settings (FP16 and BF16), and zero optimization stage with specific configurations.",
+        "type": "summary"
+    },
+    "92": {
+        "file_id": 15,
+        "content": "{\n  \"train_micro_batch_size_per_gpu\": \"auto\",\n  \"gradient_accumulation_steps\": 2,\n  \"bf16\": {\n    \"enabled\": true\n  },\n  \"fp16\": {\n    \"enabled\": false,\n    \"min_loss_scale\": 0.0001,\n    \"fp16_scale_tolerance\": 0.0,\n    \"opt_level\": \"O1\"\n  },\n  \"zero_optimization\": {\n    \"stage\": 2,\n    \"allgather_partitions\": true,\n    \"allgather_bucket_size\": 5e8,\n    \"contiguous_gradients\": true\n  }\n}",
+        "type": "code",
+        "location": "/train_mcts_scripts/game24/ds_config.json:1-19"
+    },
+    "93": {
+        "file_id": 15,
+        "content": "This JSON configuration file sets various training parameters for a machine learning model, including micro-batch size per GPU, gradient accumulation steps, mixed precision settings (FP16 and BF16), and zero optimization stage with specific configurations.",
+        "type": "comment"
+    },
+    "94": {
+        "file_id": 16,
+        "content": "/train_mcts_scripts/prontoqa/mcts_prontoqa_llama_deepspeed.yaml",
+        "type": "filepath"
+    },
+    "95": {
+        "file_id": 16,
+        "content": "This code configures a DeepSpeed training setup for MCTS on game24 with LOCAL_MACHINE, 1 machine, and 8 processes. It uses deepspeed_config_file for configuration, disables downcast bf16, sets main_training_function, and enables same_network.",
+        "type": "summary"
+    },
+    "96": {
+        "file_id": 16,
+        "content": "compute_environment: LOCAL_MACHINE\ndeepspeed_config:\n  deepspeed_config_file: ./ds_config.json\n  zero3_init_flag: false\ndistributed_type: DEEPSPEED\ndowncast_bf16: 'no'\nmachine_rank: 0\nmain_training_function: main\nnum_machines: 1\nnum_processes: 8\nrdzv_backend: static\nsame_network: true\ntpu_env: []\ntpu_use_cluster: false\ntpu_use_sudo: false\nuse_cpu: false",
+        "type": "code",
+        "location": "/train_mcts_scripts/game24/mcts_game24_llama_deepspeed.yaml:1-16"
+    },
+    "97": {
+        "file_id": 16,
+        "content": "This code configures a DeepSpeed training setup for MCTS on game24 with LOCAL_MACHINE, 1 machine, and 8 processes. It uses deepspeed_config_file for configuration, disables downcast bf16, sets main_training_function, and enables same_network.",
+        "type": "comment"
+    },
+    "98": {
+        "file_id": 17,
+        "content": "/train_mcts_scripts/prontoqa/test_policy_and_value.sh",
+        "type": "filepath"
+    },
+    "99": {
+        "file_id": 17,
+        "content": "The script is running a test on the prontoqa environment using an offline reinforcement learning model. It uses multiple GPUs and specifies various environment test configurations, such as no terminal, with terminal, greedy, and soft target updates. The script also sets the number of processes per node to 8 and runs it with torchrun for distributed computing. The code calls the \"test_sft_and_v\" Python script from the \"tsllm/offline_rl\" directory. It specifies the critic model path, tokenizer path, CT2 directory, save directory for policy tests, and environment name. The test is not a few-shot learning scenario.",
+        "type": "summary"
+    }
+}

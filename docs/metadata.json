@@ -1,0 +1,485 @@
+{
+    "url": {
+        "full": "https://github.com/waterhorse1/LLM_Tree_Search",
+        "partial": "waterhorse1/LLM_Tree_Search"
+    },
+    "file_mapping": {
+        "0": {
+            "filepath": "/README.md",
+            "entry_id": 0,
+            "language_id": "plain-text"
+        },
+        "1": {
+            "filepath": "/requirement.txt",
+            "entry_id": 12,
+            "language_id": "plain-text"
+        },
+        "2": {
+            "filepath": "/setup.py",
+            "entry_id": 16,
+            "language_id": "python"
+        },
+        "3": {
+            "filepath": "/train_mcts_scripts/game24/ds_config.json",
+            "entry_id": 20,
+            "language_id": "json"
+        },
+        "4": {
+            "filepath": "/train_mcts_scripts/game24/mcts_game24_llama_deepspeed.yaml",
+            "entry_id": 24,
+            "language_id": "yaml"
+        },
+        "5": {
+            "filepath": "/train_mcts_scripts/game24/test_policy_and_value.sh",
+            "entry_id": 28,
+            "language_id": "shell"
+        },
+        "6": {
+            "filepath": "/train_mcts_scripts/game24/train_game24_critic.py",
+            "entry_id": 32,
+            "language_id": "python"
+        },
+        "7": {
+            "filepath": "/train_mcts_scripts/game24/train_game24_sft.py",
+            "entry_id": 38,
+            "language_id": "python"
+        },
+        "8": {
+            "filepath": "/train_mcts_scripts/gsm8k/README.md",
+            "entry_id": 44,
+            "language_id": "plain-text"
+        },
+        "9": {
+            "filepath": "/train_mcts_scripts/gsm8k/ds_config.json",
+            "entry_id": 48,
+            "language_id": "json"
+        },
+        "10": {
+            "filepath": "/train_mcts_scripts/gsm8k/it1_gsm8k.ipynb",
+            "entry_id": 52,
+            "language_id": "jupyter"
+        },
+        "11": {
+            "filepath": "/train_mcts_scripts/gsm8k/mcts_gsm8k_llama_deepspeed.yaml",
+            "entry_id": 70,
+            "language_id": "yaml"
+        },
+        "12": {
+            "filepath": "/train_mcts_scripts/gsm8k/test_policy_and_value.sh",
+            "entry_id": 74,
+            "language_id": "shell"
+        },
+        "13": {
+            "filepath": "/train_mcts_scripts/gsm8k/train_gsm8k_critic.py",
+            "entry_id": 78,
+            "language_id": "python"
+        },
+        "14": {
+            "filepath": "/train_mcts_scripts/gsm8k/train_gsm8k_sft.py",
+            "entry_id": 84,
+            "language_id": "python"
+        },
+        "15": {
+            "filepath": "/train_mcts_scripts/prontoqa/ds_config.json",
+            "entry_id": 90,
+            "language_id": "json"
+        },
+        "16": {
+            "filepath": "/train_mcts_scripts/prontoqa/mcts_prontoqa_llama_deepspeed.yaml",
+            "entry_id": 94,
+            "language_id": "yaml"
+        },
+        "17": {
+            "filepath": "/train_mcts_scripts/prontoqa/test_policy_and_value.sh",
+            "entry_id": 98,
+            "language_id": "shell"
+        },
+        "18": {
+            "filepath": "/train_mcts_scripts/prontoqa/train_prontoqa_critic.py",
+            "entry_id": 102,
+            "language_id": "python"
+        },
+        "19": {
+            "filepath": "/train_mcts_scripts/prontoqa/train_prontoqa_sft.py",
+            "entry_id": 108,
+            "language_id": "python"
+        },
+        "20": {
+            "filepath": "/train_mcts_scripts/rlhf/README.md",
+            "entry_id": 114,
+            "language_id": "markdown"
+        },
+        "21": {
+            "filepath": "/train_mcts_scripts/rlhf/accelerate_config.yaml",
+            "entry_id": 120,
+            "language_id": "yaml"
+        },
+        "22": {
+            "filepath": "/train_mcts_scripts/rlhf/ds_config_no_offload.json",
+            "entry_id": 124,
+            "language_id": "json"
+        },
+        "23": {
+            "filepath": "/train_mcts_scripts/rlhf/filter_top_data_policy_training.py",
+            "entry_id": 128,
+            "language_id": "python"
+        },
+        "24": {
+            "filepath": "/train_mcts_scripts/rlhf/mix_value_data.py",
+            "entry_id": 132,
+            "language_id": "python"
+        },
+        "25": {
+            "filepath": "/train_mcts_scripts/rlhf/test_policy_and_value.sh",
+            "entry_id": 138,
+            "language_id": "shell"
+        },
+        "26": {
+            "filepath": "/train_mcts_scripts/rlhf/train_rlhf_critic.py",
+            "entry_id": 142,
+            "language_id": "python"
+        },
+        "27": {
+            "filepath": "/train_mcts_scripts/rlhf/train_rlhf_policy.py",
+            "entry_id": 148,
+            "language_id": "python"
+        },
+        "28": {
+            "filepath": "/tsllm/argparse_utils.py",
+            "entry_id": 154,
+            "language_id": "python"
+        },
+        "29": {
+            "filepath": "/tsllm/merge_jsonl.py",
+            "entry_id": 158,
+            "language_id": "python"
+        },
+        "30": {
+            "filepath": "/tsllm/distributed/utils.py",
+            "entry_id": 162,
+            "language_id": "python"
+        },
+        "31": {
+            "filepath": "/tsllm/envs/__init__.py",
+            "entry_id": 168,
+            "language_id": "python"
+        },
+        "32": {
+            "filepath": "/tsllm/envs/base_env.py",
+            "entry_id": 176,
+            "language_id": "python"
+        },
+        "33": {
+            "filepath": "/tsllm/envs/utils.py",
+            "entry_id": 210,
+            "language_id": "python"
+        },
+        "34": {
+            "filepath": "/tsllm/envs/game24/__init__.py",
+            "entry_id": 222,
+            "language_id": "python"
+        },
+        "35": {
+            "filepath": "/tsllm/envs/game24/data.py",
+            "entry_id": 226,
+            "language_id": "python"
+        },
+        "36": {
+            "filepath": "/tsllm/envs/game24/env.py",
+            "entry_id": 232,
+            "language_id": "python"
+        },
+        "37": {
+            "filepath": "/tsllm/envs/game24/prompt.py",
+            "entry_id": 240,
+            "language_id": "python"
+        },
+        "38": {
+            "filepath": "/tsllm/envs/gsm8k/__init__.py",
+            "entry_id": 248,
+            "language_id": "python"
+        },
+        "39": {
+            "filepath": "/tsllm/envs/gsm8k/data.py",
+            "entry_id": 252,
+            "language_id": "python"
+        },
+        "40": {
+            "filepath": "/tsllm/envs/gsm8k/env.py",
+            "entry_id": 256,
+            "language_id": "python"
+        },
+        "41": {
+            "filepath": "/tsllm/envs/gsm8k/prompt.py",
+            "entry_id": 264,
+            "language_id": "python"
+        },
+        "42": {
+            "filepath": "/tsllm/envs/prontoqa/__init__.py",
+            "entry_id": 272,
+            "language_id": "python"
+        },
+        "43": {
+            "filepath": "/tsllm/envs/prontoqa/data.py",
+            "entry_id": 276,
+            "language_id": "python"
+        },
+        "44": {
+            "filepath": "/tsllm/envs/prontoqa/env.py",
+            "entry_id": 284,
+            "language_id": "python"
+        },
+        "45": {
+            "filepath": "/tsllm/envs/prontoqa/prompt.py",
+            "entry_id": 292,
+            "language_id": "python"
+        },
+        "46": {
+            "filepath": "/tsllm/envs/rlhf/__init__.py",
+            "entry_id": 306,
+            "language_id": "python"
+        },
+        "47": {
+            "filepath": "/tsllm/envs/rlhf/data.py",
+            "entry_id": 310,
+            "language_id": "python"
+        },
+        "48": {
+            "filepath": "/tsllm/envs/rlhf/env.py",
+            "entry_id": 324,
+            "language_id": "python"
+        },
+        "49": {
+            "filepath": "/tsllm/envs/rlhf/prompt.py",
+            "entry_id": 332,
+            "language_id": "python"
+        },
+        "50": {
+            "filepath": "/tsllm/envs/tests/test_game24.py",
+            "entry_id": 336,
+            "language_id": "python"
+        },
+        "51": {
+            "filepath": "/tsllm/envs/tests/test_gsm8k.py",
+            "entry_id": 344,
+            "language_id": "python"
+        },
+        "52": {
+            "filepath": "/tsllm/envs/tests/test_prontoqa.py",
+            "entry_id": 352,
+            "language_id": "python"
+        },
+        "53": {
+            "filepath": "/tsllm/envs/tests/test_rlhf.py",
+            "entry_id": 360,
+            "language_id": "python"
+        },
+        "54": {
+            "filepath": "/tsllm/inference/lm_self_value.py",
+            "entry_id": 368,
+            "language_id": "python"
+        },
+        "55": {
+            "filepath": "/tsllm/inference/trajectory_collector.py",
+            "entry_id": 376,
+            "language_id": "python"
+        },
+        "56": {
+            "filepath": "/tsllm/inference/value.py",
+            "entry_id": 384,
+            "language_id": "python"
+        },
+        "57": {
+            "filepath": "/tsllm/inference/evaluation/vote_utils.py",
+            "entry_id": 390,
+            "language_id": "python"
+        },
+        "58": {
+            "filepath": "/tsllm/llm/ct2_utils.py",
+            "entry_id": 394,
+            "language_id": "python"
+        },
+        "59": {
+            "filepath": "/tsllm/llm/text_generation.py",
+            "entry_id": 402,
+            "language_id": "python"
+        },
+        "60": {
+            "filepath": "/tsllm/mcts/tree.py",
+            "entry_id": 414,
+            "language_id": "python"
+        },
+        "61": {
+            "filepath": "/tsllm/mcts/utils.py",
+            "entry_id": 488,
+            "language_id": "python"
+        },
+        "62": {
+            "filepath": "/tsllm/model/__init__.py",
+            "entry_id": 492,
+            "language_id": "python"
+        },
+        "63": {
+            "filepath": "/tsllm/model/llama_flash_attn_monkey_patch.py",
+            "entry_id": 498,
+            "language_id": "python"
+        },
+        "64": {
+            "filepath": "/tsllm/model/modeling_actor_critic.py",
+            "entry_id": 510,
+            "language_id": "python"
+        },
+        "65": {
+            "filepath": "/tsllm/model/modeling_base.py",
+            "entry_id": 524,
+            "language_id": "python"
+        },
+        "66": {
+            "filepath": "/tsllm/model/modeling_prm.py",
+            "entry_id": 556,
+            "language_id": "python"
+        },
+        "67": {
+            "filepath": "/tsllm/model/utils.py",
+            "entry_id": 580,
+            "language_id": "python"
+        },
+        "68": {
+            "filepath": "/tsllm/offline_rl/dedup.py",
+            "entry_id": 586,
+            "language_id": "python"
+        },
+        "69": {
+            "filepath": "/tsllm/offline_rl/generate_data.py",
+            "entry_id": 590,
+            "language_id": "python"
+        },
+        "70": {
+            "filepath": "/tsllm/offline_rl/merge.py",
+            "entry_id": 602,
+            "language_id": "python"
+        },
+        "71": {
+            "filepath": "/tsllm/offline_rl/sample.py",
+            "entry_id": 608,
+            "language_id": "python"
+        },
+        "72": {
+            "filepath": "/tsllm/offline_rl/split_two_test.py",
+            "entry_id": 612,
+            "language_id": "python"
+        },
+        "73": {
+            "filepath": "/tsllm/offline_rl/test_sft_and_v.py",
+            "entry_id": 618,
+            "language_id": "python"
+        },
+        "74": {
+            "filepath": "/tsllm/offline_rl/test_sft_and_v_rlhf.py",
+            "entry_id": 664,
+            "language_id": "python"
+        },
+        "75": {
+            "filepath": "/tsllm/offline_rl/utils.py",
+            "entry_id": 702,
+            "language_id": "python"
+        },
+        "76": {
+            "filepath": "/tsllm/offline_rl/game24/gen_3.sh",
+            "entry_id": 706,
+            "language_id": "shell"
+        },
+        "77": {
+            "filepath": "/tsllm/offline_rl/game24/process.sh",
+            "entry_id": 710,
+            "language_id": "shell"
+        },
+        "78": {
+            "filepath": "/tsllm/offline_rl/gsm8k_data/gen_3.sh",
+            "entry_id": 716,
+            "language_id": "shell"
+        },
+        "79": {
+            "filepath": "/tsllm/offline_rl/gsm8k_data/process.sh",
+            "entry_id": 720,
+            "language_id": "shell"
+        },
+        "80": {
+            "filepath": "/tsllm/offline_rl/prontoqa/gen_3.sh",
+            "entry_id": 726,
+            "language_id": "shell"
+        },
+        "81": {
+            "filepath": "/tsllm/offline_rl/prontoqa/process.sh",
+            "entry_id": 730,
+            "language_id": "shell"
+        },
+        "82": {
+            "filepath": "/tsllm/offline_rl/rlhf/gen_3.sh",
+            "entry_id": 734,
+            "language_id": "shell"
+        },
+        "83": {
+            "filepath": "/tsllm/offline_rl/rlhf/process.py",
+            "entry_id": 738,
+            "language_id": "python"
+        },
+        "84": {
+            "filepath": "/tsllm/offline_rl/rlhf/process.sh",
+            "entry_id": 744,
+            "language_id": "shell"
+        },
+        "85": {
+            "filepath": "/tsllm/rl/config.py",
+            "entry_id": 748,
+            "language_id": "python"
+        },
+        "86": {
+            "filepath": "/tsllm/rl/data/buffer.py",
+            "entry_id": 762,
+            "language_id": "python"
+        },
+        "87": {
+            "filepath": "/tsllm/rl/data/node_types_new.py",
+            "entry_id": 772,
+            "language_id": "python"
+        },
+        "88": {
+            "filepath": "/tsllm/rl/data/sft_buffer.py",
+            "entry_id": 800,
+            "language_id": "python"
+        },
+        "89": {
+            "filepath": "/tsllm/rl/data/traj_buffer.py",
+            "entry_id": 806,
+            "language_id": "python"
+        },
+        "90": {
+            "filepath": "/tsllm/rl/trainer/base_trainer.py",
+            "entry_id": 822,
+            "language_id": "python"
+        },
+        "91": {
+            "filepath": "/tsllm/rl/trainer/mcts_trainer_traj_ct2_sft.py",
+            "entry_id": 842,
+            "language_id": "python"
+        },
+        "92": {
+            "filepath": "/tsllm/rl/trainer/mcts_trainer_traj_ct2_value.py",
+            "entry_id": 872,
+            "language_id": "python"
+        },
+        "93": {
+            "filepath": "/tsllm/rl/trainer/opt_utils.py",
+            "entry_id": 906,
+            "language_id": "python"
+        },
+        "94": {
+            "filepath": "/tsllm/rl/trainer/utils.py",
+            "entry_id": 914,
+            "language_id": "python"
+        }
+    },
+    "project_name": "LLM_Tree_Search",
+    "split_count": 10
+}

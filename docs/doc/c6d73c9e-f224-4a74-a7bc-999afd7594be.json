@@ -1,0 +1,10 @@
+{
+    "summary": "This function retrieves the root node of a tree by traversing upwards until it reaches a node with no parent (root).",
+    "details": [
+        {
+            "comment": "This function retrieves the root node of a tree by traversing upwards until it reaches a node with no parent (root).",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/mcts/utils.py\":0-6",
+            "content": "from .tree import Node\ndef get_root(node: Node):\n    while not node.is_root():\n        node = node.parent\n    return node"
+        }
+    ]
+}

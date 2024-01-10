@@ -1,0 +1,10 @@
+{
+    "summary": "Functions to write data to a JSONL file, load data from a JSONL file, and set up random seed across different libraries.",
+    "details": [
+        {
+            "comment": "Functions to write data to a JSONL file, load data from a JSONL file, and set up random seed across different libraries.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/offline_rl/utils.py\":0-32",
+            "content": "import json\nfrom typing import Optional\nimport random\nimport numpy as np\nimport os\nimport torch\ndef write_to_jsonl(data, output_file):\n    cnt = 0\n    with open(output_file, \"w\") as outfile:\n        for item in data:\n            outfile.write(json.dumps(item) + \"\\n\")\n            cnt += len(item[\"answer\"])\n        print(\"Write {} items into {}\".format(cnt, output_file))\ndef load_jsonl(file_path):\n    data_list = []\n    with open(file_path, \"r\", encoding=\"utf-8\") as file:\n        for line in file:\n            data = json.loads(line.strip())\n            data_list.append(data)\n    return data_list\ndef setup_seed(seed):\n    torch.manual_seed(seed)\n    torch.cuda.manual_seed_all(seed)\n    np.random.seed(seed)\n    random.seed(seed)\n    os.environ[\"PYTHONHASHSEED\"] = str(seed)\n    torch.backends.cudnn.deterministic = True"
+        }
+    ]
+}

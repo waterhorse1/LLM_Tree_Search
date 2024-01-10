@@ -1,0 +1,547 @@
+{
+    "600": {
+        "file_id": 69,
+        "content": "                    )\n                )\nif __name__ == \"__main__\":\n    parser = argparse.ArgumentParser()\n    # env/task config\n    parser.add_argument(\"--is_few_shot\", type=str2bool, default=False)\n    parser.add_argument(\"--test\", type=str2bool, default=False)\n    parser.add_argument(\"--env_name\", type=str, required=True)\n    parser.add_argument(\"-k\", type=int, default=1)\n    parser.add_argument(\"-t\", type=float, default=0.7)\n    parser.add_argument(\"--ct2_dir\", type=str, required=True)\n    parser.add_argument(\"--tokenizer_path\", type=str, required=True)\n    parser.add_argument(\"--output_path\", type=str, required=True)\n    parser.add_argument(\n        \"--gpu_ids\", type=list_of_ints, default=[0, 1, 2, 3, 4, 5, 6, 7]\n    )\n    parser.add_argument(\"--max_batch_size\", type=int, default=50)\n    parser.add_argument(\"--num_workers\", type=int, default=8)\n    args = parser.parse_args()\n    main(args)",
+        "type": "code",
+        "location": "/tsllm/offline_rl/generate_data.py:136-160"
+    },
+    "601": {
+        "file_id": 69,
+        "content": "This code is setting up command line arguments for the program. It requires an environment name, specifies a few default values (e.g., few-shot learning is disabled by default), defines several optional parameters such as number of GPUs to use and batch size, and then calls the main function with these arguments. The code also includes options for an output directory, tokenizer path, and whether or not the program should run in test mode.",
+        "type": "comment"
+    },
+    "602": {
+        "file_id": 70,
+        "content": "/tsllm/offline_rl/merge.py",
+        "type": "filepath"
+    },
+    "603": {
+        "file_id": 70,
+        "content": "This code merges and deduplicates JSONL question-answer pairs, filters duplicate answers, and outputs the final result to a new JSONL file.",
+        "type": "summary"
+    },
+    "604": {
+        "file_id": 70,
+        "content": "import json\nfrom argparse import ArgumentParser\nfrom tsllm.argparse_utils import str2bool\nfrom tsllm.offline_rl.utils import load_jsonl, write_to_jsonl\nif __name__ == \"__main__\":\n    parser = ArgumentParser()\n    parser.add_argument(\"--input_paths\", action=\"store\", nargs=\"+\")\n    parser.add_argument(\"--output_path\", type=str)\n    parser.add_argument(\"--deduplicate\", type=str2bool, default=True)\n    args = parser.parse_args()\n    print(args.input_paths)\n    data = []\n    for input_path in args.input_paths:\n        data.extend(load_jsonl(input_path))\n    d_by_q = {}\n    for d in data:\n        q_str = d[\"question\"]\n        if q_str not in d_by_q:\n            d_by_q[q_str] = {\n                \"question\": q_str,\n                \"answer\": d[\"answer\"],\n                \"groundtruth\": d.get(\"groundtruth\", \"[DUMMY]\"),\n            }\n        else:\n            d_by_q[q_str][\"answer\"].extend(d[\"answer\"])\n    if args.deduplicate:\n        cnt, total_cnt, correct_cnt = 0, 0, 0\n        data = list(d_by_q.values())\n        print(len(data))",
+        "type": "code",
+        "location": "/tsllm/offline_rl/merge.py:1-33"
+    },
+    "605": {
+        "file_id": 70,
+        "content": "This code reads in multiple JSONL files containing question-answer pairs, merges them into a single dictionary (d_by_q), and deduplicates the questions. It also provides an option to output the final result to a new JSONL file.",
+        "type": "comment"
+    },
+    "606": {
+        "file_id": 70,
+        "content": "        for d in data:\n            answer = d[\"answer\"]\n            unique_data = []\n            seen_texts = []\n            for item in answer:\n                if item[\"text\"] not in seen_texts:\n                    seen_texts.append(item[\"text\"])\n                    unique_data.append(item)\n                    cnt += 1\n                    if item[\"correct\"]:\n                        correct_cnt += 1\n                total_cnt += 1\n            d[\"answer\"] = unique_data\n        print(cnt, total_cnt, correct_cnt)\n    write_to_jsonl(data, args.output_path)",
+        "type": "code",
+        "location": "/tsllm/offline_rl/merge.py:34-49"
+    },
+    "607": {
+        "file_id": 70,
+        "content": "This code filters duplicate texts from the \"answer\" list in each dictionary of a data list. It counts and prints total, correct, and unique answer count before writing the modified data to a JSONL file.",
+        "type": "comment"
+    },
+    "608": {
+        "file_id": 71,
+        "content": "/tsllm/offline_rl/sample.py",
+        "type": "filepath"
+    },
+    "609": {
+        "file_id": 71,
+        "content": "This Python script takes a JSONL file (--input_path) as input, samples 'n' number of items randomly from each answer in the input data, and writes the modified data to another JSONL file (--output_path). The sampled answers are used for training or testing purposes.",
+        "type": "summary"
+    },
+    "610": {
+        "file_id": 71,
+        "content": "import json\nimport random\nfrom argparse import ArgumentParser\nfrom tsllm.offline_rl.utils import load_jsonl, write_to_jsonl\ndef sample_dicts(data, n):\n    if n > len(data):\n        n = len(data)\n    return random.sample(data, n)\nif __name__ == \"__main__\":\n    parser = ArgumentParser()\n    parser.add_argument(\"--input_path\", type=str)\n    parser.add_argument(\"--output_path\", type=str)\n    parser.add_argument(\"-n\", type=int, default=10)\n    args = parser.parse_args()\n    data = load_jsonl(args.input_path)\n    for d in data:\n        d[\"answer\"] = sample_dicts(d[\"answer\"], args.n)\n    write_to_jsonl(data, args.output_path)",
+        "type": "code",
+        "location": "/tsllm/offline_rl/sample.py:1-25"
+    },
+    "611": {
+        "file_id": 71,
+        "content": "This Python script takes a JSONL file (--input_path) as input, samples 'n' number of items randomly from each answer in the input data, and writes the modified data to another JSONL file (--output_path). The sampled answers are used for training or testing purposes.",
+        "type": "comment"
+    },
+    "612": {
+        "file_id": 72,
+        "content": "/tsllm/offline_rl/split_two_test.py",
+        "type": "filepath"
+    },
+    "613": {
+        "file_id": 72,
+        "content": "The code loads JSONL data, splits it into training and evaluation sets, and samples specified numbers of items for the training set using ArgumentParser. It then deduplicates and writes train and test data to JSONL files with specific prefixes.",
+        "type": "summary"
+    },
+    "614": {
+        "file_id": 72,
+        "content": "import copy\nimport json\nimport random\nfrom pathlib import Path\nfrom argparse import ArgumentParser\nfrom tsllm.offline_rl.utils import load_jsonl, write_to_jsonl\ndef sample_dicts(data, n):\n    if n > len(data):\n        n = len(data)\n    return random.sample(data, n)\nif __name__ == \"__main__\":\n    parser = ArgumentParser()\n    parser.add_argument(\"--train_num\", type=int, default=20)\n    parser.add_argument(\"--train_test_num\", type=int, default=2)\n    parser.add_argument(\"--train_data_prefix\", type=str)\n    args = parser.parse_args()\n    train_data = load_jsonl(f\"{args.train_data_prefix}_dedup.jsonl\")\n    train_data_eval = copy.deepcopy(train_data)\n    for d1, d2 in zip(train_data, train_data_eval):\n        picked_ans = sample_dicts(d1[\"answer\"], args.train_num + args.train_test_num)\n        if len(picked_ans) > args.train_num:\n            d1[\"answer\"] = picked_ans[: args.train_num]\n            d2[\"answer\"] = picked_ans[args.train_num :]\n        else:\n            d1[\"answer\"] = picked_ans\n            d2[\"answer\"] = []",
+        "type": "code",
+        "location": "/tsllm/offline_rl/split_two_test.py:1-34"
+    },
+    "615": {
+        "file_id": 72,
+        "content": "This code loads JSONL data, splits it into training and evaluation sets, and samples a specified number of items for the training set. It uses the ArgumentParser to take input parameters such as train_num and train_data_prefix. The loaded data is then split into two parts: one with answers included and another with empty answers.",
+        "type": "comment"
+    },
+    "616": {
+        "file_id": 72,
+        "content": "    write_to_jsonl(\n        train_data, f\"{args.train_data_prefix}_dedup_sample{args.train_num}.jsonl\"\n    )\n    write_to_jsonl(\n        train_data_eval,\n        f\"{args.train_data_prefix}_dedup_sample{args.train_num}_train_test_sample_{args.train_test_num}.jsonl\",\n    )",
+        "type": "code",
+        "location": "/tsllm/offline_rl/split_two_test.py:36-42"
+    },
+    "617": {
+        "file_id": 72,
+        "content": "Writes train and test data to JSONL files with specific prefixes for deduplicated samples.",
+        "type": "comment"
+    },
+    "618": {
+        "file_id": 73,
+        "content": "/tsllm/offline_rl/test_sft_and_v.py",
+        "type": "filepath"
+    },
+    "619": {
+        "file_id": 73,
+        "content": "The code imports necessary modules, defines function for accuracy evaluation, and configures hyperparameters. It uses distributed learning techniques such as MCTS, RAP, and Beam Search, and saves output as specified writers or JSON files. Additionally, it tests scenarios, generates logs, raises ValueError, updates a dictionary of correct counts for a distributed system, gathers results from each process, prints with timing information, and handles both integer and nested dictionary values.",
+        "type": "summary"
+    },
+    "620": {
+        "file_id": 73,
+        "content": "from pathlib import Path\nfrom typing import Dict, List, Optional\nimport torch.distributed as dist\nfrom tsllm.argparse_utils import str2bool\nfrom tsllm.distributed.utils import (\n    print_rank_0,\n    print_with_rank,\n    init_distributed,\n    gather_scalar,\n)\nfrom tsllm.envs import get_env_datasets, get_default_query_str_builder\nfrom tsllm.inference.trajectory_collector import _mcts_rollout_v1\nfrom tsllm.inference.value import value_fn\nfrom tsllm.inference.lm_self_value import tot_value_fn\nfrom tsllm.llm.ct2_utils import load_ct2_model\nfrom tsllm.mcts.utils import get_root\nfrom tsllm.model import load_critic_model\nfrom tsllm.llm.text_generation import llm_gen_ct2\nfrom tsllm.mcts.tree import MCTS\nfrom tsllm.inference.evaluation.vote_utils import (\n    AGG_FN_MAP,\n    MAJORITY_VOTE,\n    ORM_VOTE,\n    ORM_MAX,\n)\nfrom tsllm.envs.base_env import INVALID_ANS\nfrom transformers import AutoTokenizer\nimport torch\nfrom functools import partial\nimport json\nimport jsonlines\nimport time\nimport numpy as np\nfrom tqdm import tqdm\nfrom dataclasses import dataclass",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:1-35"
+    },
+    "621": {
+        "file_id": 73,
+        "content": "The code imports necessary modules and functions for distributed learning, environment configurations, model loading, text generation, MCTS tree, evaluation voting methods, tokenization, torch tensors, json handling, progress bars, and dataclasses.",
+        "type": "comment"
+    },
+    "622": {
+        "file_id": 73,
+        "content": "from argparse import ArgumentParser\nimport os\nimport importlib\nimport random\ndef setup_seed(seed):\n    torch.manual_seed(seed)\n    torch.cuda.manual_seed_all(seed)\n    np.random.seed(seed)\n    random.seed(seed)\n    os.environ[\"PYTHONHASHSEED\"] = str(seed)\n    torch.backends.cudnn.deterministic = True\nCHOSEN_AGGR_METHODS = [MAJORITY_VOTE, ORM_VOTE, ORM_MAX]\ndef judge_ans(\n    problem_str: str,\n    extracted_groundtruth: str,\n    output_list: List[str],\n    v_list: List[float],\n    aggration_mode: str,\n    extract_answer_fn,\n    judge_correct_fn,\n):\n    ans_list = [extract_answer_fn(txt) for txt in output_list]\n    valid_ans_list, valid_v_list = [], []\n    for i, ans in enumerate(ans_list):\n        if ans != INVALID_ANS:\n            valid_ans_list.append(ans)\n            valid_v_list.append(v_list[i])\n    if len(valid_ans_list) == 0:\n        return 0\n    # score_normalization: this is only necessary for [-1, 1] values\n    valid_v_list = np.array(valid_v_list, dtype=float)\n    valid_v_list -= valid_v_list.min()\n    valid_v_list /= valid_v_list.max() + 1e-3",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:36-76"
+    },
+    "623": {
+        "file_id": 73,
+        "content": "The code defines a function `judge_ans` for evaluating the accuracy of extracted answers. It takes in various parameters such as `problem_str`, `extracted_groundtruth`, `output_list`, and `v_list`. The function extracts answers from the `output_list`, filters out invalid answers, normalizes the scores, and applies an aggregation mode (`aggration_mode`) to determine the final result.",
+        "type": "comment"
+    },
+    "624": {
+        "file_id": 73,
+        "content": "    valid_v_list = valid_v_list.tolist()\n    aggregated_ans = AGG_FN_MAP[aggration_mode](valid_ans_list, valid_v_list)\n    return (\n        1 if judge_correct_fn(problem_str, extracted_groundtruth, aggregated_ans) else 0\n    )\ndef get_correct_proportion(\n    problem_str: str,\n    extracted_groundtruth: str,\n    output_list: List[str],\n    extract_answer_fn,\n    judge_correct_fn,\n):\n    correct_list = [\n        1.0\n        if judge_correct_fn(problem_str, extracted_groundtruth, extract_answer_fn(txt))\n        else 0.0\n        for txt in output_list\n    ]\n    if len(correct_list) > 0:\n        return np.mean(correct_list).item()\n    else:\n        return 0.0\n@dataclass\nclass SearchArgs:\n    # temperature used for llm generation in CoT(-SC) and MCTS tree expansion\n    temperature: float = 1.0\n    # COT-SC number\n    k_maj: int = 100\n    # MCTS aggregation number\n    num_mcts_aggregation: int = 5\n    # which tree search methods to use\n    #  [\"mcts.get_next_action\", \"mcts.rap\", \"mcts.rollout\", \"dfs\", \"bfs\"]\n    # \"mcts.get_next_action\" is MCTS-$\\alpha$ in paper",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:77-116"
+    },
+    "625": {
+        "file_id": 73,
+        "content": "This code snippet defines a function `get_correct_proportion` that takes in parameters like `problem_str`, `extracted_groundtruth`, `output_list`, `extract_answer_fn`, and `judge_correct_fn`. It uses the `judge_correct_fn` to determine if an answer is correct, creating a list of 1s or 0s based on the correctness. The function then calculates the mean of the list to find the correct proportion.",
+        "type": "comment"
+    },
+    "626": {
+        "file_id": 73,
+        "content": "    # \"mcts.rap\" is MCTS in paper\n    # \"mcts.rollout\" is MCTS-Rollout in paper\n    rollout_method: str = None\n    # Tree Search building configs\n    max_length: int = 8\n    max_action: int = 6\n    # general mcts hyperparameters for MCTS-alpha, MCTS, MCTS-Rollout\n    # Tree basic configs\n    pb_c_init: float = 10\n    # MCTS-alpha hyperparamerters\n    num_simulations: int = 10\n    reset_total_tree: bool = False\n    mcts_sample: bool = False\n    clear_tree: bool = False\n    # MCTS-Rollout Hyperparameters\n    max_simulation: Optional[int] = None\n    max_token: Optional[int] = None\n    # DFS hyperparameters\n    prune_ratio: Optional[float] = None\n    prune_value: Optional[float] = None\n    # if set method to be mcts.rap and set this to be True, then\n    #  it samples with llm's prior on the tree space, which is\n    #  CoT-SC-Tree\n    select_by_prior: bool = False\n    seed: int = 7\nif __name__ == \"__main__\":\n    TEST_NO_TERMINAL = int(os.getenv(\"TEST_NO_TERMINAL\", 0))\n    TEST_WITH_TERMINAL = int(os.getenv(\"TEST_WITH_TERMINAL\", 0))",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:117-153"
+    },
+    "627": {
+        "file_id": 73,
+        "content": "This code configures hyperparameters and settings for different tree search methods in a machine learning model. The options include MCTS, MCTS-Rollout, MCTS-alpha, and DFS. It also allows sampling from the llm's prior on the tree space by setting `select_by_prior` to True. The code is used in an offline reinforcement learning context for model testing.",
+        "type": "comment"
+    },
+    "628": {
+        "file_id": 73,
+        "content": "    TEST_COT_GREEDY = int(os.getenv(\"TEST_COT_GREEDY\", 0))\n    TEST_COT_SC = int(os.getenv(\"TEST_COT_SC\", 0))\n    assert TEST_NO_TERMINAL + TEST_WITH_TERMINAL + TEST_COT_SC + TEST_COT_GREEDY > 0\n    parser = ArgumentParser()\n    parser.add_argument(\"--ct2_dir\", type=str, required=True)\n    parser.add_argument(\"--critic_model_path\", type=str, required=True)\n    parser.add_argument(\"--tokenizer_path\", type=str, required=True)\n    parser.add_argument(\"--state_dict_path\", type=str, default=None)\n    parser.add_argument(\"--save_dir\", type=str, required=True)\n    parser.add_argument(\"--env_name\", type=str, default=\"gsm8k\")\n    parser.add_argument(\"--test\", type=str2bool, default=True)\n    parser.add_argument(\"--is_few_shot\", type=str2bool, default=False)\n    config = parser.parse_args()\n    TREE_MAX_LENGTH = 4\n    TREE_MAX_ACTIONS = 20\n    # RANDOM_SEEDS = [x * 10009 + 7 for x in [0, 1, 2]]\n    args_list = [\n        {\n            \"temperature\": 1.0,\n            \"max_length\": TREE_MAX_LENGTH,\n            \"max_action\": TREE_MAX_ACTIONS,",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:154-176"
+    },
+    "629": {
+        "file_id": 73,
+        "content": "This code is setting environment variables and parsing command line arguments for the tree search algorithm. It sets the test, few shot learning, environment name, save directory, critic model path, tokenizer path, and whether to load a specific state dictionary. The code also defines TREE_MAX_LENGTH, TREE_MAX_ACTIONS, and a list of random seeds (though commented out).",
+        "type": "comment"
+    },
+    "630": {
+        "file_id": 73,
+        "content": "            \"pb_c_init\": 3,\n            \"num_simulations\": 5,\n            \"k_maj\": 10,\n            \"num_mcts_aggregation\": 1,\n            \"max_simulation\": None,\n            \"max_token\": 51200,\n            \"rollout_method\": \"mcts.rap\",\n            \"select_by_prior\": False,\n            \"reset_total_tree\": False,\n            \"mcts_sample\": False,\n            \"clear_tree\": True,\n            \"prune_ratio\": 0.7,\n            \"prune_value\": None,\n            \"seed\": 7,\n        },\n    ]\n    use_llm_self_eval: bool = False\n    # whether to use LM self-evaluation, this is supported only for game24 now.\n    if use_llm_self_eval:\n        assert (\n            config.env_name == \"game24\"\n        ), \"llm self-evaluation is now only supported for Game24\"\n    task_module = importlib.import_module(f\"tsllm.envs.{config.env_name}\")\n    extract_answer = task_module.extract_answer\n    extract_groundtruth = task_module.extract_groundtruth\n    judge_correct = task_module.judge_correct\n    save_dir = Path(config.save_dir) / config.env_name",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:177-206"
+    },
+    "631": {
+        "file_id": 73,
+        "content": "The code imports necessary modules, sets configuration options, and ensures that the LLM self-evaluation is supported for Game24 environment. It also imports specific functions related to extracting answers and ground truths from the task module. The save directory is constructed based on the given save_dir and env_name values.",
+        "type": "comment"
+    },
+    "632": {
+        "file_id": 73,
+        "content": "    local_rank, world_size = init_distributed()\n    print_rank_0(\"ENV: {}, test set: {}\".format(config.env_name, config.test))\n    train_ds, test_ds = get_env_datasets(config.env_name)\n    if not config.test:\n        test_ds = train_ds\n    device = torch.device(f\"cuda:{local_rank}\")\n    if use_llm_self_eval:\n        tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_path)\n        critic, _ = load_ct2_model(\n            config.critic_model_path,\n            device=\"cuda\",\n            device_index=local_rank,\n            compute_type=\"bfloat16\",\n        )\n        policy_forward_value = partial(tot_value_fn, critic, tokenizer, config.env_name)\n    else:\n        tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_path)\n        critic = load_critic_model(\n            config.critic_model_path, config.state_dict_path, device\n        )\n        policy_forward_value = partial(value_fn, critic, tokenizer)\n    # # fake value\n    # def policy_forward_value(x):\n    #     return np.array([0.0] * len(x))\n    ############ CONVERT MODEL to CT2 files ###################",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:208-237"
+    },
+    "633": {
+        "file_id": 73,
+        "content": "This code initializes distributed settings, prints the environment and test set configuration, retrieves training and testing datasets, assigns a GPU device for model execution, loads a language model with tokenizer, and sets up either a critic model or a value function depending on if the self-evaluation by the LLM is enabled.",
+        "type": "comment"
+    },
+    "634": {
+        "file_id": 73,
+        "content": "    ct2_generator, ct2_sp = load_ct2_model(\n        config.ct2_dir, device=\"cuda\", device_index=local_rank, compute_type=\"bfloat16\"\n    )\n    def prompt_fn(problem_input: str):\n        return get_default_query_str_builder(config.env_name)(\n            problem_input, is_few_shot=config.is_few_shot\n        )\n    def cot_direct_output(args, problem_inst, stop, **kwargs):\n        prompt = prompt_fn(problem_inst[\"question\"])\n        max_new_tokens = kwargs.pop(\"max_new_tokens\", 256)\n        max_new_tokens = max(256, max_new_tokens)\n        texts, logps = llm_gen_ct2(\n            ct2_generator,\n            tokenizer,\n            static_prompt=None,\n            prompt=prompt,\n            num_sequence=1,\n            stop=tokenizer.eos_token_id,\n            max_new_tokens=max_new_tokens,\n            **kwargs,\n        )\n        extracted_groundtruth = extract_groundtruth(problem_inst[\"answer\"])\n        value_list = policy_forward_value(\n            [prompt + txt + task_module.SEP for txt in texts]\n        ).tolist()\n        output_list = [",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:238-266"
+    },
+    "635": {
+        "file_id": 73,
+        "content": "This code block loads a CT2 model, defines prompt and output functions, and generates texts using the CT2 generator with a given prompt. It then extracts ground truth and calculates forward policy values for each text generated. These outputs can be used to evaluate performance in a few-shot learning task.",
+        "type": "comment"
+    },
+    "636": {
+        "file_id": 73,
+        "content": "            {\"path_idx\": i, \"text\": txt, \"value\": v}\n            for i, (txt, v) in enumerate(zip(texts, value_list))\n        ]\n        return (\n            judge_ans(\n                problem_inst[\"question\"],\n                extracted_groundtruth,\n                texts,\n                value_list,\n                MAJORITY_VOTE,\n                extract_answer,\n                judge_correct,\n            ),\n            output_list,\n        )\n    def cot_sc_output(args, problem_inst, stop, **kwargs):\n        prompt = prompt_fn(problem_inst[\"question\"])\n        max_new_tokens = kwargs.pop(\"max_new_tokens\", 256)\n        max_new_tokens = max(256, max_new_tokens)\n        texts, logps = llm_gen_ct2(\n            ct2_generator,\n            tokenizer,\n            static_prompt=None,\n            prompt=prompt,\n            num_sequence=args.k_maj,\n            stop=tokenizer.eos_token_id,\n            max_new_tokens=max_new_tokens,\n            max_batch_size=50,\n            **kwargs,\n        )\n        extracted_groundtruth = extract_groundtruth(problem_inst[\"answer\"])",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:267-299"
+    },
+    "637": {
+        "file_id": 73,
+        "content": "This code snippet defines a function `cot_sc_output` that takes input arguments and processes them to generate output. It first generates a prompt, sets the maximum number of new tokens allowed, then uses LLM (Large Language Model) generation function (`llm_gen_ct2`) to generate texts and log probability scores (logps). It also extracts ground truth information from the input answer and returns the result of `judge_ans` function along with the output list.",
+        "type": "comment"
+    },
+    "638": {
+        "file_id": 73,
+        "content": "        value_list = []\n        for i in range(0, len(texts), 25):\n            value_list.extend(\n                policy_forward_value(\n                    [prompt + txt + task_module.SEP for txt in texts[i : i + 25]]\n                ).tolist()\n            )\n        judge_results = {\n            f\"{k}@{args.k_maj}\": judge_ans(\n                problem_inst[\"question\"],\n                extracted_groundtruth,\n                texts,\n                value_list,\n                k,\n                extract_answer,\n                judge_correct,\n            )\n            for k in CHOSEN_AGGR_METHODS\n        }\n        judge_results[\"c%\"] = get_correct_proportion(\n            problem_inst[\"question\"],\n            extracted_groundtruth,\n            texts,\n            extract_answer,\n            judge_correct,\n        )\n        output_list = [\n            {\"path_idx\": i, \"text\": txt, \"value\": v}\n            for i, (txt, v) in enumerate(zip(texts, value_list))\n        ]\n        return judge_results, output_list\n    def mcts_multi_search(",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:300-334"
+    },
+    "639": {
+        "file_id": 73,
+        "content": "The code iterates through a list of texts in batches, calculates the policy forward value for each batch, stores these values in a list. It then evaluates the judge results based on the ground truth and text inputs. The function returns a dictionary containing the judge results and a list with path index, text, and value for each text.",
+        "type": "comment"
+    },
+    "640": {
+        "file_id": 73,
+        "content": "        args: \"SearchArgs\", problem, no_terminal_reward=True, tree_path=None\n    ):\n        env = task_module.Env(\n            config={\n                \"max_actions\": args.max_action,\n                \"max_length\": args.max_length,\n                \"stop_str\": \"The answer is \",\n                \"generation_config\": {\n                    \"max_new_tokens\": 64,\n                    \"do_sample\": True,\n                    \"temperature\": args.temperature,\n                    \"top_p\": 1.0,\n                    \"top_k\": 100,\n                    \"return_dict_in_generate\": True,\n                    \"output_scores\": True,\n                    \"use_cache\": True,\n                },\n            },\n            math_problems=[\n                {\n                    \"question\": problem[\"question\"],\n                    \"answer\": extract_groundtruth(problem[\"answer\"]),\n                }\n            ],\n            llm_gen_fn=partial(llm_gen_ct2, ct2_generator, tokenizer),\n            tokenizer=tokenizer,\n        )\n        # llm_gen_fn=partial(llm_gen_with_logp_v1, model, tokenizer),",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:335-362"
+    },
+    "641": {
+        "file_id": 73,
+        "content": "This code initializes an environment using the given configuration and problem, setting up parameters for maximum actions, length, stop string, and generation settings. It also includes a function for generating LLM responses and the tokenizer, creating an environment suitable for running the task.",
+        "type": "comment"
+    },
+    "642": {
+        "file_id": 73,
+        "content": "        cfg = {\n            \"num_simulations\": args.num_simulations,\n            \"pb_c_base\": 19652,\n            \"pb_c_init\": args.pb_c_init,\n            \"root_dirichlet_alpha\": 0.3,\n            \"root_noise_weight\": 0.25,\n            \"no_terminal_reward\": no_terminal_reward,\n        }\n        if tree_path and tree_path.exists():\n            mcts = MCTS.from_json(cfg, tree_path, reset_visit_info=True)\n        else:\n            mcts = MCTS(cfg=cfg)\n        if args.rollout_method == \"mcts.rollout\":\n            assert args.max_token is not None and args.max_simulation is None\n            output_list, _, _ = mcts.rollout(\n                env,\n                args.num_mcts_aggregation,\n                policy_forward_value,\n                max_num_simulation=args.max_simulation,\n                max_token=args.max_token,\n                return_tree=True,\n            )\n        elif args.rollout_method == \"mcts.get_next_action\":\n            output_list = _mcts_rollout_v1(\n                mcts,\n                env,\n                policy_forward_value,",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:363-390"
+    },
+    "643": {
+        "file_id": 73,
+        "content": "This code initializes an MCTS (Monte Carlo Tree Search) object with configuration settings specified in the \"cfg\" dictionary. If a pre-existing tree file is found at the given \"tree_path\", it loads the tree from that file, otherwise, it creates a new MCTS instance. The rollout method for the MCTS object is determined by the \"args.rollout_method\" argument, and the MCTS object's methods are then called to perform either a full rollout or get the next action for further processing.",
+        "type": "comment"
+    },
+    "644": {
+        "file_id": 73,
+        "content": "                args.num_mcts_aggregation,\n                args.reset_total_tree,\n                sample=args.mcts_sample,\n                clear_total_tree=args.clear_tree,\n            )\n            prompt = prompt_fn(problem[\"question\"])\n            texts = [o[\"text\"] for o in output_list]\n            if len(texts) > 0:\n                value_list = policy_forward_value(\n                    # add a .strip() in case mistakes happens when copy this line to other place\n                    [prompt + txt.strip() + task_module.SEP for txt in texts]\n                ).tolist()\n            else:\n                value_list = []\n            for o, v in zip(output_list, value_list):\n                o[\"value\"] = v\n        elif args.rollout_method == \"mcts.rap\":\n            output_list = mcts.rap(\n                env,\n                args.num_mcts_aggregation,\n                policy_forward_value,\n                args.select_by_prior,\n            )\n        elif args.rollout_method == \"mcts.beam_search\":\n            output_list = mcts.beam_search(",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:391-416"
+    },
+    "645": {
+        "file_id": 73,
+        "content": "This code is responsible for executing a test on the Soft-Target and Value functions in a reinforcement learning model. It uses different rollout methods such as MCTS, RAP, and Beam Search to generate output lists. The function applies a policy forward value calculation to each element in the list of texts generated from the problem's question. Depending on the selected rollout method, the output is obtained using different functions: mcts.rap, mcts.beam_search or the MCTS module.",
+        "type": "comment"
+    },
+    "646": {
+        "file_id": 73,
+        "content": "                env, args.num_mcts_aggregation, args.max_length, policy_forward_value\n            )\n        elif args.rollout_method == \"mcts.dfs\":\n            # here the num_mcts_aggregation is the step_limit which indicate how many nodes\n            # will be visited in the tree.\n            output_list = mcts.dfs(\n                env,\n                args.num_mcts_aggregation,\n                policy_forward_value,\n                prune_value=args.prune_value,\n                prune_ratio=args.prune_ratio,\n            )\n        else:\n            raise ValueError(\"Unknow rollout method: {}\".format(args.rollout_method))\n        texts = [o[\"text\"] for o in output_list]\n        value_list = [o[\"value\"] for o in output_list]\n        extracted_groundtruth = extract_groundtruth(problem[\"answer\"])\n        judge_results = {\n            f\"{k}@{args.num_mcts_aggregation}\": judge_ans(\n                problem[\"question\"],\n                extracted_groundtruth,\n                texts,\n                value_list,\n                k,",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:417-442"
+    },
+    "647": {
+        "file_id": 73,
+        "content": "The code determines the rollout method based on the input argument 'args.rollout_method'. If it's \"mcts.assistant",
+        "type": "comment"
+    },
+    "648": {
+        "file_id": 73,
+        "content": "                extract_answer,\n                judge_correct,\n            )\n            for k in CHOSEN_AGGR_METHODS\n        }\n        judge_results[\"c%\"] = get_correct_proportion(\n            problem[\"question\"],\n            extracted_groundtruth,\n            texts,\n            extract_answer,\n            judge_correct,\n        )\n        if output_list and args.rollout_method != \"mcts.rollout\":\n            num_token = output_list[-1][\"num_generated_token\"]\n        else:\n            num_token = mcts.num_generated_token\n        judge_results[\"#token\"] = num_token\n        return mcts, judge_results, output_list\n    def test_problem(\n        args,\n        idx,\n        problem_inst,\n        cot_writer,\n        cot_sc_writer,\n        mcts_no_term_writer,\n        mcts_w_term_writer,\n    ):\n        results = {}\n        def save_fn(writer, output, result: Dict):\n            if writer is not None:\n                obj = {\n                    \"i\": idx,\n                    \"question\": problem_inst[\"question\"],\n                    \"groundtruth\": problem_inst[\"answer\"],",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:443-479"
+    },
+    "649": {
+        "file_id": 73,
+        "content": "This code defines a function `test_problem` that takes arguments, a problem instance, and various writers as input. It returns the MCTS algorithm, judge results, and output list. The function uses nested loops to evaluate problems using different rollout methods. It calculates correct proportions, number of tokens generated, and saves results to specified writers.",
+        "type": "comment"
+    },
+    "650": {
+        "file_id": 73,
+        "content": "                    \"output\": output,\n                    \"result\": result,\n                }\n                writer.write(obj)\n        if TEST_NO_TERMINAL:\n            # save_tree_path = save_dir / f\"tmp_tree\"\n            # if not save_tree_path.exists():\n            #     save_tree_path.mkdir(parents=True)\n            mcts, r_no_terminal, no_terminal_episodes = mcts_multi_search(\n                args, problem_inst, True\n            )\n            # json.dump(\n            #     get_root(mcts.root).to_json(),\n            #     open(save_tree_path / f\"tree_{idx}.json\", \"w\"),\n            #     indent=2,\n            # )\n            save_fn(mcts_no_term_writer, no_terminal_episodes, r_no_terminal)\n            results[\"w/o-terminal\"] = r_no_terminal\n        if TEST_WITH_TERMINAL:\n            _, r_with_terminal, with_terminal_episodes = mcts_multi_search(\n                args, problem_inst, False\n            )\n            save_fn(mcts_w_term_writer, with_terminal_episodes, r_with_terminal)\n            results[\"w/-terminal\"] = r_with_terminal",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:480-505"
+    },
+    "651": {
+        "file_id": 73,
+        "content": "This code is saving a tree using MCTS multi-search for cases with and without terminal, writing the results to JSON files. It uses a writer object to store the output, and defines the search parameters in args and problem_inst variables. The TEST_NO_TERMINAL and TEST_WITH_TERMINAL flags determine which type of search is performed.",
+        "type": "comment"
+    },
+    "652": {
+        "file_id": 73,
+        "content": "        if TEST_COT_GREEDY:\n            r_cot_greedy, cot_episodes = cot_direct_output(\n                args,\n                problem_inst,\n                stop=tokenizer.eos_token_id,\n                max_new_tokens=256,\n                temperature=args.temperature,\n                top_k=1,\n            )\n            save_fn(cot_writer, cot_episodes, r_cot_greedy)\n            results[\"cot-greedy\"] = r_cot_greedy\n        if TEST_COT_SC:\n            r_cot_sc, cot_sc_episodes = cot_sc_output(\n                args,\n                problem_inst,\n                stop=tokenizer.eos_token_id,\n                max_new_tokens=256,\n                temperature=args.temperature,\n                top_k=100,\n            )\n            save_fn(cot_sc_writer, cot_sc_episodes, r_cot_sc)\n            results[\"cot-sc\"] = r_cot_sc\n        return results\n    def _result_str(results, cnt, join_str=\"\\n\"):\n        res = \"\"\n        for k, v in results.items():\n            if isinstance(v, int):\n                res += f\"{k}: {v/cnt:.2%}\"\n            elif isinstance(v, dict):",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:507-537"
+    },
+    "653": {
+        "file_id": 73,
+        "content": "The code performs two tests, TEST_COT_GREEDY and TEST_COT_SC. For the first test, it generates cot_episodes and r_cot_greedy using cot_direct_output function and saves them. The results are then stored in \"cot-greedy\". Similarly, for the second test, cot_sc_episodes and r_cot_sc are generated using cot_sc_output, saved, and stored in \"cot-sc\". Both sets of results are returned.",
+        "type": "comment"
+    },
+    "654": {
+        "file_id": 73,
+        "content": "                res += f\"{k}: \"\n                res += \", \".join(\n                    [\n                        (\n                            f\"{sub_k}: {sub_v/cnt:.2f}\"\n                            if sub_k == \"#token\"\n                            else f\"{sub_k}: {sub_v/cnt:.2%}\"\n                        )\n                        for sub_k, sub_v in v.items()\n                    ]\n                )\n            else:\n                raise ValueError\n            res += join_str\n        res += f\"cnt: {cnt}\"\n        return res\n    for i_arg, cur_args in enumerate(args_list):\n        args = SearchArgs(**cur_args)\n        seed = args.seed\n        setup_seed(seed)\n        writer_dir = save_dir / (f\"args{i_arg}_seed{seed}/\")\n        if local_rank == 0:\n            print(\"Search args: {}, SEED={}\".format(args, seed))\n            if not writer_dir.exists():\n                writer_dir.mkdir(parents=True)\n            json.dump(cur_args, open(writer_dir / \"args.json\", \"w\"))\n        if TEST_COT_GREEDY:\n            cot_save_path = writer_dir / \"cot\"",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:538-568"
+    },
+    "655": {
+        "file_id": 73,
+        "content": "This code appears to be part of a larger script that performs some form of tree search and language modeling. The code snippet is responsible for creating summary logs for each set of arguments (args_list). It calculates various statistics, such as token counts, percentages, and joins them into a formatted string. If the given arguments don't meet certain conditions, it raises a ValueError. The script also writes these summaries to a file within the specified save directory for each set of arguments.",
+        "type": "comment"
+    },
+    "656": {
+        "file_id": 73,
+        "content": "            if local_rank == 0 and not cot_save_path.exists():\n                cot_save_path.mkdir(parents=True)\n            dist.barrier()\n            cot_writer = jsonlines.open(cot_save_path / f\"{local_rank}.jsonl\", \"a\")\n        else:\n            cot_writer = None\n        if TEST_COT_SC:\n            cot_sc_save_path = writer_dir / \"cot_sc\"\n            if local_rank == 0 and not cot_sc_save_path.exists():\n                cot_sc_save_path.mkdir(parents=True)\n            dist.barrier()\n            cot_sc_writer = jsonlines.open(\n                cot_sc_save_path / f\"{local_rank}.jsonl\", \"a\"\n            )\n        else:\n            cot_sc_writer = None\n        if TEST_NO_TERMINAL:\n            mcts_no_term_save_path = writer_dir / \"no_terminal_reward\"\n            if local_rank == 0 and not mcts_no_term_save_path.exists():\n                mcts_no_term_save_path.mkdir(parents=True)\n            dist.barrier()\n            mcts_no_term_writer = jsonlines.open(\n                mcts_no_term_save_path / f\"{local_rank}.jsonl\", \"a\"",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:569-592"
+    },
+    "657": {
+        "file_id": 73,
+        "content": "This code is initializing writer objects for different types of data based on flags. If the local rank is 0 and the save path does not exist, it creates the directory using mkdir. Then, dist.barrier() ensures all processes reach this point before proceeding further. The code then opens jsonlines writers for each local rank and appends to them if TEST_COT_SC or TEST_NO_TERMINAL is set. If not, the writer is set to None. This code seems to be part of a distributed system where each process has its own local rank and writes data to separate files for further processing.",
+        "type": "comment"
+    },
+    "658": {
+        "file_id": 73,
+        "content": "            )\n        else:\n            mcts_no_term_writer = None\n        if TEST_WITH_TERMINAL:\n            mcts_w_term_save_path = writer_dir / \"with_terminal_reward\"\n            if local_rank == 0 and not mcts_w_term_save_path.exists():\n                mcts_w_term_save_path.mkdir(parents=True)\n            dist.barrier()\n            mcts_w_term_writer = jsonlines.open(\n                mcts_w_term_save_path / f\"{local_rank}.jsonl\", \"a\"\n            )\n        else:\n            mcts_w_term_writer = None\n        cnt = 0\n        correct_cnt_dict = dict()\n        t0 = time.time()\n        for i in (pbar := tqdm(range(len(test_ds)), disable=(local_rank != 0))):\n            if i % world_size == local_rank:\n                results = test_problem(\n                    args,\n                    i,\n                    test_ds[i],\n                    cot_writer,\n                    cot_sc_writer,\n                    mcts_no_term_writer,\n                    mcts_w_term_writer,\n                )\n                for k, v in results.items():",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:593-622"
+    },
+    "659": {
+        "file_id": 73,
+        "content": "The code initializes `mcts_no_term_writer` and `mcts_w_term_writer`, which are used for saving MCTS results without and with terminal rewards, respectively. It also creates a progress bar `pbar` for iterating over `test_ds`. The `results` variable stores the results of calling `test_problem()` function for each iteration. Finally, it updates the `correct_cnt_dict` based on the results.",
+        "type": "comment"
+    },
+    "660": {
+        "file_id": 73,
+        "content": "                    if isinstance(v, int):\n                        if k not in correct_cnt_dict:\n                            correct_cnt_dict[k] = 0\n                        correct_cnt_dict[k] += v\n                    elif isinstance(v, dict):\n                        if k not in correct_cnt_dict:\n                            correct_cnt_dict[k] = dict()\n                        for sub_k, sub_v in v.items():\n                            if sub_k not in correct_cnt_dict[k]:\n                                correct_cnt_dict[k][sub_k] = 0\n                            correct_cnt_dict[k][sub_k] += sub_v\n                cnt += 1\n                results_strs = _result_str(correct_cnt_dict, cnt, join_str=\"; \")\n                pbar.set_description(results_strs)\n        print_with_rank(results_strs)\n        cnt_list = gather_scalar(cnt, local_rank, world_size)\n        gathered_results = {}\n        for k, v in correct_cnt_dict.items():\n            if isinstance(v, int):\n                gathered_list = gather_scalar(int(v), local_rank, world_size)",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:623-646"
+    },
+    "661": {
+        "file_id": 73,
+        "content": "This code updates a dictionary of correct counts, handling both integer and nested dictionary values. It then gathers the counts across different ranks for further processing.",
+        "type": "comment"
+    },
+    "662": {
+        "file_id": 73,
+        "content": "                if local_rank == 0:\n                    gathered_results[k] = sum(gathered_list)\n            elif isinstance(v, dict):\n                gathered_results[k] = {}\n                for sub_k, sub_v in v.items():\n                    gathered_list = gather_scalar(float(sub_v), local_rank, world_size)\n                    if local_rank == 0:\n                        gathered_results[k][sub_k] = sum(gathered_list)\n            else:\n                raise ValueError\n        if local_rank == 0:\n            total_cnt = sum(cnt_list)\n            t1 = time.time()\n            total_results_strs = _result_str(gathered_results, total_cnt)\n            print(cur_args)\n            print(\"TOTAL RESULTS:\\n\", total_results_strs)\n            print(\"Time: {}\".format(t1 - t0))",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:647-665"
+    },
+    "663": {
+        "file_id": 73,
+        "content": "The code gathers results from distributed processes and combines them into a single dictionary. It handles dictionaries recursively, summing values across processes, and then prints the total results with timing information for process 0.",
+        "type": "comment"
+    },
+    "664": {
+        "file_id": 74,
+        "content": "/tsllm/offline_rl/test_sft_and_v_rlhf.py",
+        "type": "filepath"
+    },
+    "665": {
+        "file_id": 74,
+        "content": "The code handles Reinforcement Learning for LLMs by setting up search parameters, models for text generation, rollout methods, token limits, reward calculations, and CotSC scenario comparisons. It also manages reward data structures, gathers results from multiple processes, and prints total results with time taken if the local rank is 0.",
+        "type": "summary"
+    },
+    "666": {
+        "file_id": 74,
+        "content": "import os\nfrom pathlib import Path\nfrom typing import List, Optional\nimport torch.distributed as dist\nfrom tsllm.distributed.utils import print_with_rank, init_distributed, gather_scalar\nfrom transformers import AutoTokenizer, pipeline\nimport torch\nfrom functools import partial\nfrom tsllm.envs import get_env_datasets, get_default_query_str_builder\nfrom tsllm.envs.rlhf.prompt import PROBLEM_FORMAT_STR\nfrom tsllm.inference.trajectory_collector import _mcts_rollout_v1, _mcts_rollout_v2\nfrom tsllm.inference.value import value_fn\nimport json\nfrom tsllm.llm.ct2_utils import load_ct2_model\nfrom tsllm.mcts.utils import get_root\nfrom tsllm.model import load_critic_model\nfrom tsllm.model.modeling_actor_critic import AutoModelForCausalLMWithValueHead\nimport torch\nimport jsonlines\nfrom tsllm.llm.text_generation import llm_gen_ct2\nimport time\nimport numpy as np\nfrom tqdm import tqdm\nfrom tsllm.mcts.tree import MCTS\nfrom dataclasses import dataclass\nfrom argparse import ArgumentParser\nimport ctranslate2\nfrom tsllm.inference.value import value_fn_rlhf",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:1-29"
+    },
+    "667": {
+        "file_id": 74,
+        "content": "The code imports necessary libraries and modules for distributed computing, text generation, and model training. It also includes functions for MCTS rollout, value function estimation, and loading models. The code initializes the environment, sets up the model, and prepares for text generation and inference using MCTS algorithm. It handles data processing and loading of CT2 model, and includes utility functions for distributed learning.",
+        "type": "comment"
+    },
+    "668": {
+        "file_id": 74,
+        "content": "import time\nimport importlib\n@dataclass\nclass SearchArgs:\n    temperature: float = 1.0 # sampling temperature\n    num_mcts_aggregation: int = 5 # how many trajectories to sample\n    max_length: int = 8 # max depth of tree\n    pb_c_init: float = 10 # for mcts exploration\n    # init_critic_value: bool = True # whether we use value function to initialize the tree node value\n    rollout_method: str = None # which tree-search method we use\n    # mask_no_terminal_reward_value: bool = False # whether we mask the non-terminal value\n    prune_node_under_v: Optional[float] = None\n    num_simulations: int = 10 # parameter for mcts-alpha\n    # aggregation parameters\n    reset_total_tree: bool = False # intra-tree\n    clear_total_tree: bool = False # inter-tree\n    mcts_sample: bool = False # whether to use sample in mcts-alpha\n    max_simulation: Optional[int] = None # hyperparameter for mcts-alpha\n    max_token: Optional[int] = None # hyperparameter for mct-rollout\n    # DFS hyper parameter\n    prune_ratio: Optional[float] = 0.7",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:31-57"
+    },
+    "669": {
+        "file_id": 74,
+        "content": "This code defines a `SearchArgs` class with various parameters for tree search methods in Reinforcement Learning. Parameters include temperature, aggregation, max length, exploration rate, rollout method, and more. It also includes options for pruning nodes under a certain value, resetting or clearing the tree between simulations, and setting hyperparameters for MCTS-alpha and MCT-rollout.",
+        "type": "comment"
+    },
+    "670": {
+        "file_id": 74,
+        "content": "    prune_value: Optional[float] = None\n    # COT-SC-Tree equals to RAP with select_by_prior=True\n    select_by_prior: bool = False\n    # COT-SC number\n    k_maj: int = 100\n    max_new_tokens: int = 64\ninput_prompt_format = PROBLEM_FORMAT_STR\nif __name__ == \"__main__\":\n    TEST_NO_TERMINAL = int(os.getenv(\"TEST_NO_TERMINAL\", 0))\n    TEST_WITH_TERMINAL = int(os.getenv(\"TEST_WITH_TERMINAL\", 0))\n    TEST_COT_GREEDY = int(os.getenv(\"TEST_COT_GREEDY\", 0))\n    TEST_COT_SC = int(os.getenv(\"TEST_COT_SC\", 0))\n    assert TEST_NO_TERMINAL + TEST_WITH_TERMINAL + TEST_COT_SC + TEST_COT_GREEDY > 0\n    parser = ArgumentParser()\n    parser.add_argument(\"--ct2_dir\", type=str, required=True)\n    parser.add_argument(\"--tokenizer_path\", type=str, required=True)\n    parser.add_argument(\"--critic_model_path\",type=str, required=True)\n    parser.add_argument(\"--save_dir\", type=str, required=True)\n    parser.add_argument(\"--env_name\", type=str, required=True)\n    parser.add_argument(\"--dataset_name\", type=str, default=\"Dahoas/synthetic-instruct-gptj-pairwise\")",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:58-83"
+    },
+    "671": {
+        "file_id": 74,
+        "content": "This code initializes various optional parameters for the task at hand. It includes parameters like prune_value, select_by_prior, k_maj, and max_new_tokens. The code also reads in environment variables to determine which test to run and what arguments are required. Finally, it parses these arguments using an ArgumentParser.",
+        "type": "comment"
+    },
+    "672": {
+        "file_id": 74,
+        "content": "    parser.add_argument(\"--train\", action='store_true', default=False)\n    config = parser.parse_args()\n    args_list = [\n        {\n            \"temperature\": 1.0,\n            \"max_length\": 64,\n            \"pb_c_init\": 3,\n            \"num_simulations\": 10,\n            \"k_maj\": 5,\n            \"num_mcts_aggregation\": 1,\n            \"max_simulation\": None,\n            \"max_token\": 5000,\n            \"reset_total_tree\": False,\n            \"clear_total_tree\": True,\n            \"rollout_method\": \"mcts.get_next_action\",\n            \"select_by_prior\": False,\n            \"max_new_tokens\": 64,\n            \"mcts_sample\": False,\n            \"prune_ratio\": 0.9,\n            \"prune_value\": None\n        }\n    ]\n    task_module = importlib.import_module(f\"tsllm.envs.{config.env_name}\")\n    save_dir = Path(config.save_dir) / config.env_name\n    local_rank, world_size = init_distributed()\n    if config.env_name == \"rlhf\":\n        task_dataset_kwargs = {\"path\": config.dataset_name, 'num_train_data': 30000}\n        #assert config.train",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:84-117"
+    },
+    "673": {
+        "file_id": 74,
+        "content": "The code snippet is setting up arguments and configurations for an Reinforcement Learning model. It initializes a parser to handle command line arguments, creates a list of configuration settings for the model, imports a task module, defines a save directory, initializes distributed processes, and specifies a dataset path and number of training data for a specific environment (\"rlhf\").",
+        "type": "comment"
+    },
+    "674": {
+        "file_id": 74,
+        "content": "        #task_dataset_kwargs = {\"path\": config.dataset_name, 'train_data_pre': 22500, 'train_data_post':30000}\n    else:\n        task_dataset_kwargs = {}\n    train_ds, test_ds = get_env_datasets(config.env_name, **task_dataset_kwargs)\n    if config.train:\n        print_with_rank('Use training set')\n        test_ds = train_ds\n    tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_path)\n    tokenizer.eos_token = \"### End\"\n    from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification\n    reward_name = \"OpenAssistant/reward-model-deberta-v3-large-v2\"\n    rank_model, reward_tokenizer = AutoModelForSequenceClassification.from_pretrained(reward_name), AutoTokenizer.from_pretrained(reward_name)\n    rank_model = rank_model.bfloat16().to(f\"cuda:{local_rank}\")\n    @torch.inference_mode()\n    def reward_fn(question, answer):    \n        inputs = reward_tokenizer(question, answer, return_tensors='pt').to(f\"cuda:{local_rank}\")\n        score = rank_model(**inputs).logits[0].cpu().item()",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:118-138"
+    },
+    "675": {
+        "file_id": 74,
+        "content": "This code is creating a dataset for the task, determining if it should use the training or testing set based on config.train, and initializing the tokenizer, reward model, and reward function. The reward model takes in a question and answer pair as input and outputs a score. This score can be used to evaluate the quality of the generated answers.",
+        "type": "comment"
+    },
+    "676": {
+        "file_id": 74,
+        "content": "        return score\n    if not config.critic_model_path == 'None':\n        critic = AutoModelForCausalLMWithValueHead.from_pretrained(config.critic_model_path).to(f\"cuda:{local_rank}\").bfloat16()\n        policy_forward_value = partial(value_fn_rlhf, critic, tokenizer)\n    else:\n        critic = None\n        policy_forward_value = None\n    ############ CONVERT MODEL to CT2 files ###################\n    dist.barrier()\n    # PS：如果convert好了，上面两步都可以跳过\n    ################ LOAD CT2 model ####################\n    # ct2_generator = ctranslate2.Generator(ct2_dir,\n    #                                       )\n    # ct2_sp = spm.SentencePieceProcessor(os.path.join(ct2_dir, \"tokenizer.model\"))\n    ct2_generator = ctranslate2.Generator(\n        config.ct2_dir, device=\"cuda\", device_index=local_rank, compute_type=\"float32\"\n    )\n    def prompt_fn(problem_input: str):\n        return input_prompt_format.format(question=problem_input)\n    def cot_direct_output(args, problem_inst, stop, **kwargs):\n        prompt = prompt_fn(problem_inst[\"question\"])",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:139-166"
+    },
+    "677": {
+        "file_id": 74,
+        "content": "This code initializes a critic model if the config specifies a model path, otherwise it sets it to None. It also initializes a policy forward value based on whether there is a critic model or not. The code then proceeds to convert the model to CT2 files using ctranslate2 generator and defines prompt and cot_direct_output functions for further processing.",
+        "type": "comment"
+    },
+    "678": {
+        "file_id": 74,
+        "content": "        texts, logps = llm_gen_ct2(\n            ct2_generator,\n            tokenizer,\n            static_prompt=None,\n            prompt=prompt,\n            num_sequence=1,\n            stop=tokenizer.eos_token_id,\n            **kwargs,\n        )\n        reward_list = [reward_fn(prompt, txt) for txt in texts]\n        return reward_list[0], list(zip(texts, reward_list))\n    def cot_sc_output(args, problem_inst, stop, **kwargs):\n        prompt = prompt_fn(problem_inst[\"question\"])\n        texts, logps = llm_gen_ct2(\n            ct2_generator,\n            tokenizer,\n            static_prompt=None,\n            prompt=prompt,\n            num_sequence=args.k_maj,\n            stop=tokenizer.eos_token_id,\n            max_batch_size=50,\n            **kwargs,\n        )\n        reward_list = [reward_fn(prompt, txt) for txt in texts]\n        judge_results = max(reward_list)\n        return judge_results, list(zip(texts, reward_list))\n    def llm_forward_fn():\n        from llm.text_generation import llm_forward_ct2\n        llm_gen_v2 = partial(llm_forward_ct2, ct2_generator, tokenizer)",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:167-197"
+    },
+    "679": {
+        "file_id": 74,
+        "content": "The code snippet is from a machine learning model and appears to be responsible for generating text using LLM (Language Model) and evaluating the quality of generated outputs by applying a reward function. The code includes functions llm_gen_ct2, cot_sc_output, and llm_forward_fn which are used for text generation, output evaluation, and LLM forward pass respectively. The tokenizer is used to convert text into numerical sequences for model input. The reward_fn is applied to the generated texts and their corresponding prompts to evaluate the quality of each output. The max_batch_size parameter in cot_sc_output function limits the number of texts generated at a time.",
+        "type": "comment"
+    },
+    "680": {
+        "file_id": 74,
+        "content": "        return llm_gen_v2\n    def mcts_multi_search(args: \"SearchArgs\", problem_inst, no_terminal_reward=True):\n        env = task_module.Env(\n            config={\n                \"max_actions\": 50,\n                \"sep\": \"\",\n                \"max_length\": args.max_length,\n                \"temperature\": args.temperature,\n            },\n            problems=[\n                {\n                    \"question\": problem_inst[\"question\"],\n                }\n            ],\n            llm_forward_fn=llm_forward_fn(),\n            tokenizer=tokenizer,\n            reward_fn=reward_fn,\n        )\n        # llm_gen_fn=partial(llm_gen_with_logp_v1, model, tokenizer),\n        mcts = MCTS(\n            cfg={\n                \"num_simulations\": args.num_simulations,\n                \"pb_c_base\": 19652,\n                \"pb_c_init\": args.pb_c_init,\n                \"root_dirichlet_alpha\": 0.3,\n                \"root_noise_weight\": 0.25,\n                \"no_terminal_reward\": no_terminal_reward,\n            }\n        )\n        if args.rollout_method == \"mcts.rollout\":",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:198-229"
+    },
+    "681": {
+        "file_id": 74,
+        "content": "This code defines a function that performs MCTS search, initializes an environment for the given problem instance, and sets up an MCTS object with specified parameters. The environment is initialized with the provided question from the problem instance, using the given LLM forward function, tokenizer, and reward function. If the rollout method is set to \"mcts.rollout\", it uses the MCTS object for rollouts.",
+        "type": "comment"
+    },
+    "682": {
+        "file_id": 74,
+        "content": "            assert args.max_token is not None and args.max_simulation is None\n            output_list, _, _ = mcts.rollout(\n                env,\n                args.num_mcts_aggregation,\n                policy_forward_value,\n                max_num_simulation=args.max_simulation,\n                max_token=args.max_token,\n                return_tree=True,\n            )\n        elif args.rollout_method == \"mcts.get_next_action\":\n            output_list = _mcts_rollout_v1(\n                mcts,\n                env,\n                policy_forward_value,\n                args.num_mcts_aggregation,\n                args.reset_total_tree,\n                sample=args.mcts_sample,\n                clear_total_tree=args.clear_total_tree\n            )\n            prompt = prompt_fn(problem_inst[\"question\"])\n            # if len(texts) > 0:\n            #     value_list = policy_forward_value(\n            #         [prompt + txt + env.sep for txt in texts]\n            #     ).tolist()\n            # else:\n            #     value_list = []",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:230-255"
+    },
+    "683": {
+        "file_id": 74,
+        "content": "The code checks the rollout method and performs a MCTS rollout or uses mcts.get_next_action to get output. It also handles maximum token and simulation settings, and can clear the total tree if needed. The prompt function is used to generate text for evaluation.",
+        "type": "comment"
+    },
+    "684": {
+        "file_id": 74,
+        "content": "        elif args.rollout_method == \"mcts.rap\":\n            output_list = mcts.rap(\n                env,\n                args.num_mcts_aggregation,\n                policy_forward_value,\n                args.select_by_prior,\n            )\n        elif args.rollout_method == \"mcts.beam_search\":\n            output_list = mcts.beam_search(\n                env, args.num_mcts_aggregation, args.max_length, policy_forward_value\n            )\n        elif args.rollout_method == \"mcts.dfs\":\n            # here the num_mcts_aggregation is the step_limit which indicate how many nodes \n            # will be visited in the tree.\n            output_list = mcts.dfs(\n                env, \n                args.num_mcts_aggregation, \n                policy_forward_value, \n                prune_value=args.prune_value,\n                prune_ratio=args.prune_ratio\n            )\n        else:\n            raise ValueError(\"Unknow rollout method: {}\".format(args.rollout_method))\n        texts = [o[\"text\"] for o in output_list]\n        prompt = prompt_fn(problem_inst[\"question\"])",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:256-280"
+    },
+    "685": {
+        "file_id": 74,
+        "content": "This code snippet handles different rollout methods for a reinforcement learning algorithm. If \"mcts.rap\" is specified, it runs the rapid action planning method. If \"mcts.beam_search\" is given, it executes the beam search algorithm. If \"mcts.dfs\" is set, it performs depth-first search. For any other unrecognized rollout method, it raises a ValueError. Finally, it extracts the text outputs and prompts for further processing.",
+        "type": "comment"
+    },
+    "686": {
+        "file_id": 74,
+        "content": "        reward_list = [reward_fn(prompt, txt) for txt in texts]\n        judge_results = {}\n        if len(reward_list) == 0:\n            # default reward as -1\n            assert args.rollout_method == \"mcts.rollout\"\n            reward_list = [-1] \n        judge_results[f\"{args.rollout_method}@agg_{args.num_mcts_aggregation}\"] = max(reward_list)\n        if output_list and args.rollout_method != \"mcts.rollout\":\n            num_token = output_list[-1][\"num_generated_token\"]\n        else:\n            num_token = mcts.num_generated_token\n        judge_results[\"#token\"] = num_token\n        return mcts, judge_results, output_list\n    def test_problem(\n        args,\n        idx,\n        problem_inst,\n        cot_writer,\n        cot_sc_writer,\n        mcts_no_term_writer,\n        mcts_w_term_writer,\n    ):\n        results = {}\n        def save_fn(writer, output, result: dict):\n            if writer is not None:\n                writer.write(\n                    {\n                        \"i\": idx,\n                        \"prompt\": problem_inst[\"question\"],",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:281-312"
+    },
+    "687": {
+        "file_id": 74,
+        "content": "The code initializes a reward list, handles cases with no rewards, calculates maximum reward, counts tokens, and returns an MCTS object, judge results, and output list. It also defines a save function for storing problem results.",
+        "type": "comment"
+    },
+    "688": {
+        "file_id": 74,
+        "content": "                        \"output\": output,\n                        \"result\": result\n                    }\n                )\n        if TEST_COT_GREEDY:\n            r_cot_greedy, cot_episodes = cot_direct_output(\n                args,\n                problem_inst,\n                stop=tokenizer.eos_token_id,\n                max_new_tokens=args.max_new_tokens,\n                temperature=args.temperature,\n                top_k=1,\n            )\n            save_fn(cot_writer, cot_episodes, r_cot_greedy)\n            results[\"cot-greedy\"] = r_cot_greedy\n        if TEST_WITH_TERMINAL:\n            mcts, r_with_terminal, with_terminal_episodes = mcts_multi_search(\n                args, problem_inst, False\n            )\n            # save_tree_path = save_dir / f\"tmp_tree\"\n            # if not save_tree_path.exists():\n            #     save_tree_path.mkdir(parents=True)\n            # json.dump(\n            #     get_root(mcts.root).to_json(),\n            #     open(save_tree_path / f\"{idx}_r{r_with_terminal}.json\", \"w\"),",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:313-339"
+    },
+    "689": {
+        "file_id": 74,
+        "content": "This code snippet is part of a larger program for reinforcement learning and testing. It tests the model using different approaches such as COT-greedy and with terminal states, saving the results accordingly. The results are then added to the \"results\" dictionary for further analysis or processing.",
+        "type": "comment"
+    },
+    "690": {
+        "file_id": 74,
+        "content": "            #     indent=2,\n            # )\n            save_fn(mcts_w_term_writer, with_terminal_episodes, r_with_terminal)\n            results[\"w/-terminal\"] = r_with_terminal\n        if TEST_COT_SC:\n            r_cot_sc, cot_sc_episodes = cot_sc_output(\n                args,\n                problem_inst,\n                stop=tokenizer.eos_token_id,\n                temperature=args.temperature,\n                max_new_tokens=args.max_new_tokens,\n                top_k=50,\n            )\n            save_fn(cot_sc_writer, cot_sc_episodes, r_cot_sc)\n            results[\"cot-sc\"] = r_cot_sc\n        return results\n    def _result_str(results, cnt, join_str=\"\\n\"):\n        res = \"\"\n        for k, v in results.items():\n            if isinstance(v, float):\n                res += f\"{k}: {v/cnt}\"\n            elif isinstance(v, dict):\n                res += f\"{k}: \"\n                res += \", \".join(\n                    [\n                        (\n                            f\"{sub_k}: {sub_v/cnt:.2f}\"\n                            if sub_k == \"#token\"",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:340-369"
+    },
+    "691": {
+        "file_id": 74,
+        "content": "This code is defining a function that evaluates the performance of an LLM (Language Model) in a task involving offline reinforcement learning. It measures the effectiveness with and without terminal episodes, as well as incorporating a special test for the CotSC (Cotton Sequence Claim) scenario. The results are then returned and formatted for clarity.",
+        "type": "comment"
+    },
+    "692": {
+        "file_id": 74,
+        "content": "                            else f\"{sub_k}: {sub_v/cnt}\"\n                        )\n                        for sub_k, sub_v in v.items()\n                    ]\n                )\n            else:\n                raise ValueError\n            res += join_str\n        res += f\"cnt: {cnt}\"\n        return res\n    for i_arg, cur_args in enumerate(args_list):\n        args = SearchArgs(**cur_args)\n        if args.mcts_sample:\n            print_with_rank('Use mcts sample mode, Make sure you are using code to generate rollout instead of test')\n        writer_dir = save_dir / (f\"args{i_arg}/\")\n        if local_rank == 0:\n            print(\"Search args: {}\".format(args))\n            if not writer_dir.exists():\n                writer_dir.mkdir(parents=True)\n            json.dump(cur_args, open(writer_dir / \"args.json\", \"w\"))\n        if TEST_COT_GREEDY:\n            cot_save_path = writer_dir / \"cot\"\n            if local_rank == 0 and not cot_save_path.exists():\n                cot_save_path.mkdir(parents=True)\n            dist.barrier()",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:370-398"
+    },
+    "693": {
+        "file_id": 74,
+        "content": "This code performs a search using specified arguments, handles MCTS sample mode, saves search arguments and possibly Cot information to designated directories for later use.",
+        "type": "comment"
+    },
+    "694": {
+        "file_id": 74,
+        "content": "            cot_writer = jsonlines.open(cot_save_path / f\"{local_rank}.jsonl\", \"a\")\n        else:\n            cot_writer = None\n        if TEST_COT_SC:\n            cot_sc_save_path = writer_dir / \"cot_sc\"\n            if local_rank == 0 and not cot_sc_save_path.exists():\n                cot_sc_save_path.mkdir(parents=True)\n            dist.barrier()\n            cot_sc_writer = jsonlines.open(\n                cot_sc_save_path / f\"{local_rank}.jsonl\", \"a\"\n            )\n        else:\n            cot_sc_writer = None\n        if TEST_NO_TERMINAL:\n            mcts_no_term_save_path = writer_dir / \"no_terminal_reward\"\n            if local_rank == 0 and not mcts_no_term_save_path.exists():\n                mcts_no_term_save_path.mkdir(parents=True)\n            dist.barrier()\n            mcts_no_term_writer = jsonlines.open(\n                mcts_no_term_save_path / f\"{local_rank}.jsonl\", \"a\"\n            )\n        else:\n            mcts_no_term_writer = None\n        if TEST_WITH_TERMINAL:\n            mcts_w_term_save_path = writer_dir / \"with_terminal_reward\"",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:399-425"
+    },
+    "695": {
+        "file_id": 74,
+        "content": "This code is setting up file writers for various test results. It creates a writer if the corresponding TEST flag is set, and sets it to None otherwise. The code also ensures that directories are created if they don't already exist, and uses distributed barriers in some cases.",
+        "type": "comment"
+    },
+    "696": {
+        "file_id": 74,
+        "content": "            if local_rank == 0 and not mcts_w_term_save_path.exists():\n                mcts_w_term_save_path.mkdir(parents=True)\n            dist.barrier()\n            mcts_w_term_writer = jsonlines.open(\n                mcts_w_term_save_path / f\"{local_rank}.jsonl\", \"a\"\n            )\n        else:\n            mcts_w_term_writer = None\n        cnt = 0\n        reward_dict = dict()\n        t0 = time.time()\n        for i in (pbar := tqdm(range(len(test_ds)), disable=(local_rank != 0))):\n            if i % world_size == local_rank:\n                results = test_problem(\n                    args,\n                    i,\n                    test_ds[i],\n                    cot_writer,\n                    cot_sc_writer,\n                    mcts_no_term_writer,\n                    mcts_w_term_writer,\n                )\n                for k, v in results.items():\n                    if isinstance(v, float):\n                        if k not in reward_dict:\n                            reward_dict[k] = 0\n                        reward_dict[k] += v",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:426-453"
+    },
+    "697": {
+        "file_id": 74,
+        "content": "This code sets up the mcts_w_term_writer for saving game data and initializes a reward_dict. It then iterates through test_ds range, calling the test_problem function on each iteration. The results from this function are added to the reward_dict if they're floats.",
+        "type": "comment"
+    },
+    "698": {
+        "file_id": 74,
+        "content": "                    elif isinstance(v, dict):\n                        if k not in reward_dict:\n                            reward_dict[k] = dict()\n                        for sub_k, sub_v in v.items():\n                            if sub_k not in reward_dict[k]:\n                                reward_dict[k][sub_k] = 0\n                            reward_dict[k][sub_k] += sub_v\n                    else:\n                        raise NotImplementedError\n                cnt += 1\n                results_strs = _result_str(reward_dict, cnt, join_str=\"; \")\n                pbar.set_description(results_strs)\n        print_with_rank(results_strs)\n        cnt_list = gather_scalar(cnt, local_rank, world_size)\n        gathered_results = {}\n        for k, v in reward_dict.items():\n            if isinstance(v, float):\n                gathered_list = gather_scalar(v, local_rank, world_size)\n                if local_rank == 0:\n                    gathered_results[k] = sum(gathered_list)\n            elif isinstance(v, dict):",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:454-478"
+    },
+    "699": {
+        "file_id": 74,
+        "content": "This code handles rewards data structure. It checks the type of each value in the reward dictionary, adding it to the appropriate key or creating new keys as needed. It also handles gathering and summarizing results across multiple processes for accurate calculations.",
+        "type": "comment"
+    }
+}

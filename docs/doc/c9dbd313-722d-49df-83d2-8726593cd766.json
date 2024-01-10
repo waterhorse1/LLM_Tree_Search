@@ -1,0 +1,10 @@
+{
+    "summary": "This script sets environment variables and runs a test for RLHF using specific paths, cache, and settings. It uses 8 processes, tokenizer path, CT2 cache, critic model path, save directory, environment name (rlhf), and trains the model.",
+    "details": [
+        {
+            "comment": "This script sets environment variables and runs a test for RLHF using specific paths, cache, and settings. It uses 8 processes, tokenizer path, CT2 cache, critic model path, save directory, environment name (rlhf), and trains the model.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/offline_rl/rlhf/gen_3.sh\":0-20",
+            "content": "set -e\n# export TEST_NO_TERMINAL=1\n# export TEST_WITH_TERMINAL=1\n# export TEST_COT_GREEDY=1\nexport TEST_COT_SC=1\n# export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7\nCT2_CACHE=$1\nTOKENIZER_PATH=$2\n# just None critic because we only use cot-sc sample\nCRITIC_PATH=\"None\"\n# also don't forget to set k_maj as 50 in test_sft_and_v_rlhf.py\ntorchrun --nproc_per_node=8 --master-port 29503 ../test_sft_and_v_rlhf.py \\\n    --critic_model_path $CRITIC_PATH \\\n    --tokenizer_path $TOKENIZER_PATH \\\n    --ct2_dir $CT2_CACHE \\\n    --save_dir ./rlhf/cot_sample \\\n    --env_name rlhf\n    --train"
+        }
+    ]
+}
