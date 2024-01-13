@@ -491,56 +491,55 @@
     },
     "590": {
         "file_id": 69,
-        "content": "/tsllm/offline_rl/generate_data.py",
+        "content": "/tsllm/offline_rl/game24/gen_3.sh",
         "type": "filepath"
     },
     "591": {
         "file_id": 69,
-        "content": "This code converts Llama models, generates responses, and compares them with ground truth using ThreadPoolExecutor for efficiency. It also sets command line arguments for environment name, GPU usage, batch size, output directory, tokenizer path, and test mode.",
+        "content": "This script generates data for the game24 environment using three different episodes (ep1, ep2, ep3) and a specified number of workers. It utilizes CUDA devices, sets output directory, CT2 cache, and tokenizer paths to generate JSONL files for each episode.",
         "type": "summary"
     },
     "592": {
         "file_id": 69,
-        "content": "from pathlib import Path\nfrom typing import Callable\nimport ctranslate2\nfrom transformers import AutoTokenizer\nfrom transformers import AutoModelForCausalLM, AutoTokenizer\nfrom concurrent.futures import ThreadPoolExecutor\nfrom functools import partial\nimport sentencepiece as spm\nimport os\nfrom tqdm import tqdm\nimport argparse\nimport jsonlines\nfrom tsllm.distributed.utils import print_rank_0\nfrom tsllm.llm.text_generation import llm_gen_ct2\nfrom tsllm.llm.ct2_utils import OnlineHfConverter\nfrom tsllm.envs import get_env_datasets, get_default_query_str_builder, get_env_answer_checker\nfrom tsllm.argparse_utils import list_of_ints, str2bool\nfrom importlib import import_module\ndef _cot_gen(\n    ct2_generator,\n    tokenizer,\n    query_str_build_fn: Callable,\n    problem,\n    n=100,\n    stop=2,\n    max_new_tokens=256,\n    **kwargs,\n):\n    # prompt = \"Question: \" + problem[\"question\"] + \"\\nAnswer: Let's think step by step\\n\"\n    # if use_prefix:\n    #     prompt = prefix + \"\\n\" + prompt\n    prompt = query_str_build_fn(problem[\"question\"])",
+        "content": "set -e\nK=100\nT=0.7\nN_WORKER=16\nOUTPUT_DIR=./game24/cot_sample/\nCUDA_DEVICES=0,1,2,3,4,5,6,7\nCT2_CACHE=$1\nTOKENIZER_PATH=$2\npython generate_data.py \\\n    -k $K \\\n    -t $T \\\n    --num_workers $N_WORKER \\\n    --gpu_ids $CUDA_DEVICES \\\n    --ct2_dir ${CT2_CACHE}/llama2_sft_ep1_ct2 \\\n    --tokenizer_path $TOKENIZER_PATH \\\n    --output_path ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k${K}_ep1.jsonl \\\n    --env_name game24\npython generate_data.py \\\n    -k $K \\\n    -t $T \\\n    --num_workers $N_WORKER \\\n    --gpu_ids $CUDA_DEVICES \\\n    --ct2_dir ${CT2_CACHE}/llama2_sft_ep2_ct2 \\\n    --tokenizer_path $TOKENIZER_PATH \\\n    --output_path ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k${K}_ep2.jsonl \\\n    --env_name game24\npython generate_data.py \\\n    -k $K \\\n    -t $T \\\n    --num_workers $N_WORKER \\\n    --gpu_ids $CUDA_DEVICES \\\n    --ct2_dir ${CT2_CACHE}/llama2_sft_ep3_ct2 \\\n    --tokenizer_path $TOKENIZER_PATH \\\n    --output_path ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k${K}_ep3.jsonl \\\n    --env_name game24",
         "type": "code",
-        "location": "/tsllm/offline_rl/generate_data.py:1-34"
+        "location": "/tsllm/offline_rl/game24/gen_3.sh:1-41"
     },
     "593": {
         "file_id": 69,
-        "content": "This code is importing necessary libraries and defining a function called `_cot_gen`. The function takes in a ct2 generator, tokenizer, query string builder, problem, number of outputs, stop sequence, max new tokens, and optional keyword arguments. It generates responses using the given parameters and a provided prompt based on the problem's question.",
+        "content": "This script generates data for the game24 environment using three different episodes (ep1, ep2, ep3) and a specified number of workers. It utilizes CUDA devices, sets output directory, CT2 cache, and tokenizer paths to generate JSONL files for each episode.",
         "type": "comment"
     },
     "594": {
-        "file_id": 69,
-        "content": "    texts, logps = llm_gen_ct2(\n        ct2_generator,\n        tokenizer,\n        static_prompt=None,\n        prompt=prompt,\n        num_sequence=n,\n        stop=stop,\n        max_new_tokens=max_new_tokens,\n        **kwargs,\n    )\n    return texts\n\"\"\"convert hf model to ct2 model\"\"\"\n# base_llm_dir = \"huggyllama/llama-7b\"\n# cache_dir =\n# ct2_dir =\n# base_llm = AutoModelForCausalLM.from_pretrained(base_llm_dir,\n#                                                 cache_dir=cache_dir)\n# tokenizer = AutoTokenizer.from_pretrained(base_llm_dir, cache_dir=cache_dir)\n# cvt = OnlineHfConverter(model=base_llm,\n#                         model_name_or_path=base_llm_dir,\n#                         copy_files=[\"tokenizer.model\"])\n# cvt.convert(ct2_dir, force=True, quantization=\"bfloat16\")\ndef check_answers(check_fn, problem_inst, texts):\n    # groundtruth = extract_groundtruth(problem_inst[\"answer\"])\n    write_obj = {\n        \"question\": problem_inst[\"question\"],\n        \"groundtruth\": problem_inst[\"answer\"],\n    }\n    ans_list = []",
-        "type": "code",
-        "location": "/tsllm/offline_rl/generate_data.py:35-70"
+        "file_id": 70,
+        "content": "/tsllm/offline_rl/game24/process.sh",
+        "type": "filepath"
     },
     "595": {
-        "file_id": 69,
-        "content": "The code converts a Hugging Face LLama model to CT2 format, generates texts using the generated CT2 model, and checks answers against ground truth. It initializes an AutoModelForCausalLM from pre-trained model, tokenizer, uses OnlineHfConverter to convert the model to CT2 format, and defines a check_answers function to compare generated responses with ground truth for each problem instance.",
-        "type": "comment"
+        "file_id": 70,
+        "content": "The script preprocesses game24 training data by deduplicating and sampling it for episodes 1-3, creating deduplicated and sampled JSONL files in output directories. This allows for easy selection of data by other scripts and merging with additional splits.",
+        "type": "summary"
     },
     "596": {
-        "file_id": 69,
-        "content": "    cnt = 0\n    for txt in texts:\n        correct = check_fn(problem_inst[\"question\"], problem_inst[\"answer\"], txt)\n        if correct:\n            cnt += 1\n        ans_list.append({\"text\": txt, \"correct\": correct})\n    write_obj[\"answer\"] = ans_list\n    return write_obj, cnt, len(texts)\ndef main(args):\n    train_ds, test_ds = get_env_datasets(args.env_name)\n    if args.test:\n        ds = test_ds\n    else:\n        ds = train_ds\n    args.output_path = Path(args.output_path)\n    if not args.output_path.parent.exists():\n        args.output_path.parent.mkdir(parents=True)\n    ct2_generator = ctranslate2.Generator(\n        args.ct2_dir, device=\"cuda\", device_index=args.gpu_ids, compute_type=\"bfloat16\"\n    )\n    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path)\n    print(\n        \"LOADING CT2 MODEL AT: {}. DEVICES={}.\\nOUTPUT_DIR: {}\".format(\n            args.ct2_dir, args.gpu_ids, args.output_path\n        )\n    )\n    query_str_build_fn = partial(\n        get_default_query_str_builder(args.env_name), is_few_shot=args.is_few_shot",
+        "file_id": 70,
+        "content": "set -e\nINPUT_DIR=\"game24/cot_sample\"\nOUTPUT_DIR=\"game24/processed\"\nmkdir -p $OUTPUT_DIR\nN=17\nfile_prefix=\"game24_train_cot_sample_offline_sft_k100_ep1\"\npython dedup.py \\\n    --input_path ${INPUT_DIR}/${file_prefix}.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl\npython sample.py \\\n    --input_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup_sample${N}.jsonl \\\n    -n $N\nfile_prefix=\"game24_train_cot_sample_offline_sft_k100_ep2\"\npython dedup.py \\\n    --input_path ${INPUT_DIR}/${file_prefix}.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl\npython sample.py \\\n    --input_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup_sample${N}.jsonl \\\n    -n $N\nfile_prefix=\"game24_train_cot_sample_offline_sft_k100_ep3\"\npython dedup.py \\\n    --input_path ${INPUT_DIR}/${file_prefix}.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl\n# split_two_test.py will choose files encswith \"dedup\"",
         "type": "code",
-        "location": "/tsllm/offline_rl/generate_data.py:72-107"
+        "location": "/tsllm/offline_rl/game24/process.sh:1-30"
     },
     "597": {
-        "file_id": 69,
-        "content": "The code defines a function that takes a list of texts and checks each text against a given problem instance, determining whether it is correct or not. The function appends the correct texts to an answer list and returns this along with counts for correct answers and total number of texts. The main function loads data and generates an output directory if necessary. It then initializes a ctranslate2 generator and tokenizer, and prints out information about their location and device usage. A query string builder is also defined based on the environment name.",
+        "file_id": 70,
+        "content": "This script preprocesses game24 training data by deduplicating and sampling the data for episodes 1-3. It uses the dedup.py and sample.py scripts, creating deduped and sampled JSONL files in output directories with episode number appended to the file prefix. The output filenames are chosen based on their content, so other scripts can select them easily.",
         "type": "comment"
     },
     "598": {
-        "file_id": 69,
-        "content": "    )\n    cot_gen = partial(\n        _cot_gen,\n        ct2_generator,\n        tokenizer,\n        query_str_build_fn,\n        n=args.k,\n        stop=tokenizer.eos_token_id,  # llama tokenizer: 2 is eos_token_id\n        max_new_tokens=256,\n        temperature=args.t,\n        top_p=1,\n        top_k=100,\n        max_batch_size=args.max_batch_size,\n    )\n    checker_fn = get_env_answer_checker(args.env_name)\n    correct_num, total_num = 0, 0\n    with ThreadPoolExecutor(args.num_workers) as pool:\n        results = pool.map(cot_gen, ds)\n        with jsonlines.open(args.output_path, \"w\") as writer:\n            for i, txts in enumerate(pbar := tqdm(results, total=len(ds))):\n                write_obj, cnt, len_list = check_answers(checker_fn, ds[i], txts)\n                writer.write(write_obj)\n                correct_num += cnt\n                total_num += len_list\n                pbar.set_description(\n                    \"{}-corrent: {:.3%}[{}/{}]\".format(\n                        i + 1, correct_num / total_num, correct_num, total_num",
+        "file_id": 70,
+        "content": "python split_two_test.py \\\n    --train_data_prefix ${OUTPUT_DIR}/${file_prefix} \\\n    --train_num $N \\\n    --train_test_num 3 \npython merge.py \\\n    --input_paths ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k100_ep1_dedup_sample17.jsonl \\\n    ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k100_ep2_dedup_sample17.jsonl \\\n    ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k100_ep3_dedup_sample17.jsonl \\\n    --output_path ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k100_merged_dedup_sample17x3.jsonl",
         "type": "code",
-        "location": "/tsllm/offline_rl/generate_data.py:108-135"
+        "location": "/tsllm/offline_rl/game24/process.sh:31-42"
     },
     "599": {
-        "file_id": 69,
-        "content": "This code generates data for an environment using LLAMa, a large language model. It utilizes a ThreadPoolExecutor to generate results from a dataset (ds) and checks answers using a given checker function. The results are then written to a file specified by args.output_path. The progress is tracked in a tqdm progress bar.",
+        "file_id": 70,
+        "content": "This code is splitting a training data set into two parts and then merging three of these splits back together. The merged result will be stored in the specified output path.",
         "type": "comment"
     }
 }

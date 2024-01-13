@@ -309,229 +309,230 @@
     },
     "158": {
         "file_id": 29,
-        "content": "/tsllm/merge_jsonl.py",
+        "content": "/tsllm/distributed/utils.py",
         "type": "filepath"
     },
     "159": {
         "file_id": 29,
-        "content": "This Python script merges multiple JSONL files in a target directory, excluding any file named \"merged.jsonl\". It reads each JSONL file, creates a dictionary with the index as key and object as value, then writes the merged data to a \"merged.jsonl\" file within the target directory. The script also handles KeyError exceptions that may occur when processing.",
+        "content": "The code contains functions for distributed computation, with capabilities to initialize the process group, gather scalar values, and print messages from specific processes. It collects tensor values in a distributed environment, returning them as a list after gathering across all processes.",
         "type": "summary"
     },
     "160": {
         "file_id": 29,
-        "content": "import jsonlines\nimport pathlib\nimport argparse\ndef merge_jsonl_files(target_dir):\n    target_dir = pathlib.Path(target_dir)\n    total_data = dict()\n    for jl_file in target_dir.glob(r\"*.jsonl\"):\n        if \"merged.jsonl\" in str(jl_file):\n            print(\"WARNING!!: SKIP {}\".format(jl_file))\n            continue\n        print(jl_file)\n        with jsonlines.open(jl_file, \"r\") as reader:\n            for obj in reader:\n                total_data[obj[\"i\"]] = obj\n    with jsonlines.open(target_dir / \"merged.jsonl\", \"w\") as writer:\n        for i in range(len(total_data)):\n            try:\n                writer.write(total_data[i])\n            except KeyError as e:\n                print(\"key i not exist: \", i)\n                raise e\nif __name__ == \"__main__\":\n    parser = argparse.ArgumentParser()\n    parser.add_argument(\"--target_dir\", type=str, required=True)\n    args = parser.parse_args()\n    merge_jsonl_files(args.target_dir)",
-        "type": "code",
-        "location": "/tsllm/merge_jsonl.py:1-32"
-    },
-    "161": {
-        "file_id": 29,
-        "content": "This Python script merges multiple JSONL files in a target directory, excluding any file named \"merged.jsonl\". It reads each JSONL file, creates a dictionary with the index as key and object as value, then writes the merged data to a \"merged.jsonl\" file within the target directory. The script also handles KeyError exceptions that may occur when processing.",
-        "type": "comment"
-    },
-    "162": {
-        "file_id": 30,
-        "content": "/tsllm/distributed/utils.py",
-        "type": "filepath"
-    },
-    "163": {
-        "file_id": 30,
-        "content": "The code contains functions for distributed computation, with capabilities to initialize the process group, gather scalar values, and print messages from specific processes. It collects tensor values in a distributed environment, returning them as a list after gathering across all processes.",
-        "type": "summary"
-    },
-    "164": {
-        "file_id": 30,
         "content": "import torch.distributed as dist\nimport torch\nfrom datetime import timedelta\ndef print_rank_0(message):\n    \"\"\"If distributed is initialized, print only on rank 0.\"\"\"\n    if dist.is_initialized():\n        if dist.get_rank() == 0:\n            print(message, flush=True)\n    else:\n        print(message, flush=True)\ndef print_with_rank(message):\n    if dist.is_initialized():\n        rank = dist.get_rank()\n        world_size = dist.get_world_size()\n        print(\"[{}/{}]: {}\".format(rank, world_size, message), flush=True)\n    else:\n        print(message, flush=True)\ndef init_distributed(timeout=timedelta(seconds=3 * 60 * 60)):\n    if not dist.is_initialized():\n        dist.init_process_group(backend=\"nccl\", timeout=timeout)\n    world_size = dist.get_world_size()\n    local_rank = dist.get_rank()\n    return local_rank, world_size\ndef gather_scalar(x, rank, world_size):\n    x_tensor = torch.tensor(x).to(f\"cuda:{rank}\")\n    if rank == 0:\n        x_list = [torch.zeros_like(x_tensor) for _ in range(world_size)]\n        dist.gather(x_tensor, x_list, 0)",
         "type": "code",
         "location": "/tsllm/distributed/utils.py:1-37"
     },
-    "165": {
-        "file_id": 30,
+    "161": {
+        "file_id": 29,
         "content": "This code contains functions for distributed computation, including initializing the distributed process group using NCCL backend, gathering scalar values from different processes, and providing methods to print messages only on rank 0 or with ranks included in the message.",
         "type": "comment"
     },
-    "166": {
-        "file_id": 30,
+    "162": {
+        "file_id": 29,
         "content": "        return [x.item() for x in x_list]\n    else:\n        dist.gather(x_tensor)",
         "type": "code",
         "location": "/tsllm/distributed/utils.py:38-40"
     },
-    "167": {
-        "file_id": 30,
+    "163": {
+        "file_id": 29,
         "content": "This code block is responsible for collecting distributed tensor values and returning them as a list or gathering the values in a distributed environment. If the tensor is not distributed, it will return a list of itemized values; otherwise, it will gather the values across all processes in the distributed system.",
         "type": "comment"
     },
-    "168": {
-        "file_id": 31,
+    "164": {
+        "file_id": 30,
         "content": "/tsllm/envs/__init__.py",
         "type": "filepath"
     },
-    "169": {
-        "file_id": 31,
+    "165": {
+        "file_id": 30,
         "content": "The code creates a function to import environment modules, define tasks with datasets or data builders, and construct query/response strings for judging correct answers.",
         "type": "summary"
     },
-    "170": {
-        "file_id": 31,
+    "166": {
+        "file_id": 30,
         "content": "from importlib import import_module\nfrom functools import partial\nfrom transformers import PreTrainedTokenizer\nfrom typing import Optional, Callable, Dict\nfrom .utils import build_critic_data_component, build_sft_data_component\ndef get_env_datasets(env_name: str, **kwargs):\n    task_module = import_module(f\"tsllm.envs.{env_name}\")\n    return task_module.get_train_test_dataset(**kwargs)\ndef get_default_sft_data_builder(env_name: str, **kwargs):\n    task_module = import_module(f\"tsllm.envs.{env_name}\")\n    return partial(\n        build_sft_data_component,\n        build_query_str_fn=task_module.Env.build_query_str,\n        build_response_str_fn=task_module.Env.build_response_str,\n        sep=task_module.SEP,\n        cot_task_desc_str=task_module.COT_TASK_DESC,\n        cot_example_str=task_module.COT_EXAMPLES,\n        problem_format_str=task_module.PROBLEM_FORMAT_STR,\n    )\ndef get_default_critic_data_builder(env_name: str, **kwargs):\n    task_module = import_module(f\"tsllm.envs.{env_name}\")\n    return partial(",
         "type": "code",
         "location": "/tsllm/envs/__init__.py:1-28"
     },
-    "171": {
-        "file_id": 31,
+    "167": {
+        "file_id": 30,
         "content": "The code defines three functions: `get_env_datasets`, `get_default_sft_data_builder`, and `get_default_critic_data_builder`. These functions are used to import a specific environment module (`env_name`) and return the training and testing datasets, or default data builders for sequence-to-sequence tasks and critic tasks. The functions use `importlib` to import the specified environment module and `functools.partial` to create partial function applications with the necessary arguments for building data components.",
         "type": "comment"
     },
-    "172": {
-        "file_id": 31,
+    "168": {
+        "file_id": 30,
         "content": "        build_critic_data_component,\n        build_query_str_fn=task_module.Env.build_query_str,\n        sep=task_module.SEP,\n        cot_task_desc_str=task_module.COT_TASK_DESC,\n        cot_example_str=task_module.COT_EXAMPLES,\n        problem_format_str=task_module.PROBLEM_FORMAT_STR,\n    )\ndef get_default_query_str_builder(env_name: str, **kwargs):\n    task_module = import_module(f\"tsllm.envs.{env_name}\")\n    def fn(problem_input: str, is_few_shot: bool):\n        return task_module.Env.build_query_str(\n            cot_task_desc=task_module.COT_TASK_DESC,\n            cot_examples=task_module.COT_EXAMPLES,\n            problem_format_str=task_module.PROBLEM_FORMAT_STR,\n            problem_input=problem_input,\n            sep=task_module.SEP,\n            is_few_shot=is_few_shot,\n        )\n    return fn\ndef get_default_response_str_builder(env_name: str, **kwargs):\n    task_module = import_module(f\"tsllm.envs.{env_name}\")\n    def fn(problem_input: str, tokenizer: PreTrainedTokenizer, add_eos_token: bool):\n        return task_module.Env.build_response_str(",
         "type": "code",
         "location": "/tsllm/envs/__init__.py:29-58"
     },
-    "173": {
-        "file_id": 31,
+    "169": {
+        "file_id": 30,
         "content": "The function `get_default_query_str_builder` takes an environment name (env_name) and optional keyword arguments, imports the corresponding task module, and returns a function that builds a query string based on provided parameters. The returned function uses methods from the imported task module to construct the query string. Similarly, `get_default_response_str_builder` does something similar but for building response strings.",
         "type": "comment"
     },
-    "174": {
-        "file_id": 31,
+    "170": {
+        "file_id": 30,
         "content": "            problem_input,\n            tokenizer,\n            add_eos_token,\n        )\n    return fn\ndef get_env_answer_checker(env_name):\n    task_module = import_module(f\"tsllm.envs.{env_name}\")\n    def judge_answer(problem_str, groundtruth_str, answer_completion: str):\n        # should feed the unprocessed `groundtruth_str` and `answer_completion_str`\n        return task_module.judge_correct(\n            problem_str,\n            task_module.extract_groundtruth(groundtruth_str),\n            task_module.extract_answer(answer_completion),\n        )\n    return judge_answer",
         "type": "code",
         "location": "/tsllm/envs/__init__.py:59-77"
     },
-    "175": {
-        "file_id": 31,
+    "171": {
+        "file_id": 30,
         "content": "This code defines a function \"get_env_answer_checker\" that takes an environment name as input and returns a judging function for the given task. The function imports the relevant module, and then creates another function \"judge_answer\" which takes problem statement, groundtruth, and answer completion as inputs and calls relevant methods from the imported module to judge if the answer is correct or not.",
         "type": "comment"
     },
-    "176": {
-        "file_id": 32,
+    "172": {
+        "file_id": 31,
         "content": "/tsllm/envs/base_env.py",
         "type": "filepath"
     },
-    "177": {
-        "file_id": 32,
+    "173": {
+        "file_id": 31,
         "content": "The code introduces `BaseEnv` and \"CoTEnv\" classes for Monte Carlo Tree Search, supporting few-shot learning, environment resetting, managing game states, actions, rewards, termination, and language model-generated text in text-based games. It handles tasks, termination, copying instances, natural language problems at the token level, and includes features for LLM tree search implementation such as action history, instance building checks, and cumulative indices.",
         "type": "summary"
     },
-    "178": {
-        "file_id": 32,
+    "174": {
+        "file_id": 31,
         "content": "import abc\nfrom typing import Dict, List, Optional\nimport numpy as np\nimport copy\nimport pdb\nimport torch\nfrom tsllm.distributed.utils import print_with_rank\nfrom transformers import PreTrainedTokenizer\nINVALID_ANS = \"[invalid]\"\nclass NoLegalActionException(Exception):\n    pass\nclass ResetException(Exception):\n    pass\nclass BaseEnv(abc.ABC):\n    \"\"\"Basic environment to use for MCTS\"\"\"\n    @abc.abstractmethod\n    def reset(self, update_legal_action: bool):\n        raise NotImplementedError\n    @abc.abstractmethod\n    def step(self):\n        raise NotImplementedError\n    @abc.abstractproperty\n    def legal_actions(self):\n        raise NotImplementedError\n    @abc.abstractmethod\n    def copy(self):\n        raise NotImplementedError\n    @staticmethod\n    def build_query_str(\n        cot_task_desc: Optional[str],\n        cot_examples: Optional[str],\n        problem_format_str: str,\n        problem_input: str,\n        sep: str,\n        is_few_shot: bool = False,\n    ):\n        \"\"\"a wrap function that wrap the problem text with certrain format",
         "type": "code",
         "location": "/tsllm/envs/base_env.py:1-49"
     },
-    "179": {
-        "file_id": 32,
+    "175": {
+        "file_id": 31,
         "content": "This code defines a base environment class, `BaseEnv`, for Monte Carlo Tree Search (MCTS) in a transformers-based context. It includes abstract methods like `reset`, `step`, and `legal_actions` that must be implemented by derived classes. The class also contains a static method `build_query_str` for wrapping the problem text with certain formats. The code uses various imported modules such as `abc`, `numpy`, `torch`, and `transformers`.",
         "type": "comment"
     },
-    "180": {
-        "file_id": 32,
+    "176": {
+        "file_id": 31,
         "content": "        e.g. prompt_str = \"Input: \" + join_numbers(\" \", xs) + \"\\nSteps:\\n\"\n        >>> query_str = Game24Env.build_query_str(\"1 1 1 1\")\n        >>> print(query_str)\n        >>> Use numbers and basic arithmetic operations (+ - * /) to obtain 24. Each step, you are only allowed to choose two of the remaining numbers to obtain a new number.\n        Input: 1 1 1 1\n        Steps:\n        >>>\n        \"\"\"\n        ret = \"\"\n        if cot_task_desc:\n            ret += cot_task_desc + \"\\n\"\n        if is_few_shot:\n            ret += cot_examples + \"\\n\"\n        ret += problem_format_str.format(question=problem_input)\n        # THIS is because CoTEnv.answer/get_state() append \"\\n\"\n        ret += sep\n        return ret\n    @staticmethod\n    def build_response_str(\n        answer_str: str, tokenizer: PreTrainedTokenizer, add_eos_token: bool\n    ):\n        raise NotImplementedError\nclass CoTEnv(BaseEnv):\n    \"\"\"The basic environment for solving natural language problems using CoT\"\"\"\n    sep: str\n    @staticmethod\n    def build_response_str(",
         "type": "code",
         "location": "/tsllm/envs/base_env.py:50-84"
     },
-    "181": {
-        "file_id": 32,
+    "177": {
+        "file_id": 31,
         "content": "This code defines a class \"CoTEnv\" for solving natural language problems using Chain of Thought (CoT) approach. The method \"build_query_str\" is used to generate a query string containing the problem input and steps. The \"build_response_str\" is a static method that builds a response string based on answer and tokenizer, but it raises NotImplementedError as it hasn't been implemented yet.",
         "type": "comment"
     },
-    "182": {
-        "file_id": 32,
+    "178": {
+        "file_id": 31,
         "content": "        answer_str: str, tokenizer: PreTrainedTokenizer, add_eos_token: bool\n    ):\n        if add_eos_token:\n            # if text ends with </s>, remove it so the follwing strip can remove \\n\n            #  and in latter add_traj, \\n and </s> will be added again\n            if answer_str.endswith(tokenizer.eos_token):\n                answer_str = answer_str.replace(tokenizer.eos_token, \"\")\n            answer_str = answer_str.strip()\n            answer_str += tokenizer.eos_token\n        return answer_str\n    @property\n    def stop_str(self):\n        return NotImplementedError\n    def _is_correct(self, completion) -> bool:\n        raise NotImplementedError\n    def get_reward(self):\n        \"\"\"To implement based on learned reward model\"\"\"\n        raise NotImplementedError\n    def __init__(\n        self,\n        config,\n        math_problems,\n        llm_gen_fn,\n        tokenizer,\n        task_desc_str: str,\n        cot_example_str: str,\n        problem_format_str: str,\n        reset=True,\n    ):\n        self.config = config",
         "type": "code",
         "location": "/tsllm/envs/base_env.py:85-118"
     },
-    "183": {
-        "file_id": 32,
+    "179": {
+        "file_id": 31,
         "content": "This code defines a base environment class for a task involving text completion using a language model. The `answer_str` method adds an end-of-sentence token if necessary, and the `stop_str` method returns NotImplementedError. The `_is_correct` method also returns NotImplementedError. The `get_reward` method needs to be implemented based on a learned reward model. The class is initialized with config, math problems, llm generation function, tokenizer, task description string, context example string, and problem format string. The `reset` parameter is optional and defaults to True.",
         "type": "comment"
     },
-    "184": {
-        "file_id": 32,
+    "180": {
+        "file_id": 31,
         "content": "        self.mcts_mode = \"play_with_bot_mode\"\n        self.math_problems = math_problems\n        self.llm_gen_fn = llm_gen_fn\n        self.tokenizer = tokenizer\n        self.action_history = None\n        self.math_problem = None\n        self._legal_actions = None\n        self.is_few_shot = config.get(\"is_few_shot\", False)\n        self._task_desc_str = task_desc_str\n        self._cot_example_str = cot_example_str\n        self._problem_format_str = problem_format_str\n        prefixes = []\n        if self._task_desc_str is not None:\n            prefixes.append(self._task_desc_str)\n        if self.is_few_shot:\n            prefixes.append(self._cot_example_str)\n        if len(prefixes) > 0:\n            self.task_prefix = \"\\n\".join(prefixes)\n        else:\n            self.task_prefix = None\n        if reset:\n            self.reset(update_legal_action=True)\n    def reset(self, update_legal_action=True):\n        # reset environment to problem idx\n        self.set_problem(idx=0)\n        self.action_history = self.init_action_history()",
         "type": "code",
         "location": "/tsllm/envs/base_env.py:119-148"
     },
-    "185": {
-        "file_id": 32,
+    "181": {
+        "file_id": 31,
         "content": "This code initializes a base environment for the LLM tree search algorithm. It sets attributes like mcts_mode, math_problems, and llm_gen_fn. It also checks if it's a few-shot learning scenario and generates task prefixes to be used. The reset() function resets the environment to problem index 0 and initializes the action history.",
         "type": "comment"
     },
-    "186": {
-        "file_id": 32,
+    "182": {
+        "file_id": 31,
         "content": "        if update_legal_action:\n            cnt = 0\n            while cnt < 3:\n                cnt += 1\n                try:\n                    self._legal_actions = self.update_legal_actions()\n                    break\n                except NoLegalActionException as e:\n                    if cnt == 3:\n                        raise ResetException\n        return self.get_state()\n    def step(self, action, update_legal_action=True):\n        self.action_history.append(action)\n        state = self.get_state()\n        reward = self.get_reward()\n        terminated, truncated, info = self.get_done_and_info()\n        # update legal actions\n        if not (terminated or truncated) and update_legal_action:\n            try:\n                self._legal_actions = self.update_legal_actions()\n            except NoLegalActionException as e:\n                terminated = True\n                reward = 0\n                self._legal_actions = None\n                info[\"winner\"] = 2\n        else:\n            self._legal_actions = None",
         "type": "code",
         "location": "/tsllm/envs/base_env.py:149-176"
     },
-    "187": {
-        "file_id": 32,
+    "183": {
+        "file_id": 31,
         "content": "The code defines a base environment for the game and provides methods to update legal actions, get state, reward, and done status. If there are no legal actions left after a step, the game is terminated and reward set to 0. If not terminated or truncated, it updates legal actions. The \"info\" dictionary includes the winner if the game ended due to no legal actions.",
         "type": "comment"
     },
-    "188": {
-        "file_id": 32,
+    "184": {
+        "file_id": 31,
         "content": "            if info[\"winner\"] == 1:\n                reward = 1.0\n        return state, reward, terminated, truncated, info\n    def get_state(self):\n        return \"\\n\".join(self.action_history) + \"\\n\"\n    def init_action_history(self):\n        # add the first prompted questions\n        return ([self.task_prefix] if self.task_prefix is not None else []) + [\n            # f\"Question: {self.math_problem['question']}\\nAnswer: Let's think step by step\"\n            self._problem_format_str.format(question=self.math_problem[\"question\"])\n        ]\n    def update_legal_actions(self):\n        def reduce_prob_list(prob_list: List[List]) -> List:\n            ans_list = []\n            for scores in prob_list:\n                ans_list.append(np.exp(np.mean(scores)))\n            return ans_list\n        prefix = (\n            (self.action_history[0] + \"\\n\") if self.task_prefix is not None else None\n        )\n        act_hist_start_i = 0 if self.task_prefix is None else 1\n        unprefixed_state = \"\\n\".join(self.action_history[act_hist_start_i:]) + \"\\n\"",
         "type": "code",
         "location": "/tsllm/envs/base_env.py:177-202"
     },
-    "189": {
-        "file_id": 32,
+    "185": {
+        "file_id": 31,
         "content": "In this code snippet, we have a base_env class with methods for handling game states and actions. It checks if the player won the game, returns the current state, initializes the action history, and updates legal actions based on the action history. The reward is assigned if the player wins.",
         "type": "comment"
     },
-    "190": {
-        "file_id": 32,
+    "186": {
+        "file_id": 31,
         "content": "        texts, logps = self.llm_gen_fn(\n            static_prompt=prefix,\n            prompt=unprefixed_state,\n            num_sequence=self.config[\"max_actions\"],\n            stop=[13, self.tokenizer.eos_token_id],\n            **self.config[\"generation_config\"],\n        )\n        text_list, prob_list = [], []\n        for i in range(len(texts)):\n            if len(texts[i]) > 0 and texts[i] not in text_list:\n                text_list.append(texts[i])\n                prob_list.append(logps[i])\n        if len(prob_list) == 0:\n            print_with_rank(\n                \"{} {} {}\".format(prefix, act_hist_start_i, unprefixed_state)\n            )\n            raise NoLegalActionException(\"No possible action have been generated.\")\n        prob_list = reduce_prob_list(prob_list)\n        prob_list = np.array(prob_list)\n        # normalize probability\n        prob_list = prob_list / np.sum(prob_list)\n        # set add special tokens as False to remove bos/eos tokens\n        num_token_list = [\n            len(self.tokenizer.encode(txt, add_special_tokens=False))",
         "type": "code",
         "location": "/tsllm/envs/base_env.py:203-230"
     },
-    "191": {
-        "file_id": 32,
+    "187": {
+        "file_id": 31,
         "content": "This code is using a language model to generate text based on a prefix and an unprefixed state. It checks for valid actions and raises an exception if none are generated. The code then normalizes the generated probabilities, removes special tokens like BOS/EOS, and stores the results in lists for later use.",
         "type": "comment"
     },
-    "192": {
-        "file_id": 32,
+    "188": {
+        "file_id": 31,
         "content": "            for txt in text_list\n        ]\n        _legal_actions = [\n            {\"action\": action, \"prob\": prob, \"num_token\": n_token}\n            for action, prob, n_token in zip(text_list, prob_list, num_token_list)\n        ]\n        return _legal_actions\n    def set_problem(self, idx):\n        self.math_problem = self.math_problems[idx]\n    @property\n    def question(self):\n        return (\n            \"\\n\".join(self.action_history[:1]) + \"\\n\"\n            if self.task_prefix is None\n            else \"\\n\".join(self.action_history[:2]) + \"\\n\"\n        )\n    @property\n    def answer(self):\n        return (\n            \"\\n\".join(self.action_history[1:]) + \"\\n\"\n            if self.task_prefix is None\n            else \"\\n\".join(self.action_history[2:]) + \"\\n\"\n        )\n    def get_done_and_info(self):\n        info = {\"winner\": 0}\n        # done when reaches maximum length or LLM generates stop words\n        terminated = self.stop_str in self.action_history[-1]\n        truncated = len(self.action_history) >= self.config[\"max_length\"] + (",
         "type": "code",
         "location": "/tsllm/envs/base_env.py:231-264"
     },
-    "193": {
-        "file_id": 32,
+    "189": {
+        "file_id": 31,
         "content": "This code defines a base environment class for a text-based game. It sets the legal actions based on input texts, allows setting and getting problems, and provides properties to get the question and answer in different formats depending on whether there is a task prefix or not. The done status depends on reaching maximum length or encountering stop words, and the environment can also be truncated if it exceeds the maximum length set in the configuration.",
         "type": "comment"
     },
-    "194": {
-        "file_id": 32,
+    "190": {
+        "file_id": 31,
         "content": "            2 if self.task_prefix is not None else 1\n        )\n        assert len(self.action_history) <= self.config[\"max_length\"] + (\n            2 if self.task_prefix is not None else 1\n        ), \"action history length: {}, max length: {}\".format(\n            len(self.action_history),\n            self.config[\"max_length\"] + (2 if self.task_prefix is not None else 1),\n        )\n        if terminated or truncated:\n            if self._is_correct(self.action_history[-1]):\n                info[\"winner\"] = 1\n            else:\n                info[\"winner\"] = 2\n            return terminated, truncated, info\n        return terminated, truncated, info\n    def copy(self):\n        env = self.__class__(\n            self.config,\n            self.math_problems,\n            self.llm_gen_fn,\n            self.tokenizer,\n            self._task_desc_str,\n            self._cot_example_str,\n            self._problem_format_str,\n            reset=False,\n        )\n        env.math_problem = copy.deepcopy(self.math_problem)\n        env._legal_actions = copy.deepcopy(self._legal_actions)",
         "type": "code",
         "location": "/tsllm/envs/base_env.py:265-294"
     },
-    "195": {
-        "file_id": 32,
+    "191": {
+        "file_id": 31,
         "content": "The code is part of a class-based environment, responsible for setting up and running tasks. It checks the length of action history and terminates/truncates the task if necessary. It also includes a copy method that creates an identical instance of the environment without resetting it.",
         "type": "comment"
     },
-    "196": {
-        "file_id": 32,
+    "192": {
+        "file_id": 31,
         "content": "        env.action_history = copy.deepcopy(self.action_history)\n        return env\n    @property\n    def legal_actions(self):\n        return self._legal_actions\nclass TokenEnv(BaseEnv):\n    \"\"\"The Token-level environment for solving natural language problems\"\"\"\n    sep: str\n    @property\n    def stop_str(self):\n        raise NotImplementedError\n    def _is_correct(self, completion) -> bool:\n        raise NotImplementedError\n    def get_reward(self, state):\n        \"\"\"To implement based on learned reward model\"\"\"\n        raise NotImplementedError\n    def __init__(\n        self,\n        config,\n        problems,\n        llm_forward_fn,\n        tokenizer,\n        task_desc_str: str,\n        cot_example_str: str,\n        problem_format_str: str,\n        reset=True,\n    ):\n        self.config = config\n        # do not use sep in config, but use sep defined in each env.prompt.SEP\n        # self.sep = config[\"sep\"]\n        self.mcts_mode = \"play_with_bot_mode\"\n        self.problems = problems\n        self.llm_forward_fn = llm_forward_fn",
         "type": "code",
         "location": "/tsllm/envs/base_env.py:295-335"
     },
-    "197": {
-        "file_id": 32,
+    "193": {
+        "file_id": 31,
         "content": "This code defines a TokenEnv class, a subclass of BaseEnv, for solving natural language problems at the token level. It overrides methods for determining legal actions, checking correctness, and getting rewards. The class takes in configuration, problems, LLM forward function, tokenizer, task description, example, and problem format string.",
         "type": "comment"
     },
-    "198": {
-        "file_id": 32,
+    "194": {
+        "file_id": 31,
         "content": "        self.tokenizer = tokenizer\n        self.action_history = None\n        self.problem = None\n        self._legal_actions = None\n        self.is_few_shot = config.get(\"is_few_shot\", False)\n        self._task_desc_str = task_desc_str\n        self._cot_example_str = cot_example_str\n        self._problem_format_str = problem_format_str\n        prefixes = []\n        if self._task_desc_str is not None:\n            prefixes.append(self._task_desc_str)\n        if self.is_few_shot:\n            prefixes.append(self._cot_example_str)\n        if len(prefixes) > 0:\n            self.task_prefix = \"\\n\".join(prefixes)\n        else:\n            self.task_prefix = None\n        if reset:\n            self.reset(update_legal_action=True)\n    def reset(self, update_legal_action=True):\n        # reset environment to problem idx\n        self.set_problem(idx=0)\n        self.action_history = self.init_action_history()\n        if update_legal_action:\n            self._legal_actions = self.update_legal_actions()\n        return self.get_state()",
         "type": "code",
         "location": "/tsllm/envs/base_env.py:336-365"
     },
-    "199": {
-        "file_id": 32,
+    "195": {
+        "file_id": 31,
         "content": "The code initializes the environment for a task and resetting it. It sets up the tokenizer, action history, problem, legal actions, few-shot flag, and task prefix based on provided parameters. The `reset` function resets the environment to its initial state by setting the problem index, updating the action history, and updating the legal actions if necessary.",
+        "type": "comment"
+    },
+    "196": {
+        "file_id": 31,
+        "content": "    def step(self, action, update_legal_action=True):\n        if not action == self.stop_str:\n            self.action_history.append(action)\n        state = self.get_state()\n        reward = self.get_reward(state)\n        terminated, truncated, info = self.get_done_and_info()\n        # update legal actions\n        if not (terminated or truncated) and update_legal_action:\n            self._legal_actions = self.update_legal_actions()\n        else:\n            self._legal_actions = None\n        return state, reward, terminated, truncated, info\n    @property\n    def sep_index(self):\n        pre_state = (\n            self.action_history[:1]\n            if self.task_prefix is None\n            else self.action_history[:2]\n        )\n        pre_state_token_length = len(self.tokenizer.encode([pre_state + self.sep]))\n        index = [pre_state_token_length]\n        post_state = (\n            self.action_history[1:]\n            if self.task_prefix is None\n            else self.action_history[2:]\n        )\n        for action in post_state:",
+        "type": "code",
+        "location": "/tsllm/envs/base_env.py:367-394"
+    },
+    "197": {
+        "file_id": 31,
+        "content": "This code defines a step method in an environment class, which takes an action and updates legal actions if the episode is not terminated or truncated. It retrieves the state, reward, termination, truncation, and info from the environment and returns them as part of the state transition. The sep_index property calculates the separation index between task prefix (if provided) and subsequent actions.",
+        "type": "comment"
+    },
+    "198": {
+        "file_id": 31,
+        "content": "            action_length = len(\n                self.tokenizer.encode(action + self.sep, add_special_tokens=False)\n            )\n            index.append(action_length)\n            if action_length == 0:\n                print_with_rank(\n                    \"possbile problems met in online value instance building. {}\".format(\n                        action\n                    )\n                )\n        assert sum(index) == len(self.tokenizer.encode(self.get_state()))\n        index = np.cumsum(index) - 1\n        return index\n    def get_state(self):\n        # if self.action_history[-1] == self.stop_str:# remove the final stop token\n        #    return \"\".join(self.action_history[:-1])\n        return self.sep.join(self.action_history)\n    def init_action_history(self):\n        # add the first prompted questions\n        return ([self.task_prefix] if self.task_prefix is not None else []) + [\n            self._problem_format_str.format(question=self.problem[\"question\"])\n        ]\n    def update_legal_actions(self):",
+        "type": "code",
+        "location": "/tsllm/envs/base_env.py:395-420"
+    },
+    "199": {
+        "file_id": 31,
+        "content": "This code initializes an action history, gets the current state, and calculates action lengths to build online value instances. It also checks for possible problems in the instance building process and asserts that the sum of action lengths matches the length of the encoded state. Finally, it returns cumulative indices for the action lengths minus one.",
         "type": "comment"
     }
 }

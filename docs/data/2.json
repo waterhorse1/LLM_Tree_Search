@@ -1,539 +1,538 @@
 {
     "200": {
-        "file_id": 32,
-        "content": "    def step(self, action, update_legal_action=True):\n        if not action == self.stop_str:\n            self.action_history.append(action)\n        state = self.get_state()\n        reward = self.get_reward(state)\n        terminated, truncated, info = self.get_done_and_info()\n        # update legal actions\n        if not (terminated or truncated) and update_legal_action:\n            self._legal_actions = self.update_legal_actions()\n        else:\n            self._legal_actions = None\n        return state, reward, terminated, truncated, info\n    @property\n    def sep_index(self):\n        pre_state = (\n            self.action_history[:1]\n            if self.task_prefix is None\n            else self.action_history[:2]\n        )\n        pre_state_token_length = len(self.tokenizer.encode([pre_state + self.sep]))\n        index = [pre_state_token_length]\n        post_state = (\n            self.action_history[1:]\n            if self.task_prefix is None\n            else self.action_history[2:]\n        )\n        for action in post_state:",
-        "type": "code",
-        "location": "/tsllm/envs/base_env.py:367-394"
-    },
-    "201": {
-        "file_id": 32,
-        "content": "This code defines a step method in an environment class, which takes an action and updates legal actions if the episode is not terminated or truncated. It retrieves the state, reward, termination, truncation, and info from the environment and returns them as part of the state transition. The sep_index property calculates the separation index between task prefix (if provided) and subsequent actions.",
-        "type": "comment"
-    },
-    "202": {
-        "file_id": 32,
-        "content": "            action_length = len(\n                self.tokenizer.encode(action + self.sep, add_special_tokens=False)\n            )\n            index.append(action_length)\n            if action_length == 0:\n                print_with_rank(\n                    \"possbile problems met in online value instance building. {}\".format(\n                        action\n                    )\n                )\n        assert sum(index) == len(self.tokenizer.encode(self.get_state()))\n        index = np.cumsum(index) - 1\n        return index\n    def get_state(self):\n        # if self.action_history[-1] == self.stop_str:# remove the final stop token\n        #    return \"\".join(self.action_history[:-1])\n        return self.sep.join(self.action_history)\n    def init_action_history(self):\n        # add the first prompted questions\n        return ([self.task_prefix] if self.task_prefix is not None else []) + [\n            self._problem_format_str.format(question=self.problem[\"question\"])\n        ]\n    def update_legal_actions(self):",
-        "type": "code",
-        "location": "/tsllm/envs/base_env.py:395-420"
-    },
-    "203": {
-        "file_id": 32,
-        "content": "This code initializes an action history, gets the current state, and calculates action lengths to build online value instances. It also checks for possible problems in the instance building process and asserts that the sum of action lengths matches the length of the encoded state. Finally, it returns cumulative indices for the action lengths minus one.",
-        "type": "comment"
-    },
-    "204": {
-        "file_id": 32,
+        "file_id": 31,
         "content": "        state = self.get_state()\n        logits = self.llm_forward_fn(prompt=state)[0]\n        probs = torch.nn.functional.softmax(logits / self.config[\"temperature\"], dim=-1)\n        topk_values, topk_indices = torch.topk(probs, self.config[\"max_actions\"])\n        text_list = self.tokenizer.batch_decode(\n            topk_indices.reshape(topk_indices.shape[-1], 1)\n        )\n        prob_list = topk_values.tolist()\n        prob_list = prob_list / np.sum(prob_list)\n        _legal_actions = [\n            {\n                \"action\": action,\n                \"prob\": prob,\n                \"num_token\": 1 / self.config[\"max_actions\"],\n            }\n            for action, prob in zip(text_list, prob_list)\n        ]\n        return _legal_actions\n    def set_problem(self, idx):\n        self.problem = self.problems[idx]\n    @property\n    def question(self):\n        return (\n            \"\\n\".join(self.action_history[:1])\n            if self.task_prefix is None\n            else \"\\n\".join(self.action_history[:2])\n        )\n    @property",
         "type": "code",
         "location": "/tsllm/envs/base_env.py:421-452"
     },
-    "205": {
-        "file_id": 32,
+    "201": {
+        "file_id": 31,
         "content": "This code is from the base_env.py file in a LLM tree search implementation. It includes methods for getting state, calculating probabilities, and setting/retrieving problem information. The class also provides a question property based on action history.",
         "type": "comment"
     },
-    "206": {
-        "file_id": 32,
+    "202": {
+        "file_id": 31,
         "content": "    def answer(self):\n        return (\n            self.sep.join(self.action_history[1:])\n            if self.task_prefix is None\n            else self.sep.join(self.action_history[2:])\n        )\n    def get_done_and_info(self):\n        info = {\"winner\": 0}\n        # done when reaches maximum length or LLM generates stop words\n        terminated = self.stop_str == self.action_history[-1]\n        truncated = len(self.action_history) >= self.config[\"max_length\"] + (\n            2 if self.task_prefix is not None else 1\n        )\n        assert len(self.action_history) <= self.config[\"max_length\"] + (\n            2 if self.task_prefix is not None else 1\n        ), \"action history length: {}, max length: {}\".format(\n            len(self.action_history),\n            self.config[\"max_length\"] + (2 if self.task_prefix is not None else 1),\n        )\n        return terminated, truncated, info\n    def copy(self):\n        env = self.__class__(\n            self.config,\n            self.problems,\n            self.llm_forward_fn,",
         "type": "code",
         "location": "/tsllm/envs/base_env.py:453-481"
     },
-    "207": {
-        "file_id": 32,
+    "203": {
+        "file_id": 31,
         "content": "The code defines a class with methods for generating responses, determining done and truncated statuses, and cloning the environment. The response is generated based on action history, separator, and task prefix. Done status is determined when stop string matches the last action or if it reaches maximum length. Truncated status is determined when it exceeds the max length with additional characters for task prefix. Maximum length is asserted to prevent exceeding limits. The environment can be cloned using the copy method.",
         "type": "comment"
     },
-    "208": {
-        "file_id": 32,
+    "204": {
+        "file_id": 31,
         "content": "            self.tokenizer,\n            self._task_desc_str,\n            self._cot_example_str,\n            self._problem_format_str,\n            reset=False,\n        )\n        env.problem = copy.deepcopy(self.problem)\n        env._legal_actions = copy.deepcopy(self._legal_actions)\n        env.action_history = copy.deepcopy(self.action_history)\n        return env\n    @property\n    def legal_actions(self):\n        return self._legal_actions",
         "type": "code",
         "location": "/tsllm/envs/base_env.py:482-495"
     },
-    "209": {
-        "file_id": 32,
+    "205": {
+        "file_id": 31,
         "content": "This code is creating a new environment object by setting various attributes such as tokenizer, task description, and problem format. It then deep copies the problem, legal actions, and action history to the new environment and returns it.",
         "type": "comment"
     },
-    "210": {
-        "file_id": 33,
-        "content": "/tsllm/envs/utils.py",
-        "type": "filepath"
-    },
-    "211": {
-        "file_id": 33,
-        "content": "The `build_critic_data_component` function constructs a data component for tasks, utilizes tokenization and generates query and response strings from JSONL files. It returns a list of dictionaries containing information like index, query, answer, response string, handles optional parameters and initializes reward_list with zeros. It assigns rewards to the correct answers and appends it to traj_dict_list before returning it.",
-        "type": "summary"
-    },
-    "212": {
-        "file_id": 33,
-        "content": "from typing import Dict, Optional, Union, Callable\nimport numpy as np\nfrom tsllm.distributed.utils import print_with_rank\nfrom tsllm.offline_rl.utils import load_jsonl\nfrom transformers import PreTrainedTokenizer\nfrom pathlib import Path\nfrom torch.utils.data import Dataset\nimport jsonlines\ndef build_sft_data_component(\n    jsonl_path: Union[Path, str],\n    q2idx_dict: Dict,\n    tokenizer: PreTrainedTokenizer,\n    add_eos_token: bool,\n    is_few_shot: bool,\n    build_query_str_fn: Callable,\n    build_response_str_fn: Callable,\n    sep: str,\n    cot_task_desc_str: Optional[str] = None,\n    cot_example_str: Optional[str] = None,\n    problem_format_str: Optional[str] = None,\n):\n    predata = load_jsonl(jsonl_path)\n    q_r_dict_list = []\n    for idx, d in enumerate(predata):\n        question = d[\"question\"]\n        if question not in q2idx_dict:\n            continue\n        task_idx = q2idx_dict[question]\n        full_answer_list = d[\"answer\"]\n        query_str = build_query_str_fn(\n            cot_task_desc=cot_task_desc_str,",
-        "type": "code",
-        "location": "/tsllm/envs/utils.py:1-33"
-    },
-    "213": {
-        "file_id": 33,
-        "content": "This function builds a data component for the task, taking in various parameters like JSONL path, dictionary mapping questions to indices, tokenizer, boolean values for adding EOS tokens, whether it's few-shot learning or not, and functions for building query and response strings. It loads the JSONL file, filters out irrelevant questions, constructs queries based on optional task descriptions and examples, and populates a list of (question index, full answer) tuples to be used in the training dataset.",
-        "type": "comment"
-    },
-    "214": {
-        "file_id": 33,
-        "content": "            cot_examples=cot_example_str,\n            problem_format_str=problem_format_str,\n            problem_input=question,\n            sep=sep,\n            is_few_shot=is_few_shot,\n        )\n        for answer_output in full_answer_list:\n            answer_txt = answer_output[\"text\"]\n            response_str = build_response_str_fn(answer_txt, tokenizer, add_eos_token)\n            traj_dict = {\n                \"idx\": task_idx,\n                \"query_str\": query_str,\n                \"answer\": answer_txt,\n                \"response_str\": response_str,\n            }\n            q_r_dict_list.append(traj_dict)\n    return q_r_dict_list\ndef build_critic_data_component(\n    jsonl_path: Union[Path, str],\n    q2idx_dict: Dict,\n    tokenizer: PreTrainedTokenizer,\n    sep: str,\n    is_few_shot: bool,\n    build_query_str_fn: Callable,\n    cot_task_desc_str: Optional[str] = None,\n    cot_example_str: Optional[str] = None,\n    problem_format_str: Optional[str] = None,\n):\n    def get_value_index(q_str: str, answer_str: str):",
-        "type": "code",
-        "location": "/tsllm/envs/utils.py:34-66"
-    },
-    "215": {
-        "file_id": 33,
-        "content": "This code defines a function `build_critic_data_component` that takes in various parameters and returns a list of dictionaries (`q_r_dict_list`). The function seems to build data components for a task, where it uses tokenization, builds response strings, and creates dictionaries with information such as index, query string, answer, and response string. It also takes optional parameters like `cot_task_desc_str`, `cot_example_str`, and `problem_format_str`. The function utilizes other helper functions like `build_response_str_fn` and `get_value_index`.",
-        "type": "comment"
-    },
-    "216": {
-        "file_id": 33,
-        "content": "        pre_state_token_length = len(tokenizer.encode(q_str))\n        indices = [pre_state_token_length]\n        if sep != \"\":\n            answer_list = answer_str.split(sep)\n            check_indices = [pre_state_token_length - 1]\n            current_str = q_str\n            for action in answer_list:\n                current_str += action + sep\n                if len(action) == 0:\n                    print_with_rank(\n                        \"WARNING: possbile problems met in sft instance building. {}\".format(\n                            action\n                        )\n                    )\n                    continue\n                check_indices.append(len(tokenizer.encode(current_str)) - 1)\n            check_indices = np.array(check_indices)\n            indices = check_indices\n        else:\n            answer_tokens = tokenizer.encode(answer_str, add_special_tokens=False)\n            for token in answer_tokens:\n                indices.append(1)\n            indices = np.cumsum(indices) - 1\n        return indices",
-        "type": "code",
-        "location": "/tsllm/envs/utils.py:67-94"
-    },
-    "217": {
-        "file_id": 33,
-        "content": "The code calculates the tokenized length of the question string and adds it to a list called 'indices'. If there is a separator in the answer string, the answer string is split into a list of actions. For each action, the code appends the action and separator to the current string, updates the check_indices list with the tokenized length minus 1, and prints a warning if the action is empty. After looping through all actions, the check_indices are converted to a numpy array and becomes the new 'indices'. If there's no separator in the answer string, the code encodes the answer string into tokens and appends 1 to the indices list for each token. The indices list is then cumulatively summed and subtracted by 1 to create the final 'indices'.",
-        "type": "comment"
-    },
-    "218": {
-        "file_id": 33,
-        "content": "    predata = load_jsonl(jsonl_path)\n    traj_dict_list = []\n    for idx, d in enumerate(predata):\n        question = d[\"question\"]\n        if question not in q2idx_dict.keys():\n            continue\n        task_idx = q2idx_dict[question]\n        full_answer_list = d[\"answer\"]\n        query_str = build_query_str_fn(\n            cot_task_desc=cot_task_desc_str,\n            cot_examples=cot_example_str,\n            problem_format_str=problem_format_str,\n            problem_input=question,\n            sep=sep,\n            is_few_shot=is_few_shot,\n        )\n        for answer_output in full_answer_list:\n            \"\"\"answer_output is a dict with keys:\n            \"text\", \"reward\",\n            if there is not \"reward\" key, use \"correct\" key\n            \"\"\"\n            if len(sep) > 1:\n                print_with_rank(\"WARNING: sep is not empty, but {}\".format(sep))\n            answer = answer_output[\"text\"].strip(sep)\n            value_index = get_value_index(query_str, answer)\n            # :-1 is value index, -1 is the reward index",
-        "type": "code",
-        "location": "/tsllm/envs/utils.py:96-121"
-    },
-    "219": {
-        "file_id": 33,
-        "content": "This code reads a list of preloaded JSONL data and iterates through it, filtering out questions not in q2idx_dict. For each question, it builds a query string using provided arguments and then iterates through the answers for that question. If there is no \"reward\" key in the answer dict, it uses the \"correct\" key instead. It retrieves the value index of the answer from the query string and adds a tuple (task_idx, value_index, -1) to traj_dict_list if sep is empty.",
-        "type": "comment"
-    },
-    "220": {
-        "file_id": 33,
-        "content": "            reward_list = np.zeros(len(value_index) - 1)\n            if \"reward\" not in answer_output:\n                answer_output[\"reward\"] = 1.0 if answer_output[\"correct\"] else -1.0\n            reward_list[-1] = answer_output[\"reward\"]\n            traj_dict = {\n                \"idx\": task_idx,\n                \"query_str\": query_str,\n                \"answer\": answer + sep,\n                \"value_index\": value_index,\n                \"reward_list\": reward_list,\n            }\n            traj_dict_list.append(traj_dict)\n    return traj_dict_list",
-        "type": "code",
-        "location": "/tsllm/envs/utils.py:122-135"
-    },
-    "221": {
-        "file_id": 33,
-        "content": "This code initializes a reward_list with zeros, assigns rewards to the answer output based on correctness, adds reward_list to traj_dict and appends it to traj_dict_list. The function returns traj_dict_list.",
-        "type": "comment"
-    },
-    "222": {
-        "file_id": 34,
+    "206": {
+        "file_id": 32,
         "content": "/tsllm/envs/game24/__init__.py",
         "type": "filepath"
     },
-    "223": {
-        "file_id": 34,
+    "207": {
+        "file_id": 32,
         "content": "Imports necessary modules and functions for the game24 environment, data handling, prompt, and evaluation tasks.",
         "type": "summary"
     },
-    "224": {
-        "file_id": 34,
+    "208": {
+        "file_id": 32,
         "content": "from .env import Game24Env as Env, extract_answer, judge_correct, extract_groundtruth\nfrom .data import get_train_test_dataset\nfrom .prompt import COT_EXAMPLES, COT_TASK_DESC, PROBLEM_FORMAT_STR, SEP",
         "type": "code",
         "location": "/tsllm/envs/game24/__init__.py:1-3"
     },
-    "225": {
-        "file_id": 34,
+    "209": {
+        "file_id": 32,
         "content": "Imports necessary modules and functions for the game24 environment, data handling, prompt, and evaluation tasks.",
         "type": "comment"
     },
-    "226": {
-        "file_id": 35,
+    "210": {
+        "file_id": 33,
         "content": "/tsllm/envs/game24/data.py",
         "type": "filepath"
     },
-    "227": {
-        "file_id": 35,
+    "211": {
+        "file_id": 33,
         "content": "The code defines a function `get_train_test_dataset` for game datasets and a `JsonlQuestionDataset` class to load JSONL data without answers. Additionally, it includes the `CSVDataset` class that reads puzzles data from CSV files and has methods to return the number of elements and retrieve specific puzzle elements.",
         "type": "summary"
     },
-    "228": {
-        "file_id": 35,
+    "212": {
+        "file_id": 33,
         "content": "from torch.utils.data import Dataset\nimport pandas as pd\nimport jsonlines\nfrom pathlib import Path\ndef get_train_test_dataset(*args, **kwargs):\n    env_dir = Path(__file__).parent\n    train_data_path = kwargs.get(\n        \"train_data_path\", env_dir / \"train_data/train_dedup.jsonl\"\n    )\n    test_data_path = kwargs.get(\n        \"test_data_path\", env_dir / \"train_data/test_dedup.jsonl\"\n    )\n    train_ds = JsonlQuestionDataset(train_data_path)\n    test_ds = JsonlQuestionDataset(test_data_path)\n    return train_ds, test_ds\nclass JsonlQuestionDataset(Dataset):\n    def __init__(self, data_path):\n        super().__init__()\n        self.data = []\n        with jsonlines.open(data_path, \"r\") as reader:\n            for obj in reader:\n                obj.pop(\"answer\")\n                self.data.append(obj)\n    def __len__(self):\n        return len(self.data)\n    def __getitem__(self, index):\n        # dummy answer, just for compatibility\n        return {\"question\": self.data[index][\"question\"], \"answer\": \"[DUMMY ANSWER]\"}\n# This is the dataset that",
         "type": "code",
         "location": "/tsllm/envs/game24/data.py:1-39"
     },
-    "229": {
-        "file_id": 35,
+    "213": {
+        "file_id": 33,
         "content": "This code defines a function `get_train_test_dataset` that returns the train and test datasets for a game. The train and test data paths are provided as arguments, with default values specified in case they're not provided. The `JsonlQuestionDataset` class is defined to load JSONL data without answers into the dataset. It then removes the \"answer\" key from each object and returns a dummy answer when indexing the dataset.",
         "type": "comment"
     },
-    "230": {
-        "file_id": 35,
+    "214": {
+        "file_id": 33,
         "content": "class CSVDataset(Dataset):\n    def __init__(self, data_path) -> None:\n        super().__init__()\n        self.data = list(pd.read_csv(data_path)[\"Puzzles\"])\n    def __len__(self):\n        return len(self.data)\n    def __getitem__(self, index):\n        return {\"question\": self.data[index]}",
         "type": "code",
         "location": "/tsllm/envs/game24/data.py:40-49"
     },
-    "231": {
-        "file_id": 35,
+    "215": {
+        "file_id": 33,
         "content": "This code defines a CSVDataset class that reads puzzles data from a CSV file at the specified path. It inherits from the Dataset class and has an initialized self.data list, which is populated with puzzle data read from the CSV file. The class also includes methods to return the number of elements in the dataset (len) and retrieve a specific puzzle element from the dataset using index (getitem).",
         "type": "comment"
     },
-    "232": {
-        "file_id": 36,
+    "216": {
+        "file_id": 34,
         "content": "/tsllm/envs/game24/env.py",
         "type": "filepath"
     },
-    "233": {
-        "file_id": 36,
+    "217": {
+        "file_id": 34,
         "content": "The code includes a Game24Env class for solving the 24 math puzzle and defines functions for extracting answers, determining correctness, and obtaining rewards.",
         "type": "summary"
     },
-    "234": {
-        "file_id": 36,
+    "218": {
+        "file_id": 34,
         "content": "import re\nfrom typing import Optional\nimport sympy\nfrom tsllm.distributed.utils import print_with_rank\nfrom tsllm.envs.base_env import CoTEnv, NoLegalActionException, INVALID_ANS\nimport numpy as np\nfrom .prompt import COT_EXAMPLES, COT_TASK_DESC, PROBLEM_FORMAT_STR, SEP\nSTOP_STR = \"The answer is \"\ndef extract_answer(answer_str):\n    try:\n        expressions = (\n            answer_str.strip()\n            .split(\"\\n\")[-1]\n            .lower()\n            .replace(STOP_STR.lower(), \"\")\n            .split(\"=\")\n        )\n        lhs = expressions[0].strip()\n        rhs = expressions[1].strip()\n        # if int(rhs) != 24:\n        #     return INVALID_ANS\n    except:\n        return INVALID_ANS\n    return lhs\ndef extract_groundtruth(x: str):\n    return None\ndef judge_correct(\n    problem_str: str, extracted_groundtruth: Optional[str], extracted_answer\n):\n    numbers = re.findall(r\"\\d+\", extracted_answer)\n    problem_numbers = re.findall(r\"\\d+\", problem_str)\n    if sorted(numbers) != sorted(problem_numbers):\n        return False",
         "type": "code",
         "location": "/tsllm/envs/game24/env.py:1-40"
     },
-    "235": {
-        "file_id": 36,
+    "219": {
+        "file_id": 34,
         "content": "This code defines functions to extract the answer and ground truth from a given problem string, as well as determine if the extracted answer is correct. It also handles exceptions by returning INVALID_ANS if any error occurs during extraction.",
         "type": "comment"
     },
-    "236": {
-        "file_id": 36,
+    "220": {
+        "file_id": 34,
         "content": "    try:\n        return sympy.simplify(extracted_answer) == 24\n    except Exception as e:\n        return False\nclass Game24Env(CoTEnv):\n    \"\"\"\n    Pure Question input is: 4 numbers seperated by whitespace\n    e.g. 2 3 5 12\n    \"\"\"\n    sep = SEP\n    def __init__(\n        self,\n        config,\n        math_problems,\n        llm_gen_fn,\n        tokenizer,\n        task_desc_str: str = COT_TASK_DESC,\n        cot_example_str: str = COT_EXAMPLES,\n        problem_format_str: str = PROBLEM_FORMAT_STR,\n        reset=True,\n    ):\n        if \"max_length\" in config and config[\"max_length\"] != 4:\n            print_with_rank(\"In game24 max_length should be 4, force setting it to 4.\")\n        config[\"max_length\"] = 4\n        super().__init__(\n            config,\n            math_problems,\n            llm_gen_fn,\n            tokenizer,\n            task_desc_str,\n            cot_example_str,\n            problem_format_str,\n            reset,\n        )\n    @property\n    def stop_str(self):\n        return STOP_STR\n    def _is_correct(self, completion):",
         "type": "code",
         "location": "/tsllm/envs/game24/env.py:41-84"
     },
-    "237": {
-        "file_id": 36,
+    "221": {
+        "file_id": 34,
         "content": "This code defines a class Game24Env that represents an environment for solving the game 24 math puzzle. It takes in various configurations, such as config, math_problems, llm_gen_fn, tokenizer, and more. The class initializes with some checks and adjustments to ensure the \"max_length\" is set to 4, which is necessary for the game. It also provides a property 'stop_str' and a method '_is_correct' for checking the correctness of the completion.",
         "type": "comment"
     },
-    "238": {
-        "file_id": 36,
+    "222": {
+        "file_id": 34,
         "content": "        extracted_answer = extract_answer(completion)\n        return judge_correct(\n            self.math_problem[\"question\"], self.math_problem[\"answer\"], extracted_answer\n        )\n    def get_reward(self):\n        return 0.0",
         "type": "code",
         "location": "/tsllm/envs/game24/env.py:85-91"
     },
-    "239": {
-        "file_id": 36,
+    "223": {
+        "file_id": 34,
         "content": "This code snippet contains two methods: \"judge_correct\" and \"get_reward\". The \"judge_correct\" method takes the game question, answer, and extracted solution to determine if it is correct. The \"get_reward\" method always returns a reward of 0.0.",
         "type": "comment"
     },
-    "240": {
-        "file_id": 37,
+    "224": {
+        "file_id": 35,
         "content": "/tsllm/envs/game24/prompt.py",
         "type": "filepath"
     },
-    "241": {
-        "file_id": 37,
+    "225": {
+        "file_id": 35,
         "content": "The code offers task explanation, examples, and format string for the 24 game, allowing players to reach 24 using given numbers with basic arithmetic operations. It also includes example inputs and possible next steps, while judging the correctness of user's answer.",
         "type": "summary"
     },
-    "242": {
-        "file_id": 37,
+    "226": {
+        "file_id": 35,
         "content": "COT_TASK_DESC = \"\"\"Use numbers and basic arithmetic operations (+ - * /) to obtain 24. Each step, you are only allowed to choose two of the remaining numbers to obtain a new number.\"\"\"\n# 5-shot\nCOT_EXAMPLES = f\"\"\"Input: 4 4 6 8\nSteps:\n4 + 8 = 12 (left: 4 6 12)\n6 - 4 = 2 (left: 2 12)\n2 * 12 = 24 (left: 24)\nThe answer is (6 - 4) * (4 + 8) = 24\nInput: 2 9 10 12\nSteps:\n12 * 2 = 24 (left: 9 10 24)\n10 - 9 = 1 (left: 1 24)\n24 * 1 = 24 (left: 24)\nThe answer is (12 * 2) * (10 - 9) = 24\nInput: 4 9 10 13\nSteps:\n13 - 10 = 3 (left: 3 4 9)\n9 - 3 = 6 (left: 4 6)\n4 * 6 = 24 (left: 24)\nThe answer is 4 * (9 - (13 - 10)) = 24\nInput: 1 4 8 8\nSteps:\n8 / 4 = 2 (left: 1 2 8)\n1 + 2 = 3 (left: 3 8)\n3 * 8 = 24 (left: 24)\nThe answer is (1 + 8 / 4) * 8 = 24\nInput: 5 5 5 9\nSteps:\n5 + 5 = 10 (left: 5 9 10)\n10 + 5 = 15 (left: 9 15)\n15 + 9 = 24 (left: 24)\nThe answer is ((5 + 5) + 5) + 9 = 24\"\"\"\nPROBLEM_FORMAT_STR = \"Input: {question}\\nSteps:\"\nSEP = \"\\n\"\n# 5-shot\nstandard_task_desc = (\n    \"\"\"Use numbers and basic arithmetic operations (+ - * /) to obtain 24.\"\"\"",
         "type": "code",
         "location": "/tsllm/envs/game24/prompt.py:1-43"
     },
-    "243": {
-        "file_id": 37,
+    "227": {
+        "file_id": 35,
         "content": "This code defines a task description and examples for the 24 game, where a player must use numbers and basic arithmetic to reach 24 using only two remaining numbers in each step. The code provides an example prompt with four different inputs and their corresponding steps to achieve 24, along with a format string for the problem representation.",
         "type": "comment"
     },
-    "244": {
-        "file_id": 37,
+    "228": {
+        "file_id": 35,
         "content": ")\nstandard_5shot_examples = f\"\"\"Input: 4 4 6 8\nThe answer is (4 + 8) * (6 - 4) = 24\nInput: 2 9 10 12\nThe answer is 2 * 12 * (10 - 9) = 24\nInput: 4 9 10 13\nThe answer is (13 - 9) * (10 - 4) = 24\nInput: 1 4 8 8\nThe answer is (8 / 4 + 1) * 8 = 24\nInput: 5 5 5 9\nThe answer is 5 + 5 + 5 + 9 = 24\n\"\"\"\n# # 1-shot\n# propose_prompt = '''Input: 2 8 8 14\n# Possible next steps:\n# 2 + 8 = 10 (left: 8 10 14)\n# 8 / 2 = 4 (left: 4 8 14)\n# 14 + 2 = 16 (left: 8 8 16)\n# 2 * 8 = 16 (left: 8 14 16)\n# 8 - 2 = 6 (left: 6 8 14)\n# 14 - 8 = 6 (left: 2 6 8)\n# 14 /  2 = 7 (left: 7 8 8)\n# 14 - 2 = 12 (left: 8 8 12)\n# Input: {input}\n# Possible next steps:\n# '''\nVALUE_PROMPT = \"\"\"Evaluate if given numbers can reach 24 (sure/likely/impossible)\n10 14\n10 + 14 = 24\nsure\n11 12\n11 + 12 = 23\n12 - 11 = 1\n11 * 12 = 132\n11 / 12 = 0.91\nimpossible\n4 4 10\n4 + 4 + 10 = 8 + 10 = 18\n4 * 10 - 4 = 40 - 4 = 36\n(10 - 4) * 4 = 6 * 4 = 24\nsure\n4 9 11\n9 + 11 + 4 = 20 + 4 = 24\nsure\n5 7 8\n5 + 7 + 8 = 12 + 8 = 20\n(8 - 5) * 7 = 3 * 7 = 21\nI cannot obtain 24 now, but numbers are within a reasonable range",
         "type": "code",
         "location": "/tsllm/envs/game24/prompt.py:44-92"
     },
-    "245": {
-        "file_id": 37,
+    "229": {
+        "file_id": 35,
         "content": "The code contains example inputs and possible next steps for solving the game \"24\", which involves combining given numbers to reach 24. The VALUE_PROMPT variable suggests whether the current set of numbers can reach 24 or not based on possible combinations.",
         "type": "comment"
     },
-    "246": {
-        "file_id": 37,
+    "230": {
+        "file_id": 35,
         "content": "likely\n5 6 6\n5 + 6 + 6 = 17\n(6 - 5) * 6 = 1 * 6 = 6\nI cannot obtain 24 now, but numbers are within a reasonable range\nlikely\n10 10 11\n10 + 10 + 11 = 31\n(11 - 10) * 10 = 10\n10 10 10 are all too big\nimpossible\n1 3 3\n1 * 3 * 3 = 9\n(1 + 3) * 3 = 12\n1 3 3 are all too small\nimpossible\n{input}\n\"\"\"\nVALUE_LAST_STEP_PROMPT = \"\"\"Use numbers and basic arithmetic operations (+ - * /) to obtain 24. Given an input and an answer, give a judgement (sure/impossible) if the answer is correct, i.e. it uses each input exactly once and no other numbers, and reach 24.\nInput: 4 4 6 8\nThe answer is (4 + 8) * (6 - 4) = 24\nJudge:\nsure\nInput: 2 9 10 12\nThe answer is 2 * 12 * (10 - 9) = 24\nJudge:\nsure\nInput: 4 9 10 13\nThe answer is (13 - 9) * (10 - 4) = 24\nJudge:\nsure\nInput: 4 4 6 8\nThe answer is (4 + 8) * (6 - 4) + 1 = 25\nJudge:\nimpossible\nInput: 2 9 10 12\nThe answer is 2 * (12 - 10) = 24\nJudge:\nimpossible\nInput: 4 9 10 13\nThe answer is (13 - 4) * (10 - 9) = 24\nJudge:\nimpossible\nInput: {input}\nThe answer is {answer}\nJudge:\"\"\"",
         "type": "code",
         "location": "/tsllm/envs/game24/prompt.py:93-139"
     },
-    "247": {
-        "file_id": 37,
+    "231": {
+        "file_id": 35,
         "content": "This code provides a prompt for the user to use basic arithmetic operations (+, -, *, /) to obtain 24 using given inputs. It then judges whether the answer is correct (sure) or impossible based on the given input and answer.",
         "type": "comment"
     },
-    "248": {
-        "file_id": 38,
+    "232": {
+        "file_id": 36,
         "content": "/tsllm/envs/gsm8k/__init__.py",
         "type": "filepath"
     },
-    "249": {
-        "file_id": 38,
+    "233": {
+        "file_id": 36,
         "content": "This code imports necessary modules and functions from related files for initializing the environment, extracting answer and ground truth, judging correctness, getting train/test datasets, and defining prompt examples.",
         "type": "summary"
     },
-    "250": {
-        "file_id": 38,
+    "234": {
+        "file_id": 36,
         "content": "from .env import Gsm8kEnv as Env, extract_answer, extract_groundtruth, judge_correct\nfrom .data import get_train_test_dataset\nfrom .prompt import COT_EXAMPLES, COT_TASK_DESC, PROBLEM_FORMAT_STR, SEP",
         "type": "code",
         "location": "/tsllm/envs/gsm8k/__init__.py:1-3"
     },
-    "251": {
-        "file_id": 38,
+    "235": {
+        "file_id": 36,
         "content": "This code imports necessary modules and functions from related files for initializing the environment, extracting answer and ground truth, judging correctness, getting train/test datasets, and defining prompt examples.",
         "type": "comment"
     },
-    "252": {
-        "file_id": 39,
+    "236": {
+        "file_id": 37,
         "content": "/tsllm/envs/gsm8k/data.py",
         "type": "filepath"
     },
-    "253": {
-        "file_id": 39,
+    "237": {
+        "file_id": 37,
         "content": "This function loads the GSM8K dataset for training and testing, allowing optional truncation of the training dataset using a specified number.",
         "type": "summary"
     },
-    "254": {
-        "file_id": 39,
+    "238": {
+        "file_id": 37,
         "content": "from datasets import load_dataset\ndef get_train_test_dataset(*args, **kwargs):\n    num_train_data = kwargs.get(\"num_train_data\", None)\n    if num_train_data:\n        train_dataset = load_dataset(\"gsm8k\", \"main\", split=f\"train[:{num_train_data}]\")\n    else:\n        train_dataset = load_dataset(\"gsm8k\", \"main\", split=f\"train\")\n    test_dataset = load_dataset(\"gsm8k\", \"main\")[\"test\"]\n    return train_dataset, test_dataset",
         "type": "code",
         "location": "/tsllm/envs/gsm8k/data.py:1-12"
     },
-    "255": {
-        "file_id": 39,
+    "239": {
+        "file_id": 37,
         "content": "This function loads the GSM8K dataset for training and testing, allowing optional truncation of the training dataset using a specified number.",
         "type": "comment"
     },
-    "256": {
-        "file_id": 40,
+    "240": {
+        "file_id": 38,
         "content": "/tsllm/envs/gsm8k/env.py",
         "type": "filepath"
     },
-    "257": {
-        "file_id": 40,
+    "241": {
+        "file_id": 38,
         "content": "This code defines functions to extract answers and ground truth values, creates a class \"Gsm8kEnv\" inheriting from \"CoTEnv\", and includes three methods for environment initialization and reward calculation.",
         "type": "summary"
     },
-    "258": {
-        "file_id": 40,
+    "242": {
+        "file_id": 38,
         "content": "import copy\nimport re\nfrom typing import List, Optional\nimport numpy as np\nfrom tsllm.envs.base_env import CoTEnv, NoLegalActionException, INVALID_ANS\nfrom .prompt import COT_EXAMPLES, COT_TASK_DESC, PROBLEM_FORMAT_STR, SEP\nANS_RE = re.compile(r\"The answer is (\\-?[0-9\\.\\,]+)\")\nSTOP_STR = \"The answer is \"\ndef extract_answer(completion):\n    match = ANS_RE.search(completion)\n    if match:\n        match_str = match.group(1).strip()\n        match_str = match_str.replace(\",\", \"\")\n    else:\n        return INVALID_ANS\n    return match_str\ndef extract_groundtruth(groundtruth_str: str):\n    x = groundtruth_str.split(\"#### \")[1].strip().replace(\",\", \"\")\n    try:\n        float(x)\n    except:\n        raise ValueError(\n            \"Warning: Error should raise since the extracted groundtruth string {}\\\n             cannot be converted to float\".format(\n                x\n            )\n        )\n    return x\ndef judge_correct(problem_str: str, extracted_groundtruth: Optional[str], answer: str):\n    float_groundtruth = float(extracted_groundtruth)",
         "type": "code",
         "location": "/tsllm/envs/gsm8k/env.py:1-37"
     },
-    "259": {
-        "file_id": 40,
+    "243": {
+        "file_id": 38,
         "content": "This code defines functions for extracting answers and ground truth values from a string, as well as judging the correctness of an answer. The extract_answer function uses regex to find and strip the answer from a given completion string, handling invalid cases with INVALID_ANS. The extract_groundtruth function parses a groundtruth string and raises a ValueError if it cannot be converted to a float. The judge_correct function compares the extracted ground truth value to the provided answer, returning a warning if the extracted ground truth string cannot be converted to a float.",
         "type": "comment"
     },
-    "260": {
-        "file_id": 40,
+    "244": {
+        "file_id": 38,
         "content": "    try:\n        return abs(float(answer) - float_groundtruth) < 1e-5\n    except Exception:\n        return False\nclass Gsm8kEnv(CoTEnv):\n    sep = SEP\n    def __init__(\n        self,\n        config,\n        math_problems,\n        llm_gen_fn,\n        tokenizer,\n        task_desc_str: str = COT_TASK_DESC,\n        cot_example_str: str = COT_EXAMPLES,\n        problem_format_str: str = PROBLEM_FORMAT_STR,\n        reset=True,\n    ):\n        super().__init__(\n            config,\n            math_problems,\n            llm_gen_fn,\n            tokenizer,\n            task_desc_str,\n            cot_example_str,\n            problem_format_str,\n            reset,\n        )\n    @property\n    def stop_str(self):\n        return STOP_STR\n    def _is_correct(self, completion):\n        extracted_answer = extract_answer(completion)\n        # print(\"Compare: {} -- {}\".format(extrated_answer,\n        #  self.math_problem['answer']))\n        # return extrated_answer == self.math_problem['answer']\n        return judge_correct(\n            self.math_problem[\"question\"], self.math_problem[\"answer\"], extracted_answer",
         "type": "code",
         "location": "/tsllm/envs/gsm8k/env.py:38-79"
     },
-    "261": {
-        "file_id": 40,
+    "245": {
+        "file_id": 38,
         "content": "The code is defining a class called \"Gsm8kEnv\" which inherits from the \"CoTEnv\" class. It takes in various parameters such as config, math_problems, llm_gen_fn, tokenizer, etc. The class has a method \"_is_correct\" that checks if the provided completion is correct by comparing it with the expected answer using judge_correct function. The code also has exception handling to handle any exceptions during execution.",
         "type": "comment"
     },
-    "262": {
-        "file_id": 40,
+    "246": {
+        "file_id": 38,
         "content": "        )\n    def init_action_history(self):\n        # add the first prompted questions\n        return ([self.task_prefix] if self.task_prefix is not None else []) + [\n            f\"Question: {self.math_problem['question']}\\nAnswer: Let's think step by step\"\n        ]\n    def get_reward(self):\n        \"\"\"To implement based on learned reward model\"\"\"\n        return 0",
         "type": "code",
         "location": "/tsllm/envs/gsm8k/env.py:80-90"
     },
-    "263": {
-        "file_id": 40,
+    "247": {
+        "file_id": 38,
         "content": "This code defines three methods: \"init_action_history\", \"get_reward\", and an unnamed function that appears to be an environment initialization block. The \"init_action_history\" method adds the first prompted questions to the environment, while \"get_reward\" is a placeholder for implementing a learned reward model. The code returns 0 as a default reward until the reward model is implemented.",
         "type": "comment"
     },
-    "264": {
-        "file_id": 41,
+    "248": {
+        "file_id": 39,
         "content": "/tsllm/envs/gsm8k/prompt.py",
         "type": "filepath"
     },
-    "265": {
-        "file_id": 41,
+    "249": {
+        "file_id": 39,
         "content": "The code uses a step-by-step method with multiple-choice questions and Python variables for problem prompts, focusing on basic math operations. It includes unused variables and example formats for question and answer parts.",
         "type": "summary"
     },
-    "266": {
-        "file_id": 41,
+    "250": {
+        "file_id": 39,
         "content": "COT_EXAMPLES = \"Question: There are 15 trees in the grove. Grove workers will plant trees in the grove today. After they are done, there will be 21 trees. How many trees did the grove workers plant today?\\nAnswer: Let's think step by step\\nThere are 15 trees originally.\\nThen there were 21 trees after some more were planted.\\nSo there must have been 21 - 15 = 6.\\nThe answer is 6\\n\\nQuestion: If there are 3 cars in the parking lot and 2 more cars arrive, how many cars are in the parking lot?\\nAnswer: Let's think step by step\\nThere are originally 3 cars.\\n2 more cars arrive.\\n3 + 2 = 5.\\nThe answer is 5\\n\\nQuestion: Leah had 32 chocolates and her sister had 42. If they ate 35, how many pieces do they have left in total?\\nAnswer: Let's think step by step\\nOriginally, Leah had 32 chocolates.\\nHer sister had 42.\\nSo in total they had 32 + 42 = 74.\\nAfter eating 35, they had 74 - 35 = 39.\\nThe answer is 39\\n\\nQuestion: Jason had 20 lollipops. He gave Denny some lollipops. Now Jason has 12 l",
         "type": "code",
         "location": "/tsllm/envs/gsm8k/prompt.py:1-1"
     },
-    "267": {
-        "file_id": 41,
+    "251": {
+        "file_id": 39,
         "content": "This code contains multiple-choice questions and their corresponding answers, presented in a step-by-step manner. These questions seem to involve basic math operations such as addition and subtraction, helping learners think through the problems systematically.",
         "type": "comment"
     },
-    "268": {
-        "file_id": 41,
+    "252": {
+        "file_id": 39,
         "content": "ollipops. How many lollipops did Jason give to Denny?\\nAnswer: Let's think step by step\\nJason started with 20 lollipops.\\nThen he had 12 after giving some to Denny.\\nSo he gave Denny 20 - 12 = 8.\\nThe answer is 8\\n\\nQuestion: Shawn has five toys. For Christmas, he got two toys each from his mom and dad. How many toys does he have now?\\nAnswer: Let's think step by step\\nShawn started with 5 toys.\\nIf he got 2 toys each from his mom and dad, then that is 4 more toys.\\n5 + 4 = 9.\\nThe answer is 9\\n\\nQuestion: There were nine computers in the server room. Five more computers were installed each day, from monday to thursday. How many computers are now in the server room?\\nAnswer: Let's think step by step\\nThere were originally 9 computers.\\nFor each of 4 days, 5 more computers were added.\\nSo 5 * 4 = 20 computers were added.\\n9 + 20 is 29.\\nThe answer is 29\\n\\nQuestion: Michael had 58 golf balls. On tuesday, he lost 23 golf balls. On wednesday, he lost 2 more. How many golf balls did he ha",
         "type": "code",
         "location": "/tsllm/envs/gsm8k/prompt.py:1-1"
     },
-    "269": {
-        "file_id": 41,
+    "253": {
+        "file_id": 39,
         "content": "This code contains a series of prompts and corresponding answers for math problems. It guides the reader through solving the problem step by step, emphasizing the importance of considering each part of the question before providing the final answer.",
         "type": "comment"
     },
-    "270": {
-        "file_id": 41,
+    "254": {
+        "file_id": 39,
         "content": "ve at the end of wednesday?\\nAnswer: Let's think step by step\\nMichael started with 58 golf balls.\\nAfter losing 23 on tues- day, he had 58 - 23 = 35.\\nAfter losing 2 more, he had 35 - 2 = 33 golf balls.\\nThe answer is 33\\n\\nQuestion: Olivia has $23. She bought five bagels for $3 each. How much money does she have left?\\nAnswer: Let's think step by step\\nOlivia had 23 dollars.\\n5 bagels for 3 dollars each will be 5 x 3 = 15 dollars.\\nSo she has 23 - 15 dollars left.\\n23 - 15 is 8\\nThe answer is 8\"\nCOT_TASK_DESC = None\nPROBLEM_FORMAT_STR = \"Question: {question}\\nAnswer: Let's think step by step\"\nSEP = \"\\n\"",
         "type": "code",
         "location": "/tsllm/envs/gsm8k/prompt.py:1-6"
     },
-    "271": {
-        "file_id": 41,
+    "255": {
+        "file_id": 39,
         "content": "This code contains Python variables and string formatting for creating problem prompts with a similar structure. The `COT_TASK_DESC` variable seems unused, while `PROBLEM_FORMAT_STR` holds the initial prompt format. The code defines two examples in strings, showing how to format the question and answer parts. `SEP` is used as a line separator for readability.",
         "type": "comment"
     },
-    "272": {
-        "file_id": 42,
+    "256": {
+        "file_id": 40,
         "content": "/tsllm/envs/prontoqa/__init__.py",
         "type": "filepath"
     },
-    "273": {
-        "file_id": 42,
+    "257": {
+        "file_id": 40,
         "content": "This code imports necessary modules and functions from various submodules (env, data, prompt) for the PrOntoQA environment. It includes functions like Env, extract_answer, judge_correct, and extract_groundtruth. The constants COT_EXAMPLES, COT_TASK_DESC, PROBLEM_FORMAT_STR, and SEP are also imported.",
         "type": "summary"
     },
-    "274": {
-        "file_id": 42,
+    "258": {
+        "file_id": 40,
         "content": "from .env import PrOntoQAEnv as Env, extract_answer, judge_correct, extract_groundtruth\nfrom .data import get_train_test_dataset\nfrom .prompt import COT_EXAMPLES, COT_TASK_DESC, PROBLEM_FORMAT_STR, SEP",
         "type": "code",
         "location": "/tsllm/envs/prontoqa/__init__.py:1-3"
     },
-    "275": {
-        "file_id": 42,
+    "259": {
+        "file_id": 40,
         "content": "This code imports necessary modules and functions from various submodules (env, data, prompt) for the PrOntoQA environment. It includes functions like Env, extract_answer, judge_correct, and extract_groundtruth. The constants COT_EXAMPLES, COT_TASK_DESC, PROBLEM_FORMAT_STR, and SEP are also imported.",
         "type": "comment"
     },
-    "276": {
-        "file_id": 43,
+    "260": {
+        "file_id": 41,
         "content": "/tsllm/envs/prontoqa/data.py",
         "type": "filepath"
     },
-    "277": {
-        "file_id": 43,
+    "261": {
+        "file_id": 41,
         "content": "The code creates a function `get_train_test_dataset` and class `CSVDataset` for dataset generation, and iterates through questions and answers, categorizing them into \"train\" or \"test\", writing to JSONL files, and displaying stats.",
         "type": "summary"
     },
-    "278": {
-        "file_id": 43,
+    "262": {
+        "file_id": 41,
         "content": "from torch.utils.data import Dataset\nimport pandas as pd\nimport jsonlines\nimport json\nimport numpy as np\nimport re\nfrom pathlib import Path\ndef get_train_test_dataset(*args, **kwargs):\n    env_dir = Path(__file__).parent\n    train_data_path = kwargs.get(\"train_data_path\", env_dir / \"train_data/train.jsonl\")\n    test_data_path = kwargs.get(\"test_data_path\", env_dir / \"train_data/test.jsonl\")\n    train_ds = JsonlQuestionDataset(train_data_path)\n    test_ds = JsonlQuestionDataset(test_data_path)\n    return train_ds, test_ds\nclass JsonlQuestionDataset(Dataset):\n    def __init__(self, data_path):\n        super().__init__()\n        self.data = []\n        with jsonlines.open(data_path, \"r\") as reader:\n            for obj in reader:\n                self.data.append(obj)\n    def __len__(self):\n        return len(self.data)\n    def __getitem__(self, index):\n        return {\n            \"question\": self.data[index][\"question\"],\n            \"answer\": self.data[index][\"answer\"][0][\"text\"],\n        }\n# This is the dataset that\nclass CSVDataset(Dataset):",
         "type": "code",
         "location": "/tsllm/envs/prontoqa/data.py:1-40"
     },
-    "279": {
-        "file_id": 43,
+    "263": {
+        "file_id": 41,
         "content": "This code defines a function `get_train_test_dataset` that returns train and test datasets. The function takes optional arguments for training and testing data paths, defaulting to the current file's parent directory. It creates instances of `JsonlQuestionDataset` using provided paths, which reads from JSON lines files containing question-answer pairs. It also defines a class `CSVDataset`, but its implementation is incomplete.",
         "type": "comment"
     },
-    "280": {
-        "file_id": 43,
+    "264": {
+        "file_id": 41,
         "content": "    def __init__(self, data_path) -> None:\n        super().__init__()\n        self.data = list(pd.read_csv(data_path)[\"Puzzles\"])\n    def __len__(self):\n        return len(self.data)\n    def __getitem__(self, index):\n        return {\"question\": self.data[index]}\ndef build_question(question, query):\n    statement = query[15:-1]\n    new_question = question + ' Is the statement \"{}\" true or false?'.format(statement)\n    return new_question\ndef build_text(cot, answer):\n    text = \"\\n\".join(cot) + \"\\nThe answer is {}.\".format(answer.lower())\n    return text\ndef data_preprocess(read_path, save_dir):\n    text_steps = []\n    with open(read_path, \"r\") as reader:\n        data_set = json.load(reader)\n        i = 0\n        for batch in data_set.values():\n            for key in batch.keys():\n                question = build_question(batch[key][\"question\"], batch[key][\"query\"])\n                text = build_text(batch[key][\"chain_of_thought\"], batch[key][\"answer\"])\n                text_steps.append(len(text.split(\"\\n\")))\n                new_obj = {",
         "type": "code",
         "location": "/tsllm/envs/prontoqa/data.py:41-75"
     },
-    "281": {
-        "file_id": 43,
+    "265": {
+        "file_id": 41,
         "content": "This code defines a class that loads data from a CSV file, processes the questions and answers, and builds text steps. The `__init__` method reads the CSV file and stores the puzzles in a list. The `__len__` method returns the length of the stored puzzles. The `__getitem__` method retrieves an individual puzzle from the list. The `build_question` function creates a new question by appending a True/False statement to the original question. The `build_text` function combines a list of thought chains with the answer and returns it as text. The `data_preprocess` function reads data from a JSON file, processes each batch, builds questions and answers, and stores them in a list called `text_steps`.",
         "type": "comment"
     },
-    "282": {
-        "file_id": 43,
+    "266": {
+        "file_id": 41,
         "content": "                    \"question\": question,\n                    \"i\": i,\n                    \"answer\": [{\"text\": text, \"correct\": True}],\n                }\n                if \"test_example\" == key:\n                    with jsonlines.open(save_dir + \"test.jsonl\", \"a\") as writer:\n                        writer.write(new_obj)\n                else:\n                    with jsonlines.open(save_dir + \"train.jsonl\", \"a\") as writer:\n                        writer.write(new_obj)\n                with jsonlines.open(save_dir + \"all.jsonl\", \"a\") as writer:\n                    writer.write(new_obj)\n                i += 1\n    print(\"count: \", len(text_steps))\n    print(\"mean step num: \", np.mean(text_steps))\n    print(\"std step num: \", np.std(text_steps))\n    print(\"max step num: \", np.max(text_steps))\n    print(\"min step num: \", np.min(text_steps))",
         "type": "code",
         "location": "/tsllm/envs/prontoqa/data.py:76-96"
     },
-    "283": {
-        "file_id": 43,
+    "267": {
+        "file_id": 41,
         "content": "The code iterates through a list of questions and their associated answers. It categorizes each example as either \"train\" or \"test\". The new object containing the question, answer, and category is then written to separate JSONL files (\"train.jsonl\", \"test.jsonl\", and \"all.jsonl\"). Finally, it prints statistics about the number of examples in the list.",
         "type": "comment"
     },
-    "284": {
-        "file_id": 44,
+    "268": {
+        "file_id": 42,
         "content": "/tsllm/envs/prontoqa/env.py",
         "type": "filepath"
     },
-    "285": {
-        "file_id": 44,
+    "269": {
+        "file_id": 42,
         "content": "The code defines a QA environment class with functions for extracting answers and ground truth, initializing parameters, and checking the correctness of completions. The 'qa_map' dictionary is used to store questions and answers, and a fixed reward of 0.0 is returned.",
         "type": "summary"
     },
-    "286": {
-        "file_id": 44,
+    "270": {
+        "file_id": 42,
         "content": "import re\nfrom typing import Optional\nimport sympy\nfrom tsllm.distributed.utils import print_with_rank\nfrom tsllm.envs.base_env import CoTEnv, NoLegalActionException, INVALID_ANS\nimport numpy as np\nfrom .prompt import COT_EXAMPLES, COT_TASK_DESC, PROBLEM_FORMAT_STR, SEP\nimport jsonlines\nSTOP_STR = \"The answer is \"\ndef extract_answer(answer_str):\n    try:\n        answer = answer_str.strip().split(\"\\n\")[-1].lower()\n        if \"true\" in answer and \"false\" not in answer:\n            return True\n        elif \"true\" not in answer and \"false\" in answer:\n            return False\n        else:\n            # print(\"Invalid answer: {}\".format(answer))\n            return INVALID_ANS\n    except:\n        return INVALID_ANS\ndef extract_groundtruth(answer):\n    # answer = (\n    #     answer.strip()\n    #     .split(\"\\n\")[-1]\n    #     .lower()\n    # )\n    # if \"true\" in answer and \"false\" not in answer:\n    #     return True\n    # elif \"true\" not in answer and \"false\" in answer:\n    #     return False\n    # else:\n    #     raise ValueError(\"Invalid answer: {}\".format(answer))",
         "type": "code",
         "location": "/tsllm/envs/prontoqa/env.py:1-38"
     },
-    "287": {
-        "file_id": 44,
+    "271": {
+        "file_id": 42,
         "content": "This code defines functions to extract answers and ground truth from a given string. It first strips and splits the input, then checks if \"true\" is present without \"false\" or vice versa. If the answer is invalid, it raises an exception. The code also includes comment blocks that seem incomplete, possibly indicating unfinished implementation.",
         "type": "comment"
     },
-    "288": {
-        "file_id": 44,
+    "272": {
+        "file_id": 42,
         "content": "    ans = extract_answer(answer)\n    if ans == INVALID_ANS:\n        raise ValueError(\"Invalid answer: {}\".format(answer))\n    else:\n        return ans\ndef judge_correct(problem_str: str, groundtruth: bool, answer: bool):\n    return answer == groundtruth\nclass PrOntoQAEnv(CoTEnv):\n    sep = SEP\n    def __init__(\n        self,\n        config,\n        math_problems,\n        llm_gen_fn,\n        tokenizer,\n        task_desc_str: str = COT_TASK_DESC,\n        cot_example_str: str = COT_EXAMPLES,\n        problem_format_str: str = PROBLEM_FORMAT_STR,\n        reset=True,\n    ):\n        super().__init__(\n            config,\n            math_problems,\n            llm_gen_fn,\n            tokenizer,\n            task_desc_str,\n            cot_example_str,\n            problem_format_str,\n            reset,\n        )\n        # although the groundtruth answer has provided in math_problems['answer'], it might be still needed\n        # self.qa_map = {}\n        # with jsonlines.open(\"all_data_path\", 'r') as reader:\n        #     for obj in reader:",
         "type": "code",
         "location": "/tsllm/envs/prontoqa/env.py:40-79"
     },
-    "289": {
-        "file_id": 44,
+    "273": {
+        "file_id": 42,
         "content": "This code defines a class called \"PrOntoQAEnv\" which inherits from \"CoTEnv\". The class takes in various parameters such as config, math_problems, llm_gen_fn, tokenizer, task_desc_str, cot_example_str, problem_format_str, and reset. The class initializes the superclass and also initializes self.qa_map, which might still be needed even though the groundtruth answer is provided in math_problems['answer']. It reads from a file \"all_data_path\" using jsonlines to populate self.qa_map.",
         "type": "comment"
     },
-    "290": {
-        "file_id": 44,
+    "274": {
+        "file_id": 42,
         "content": "        #         answer_str = obj[\"answer\"][0][\"text\"]\n        #         answer = extract_answer(answer_str)\n        #         question = obj[\"question\"]\n        #         self.qa_map[question] = answer\n    @property\n    def stop_str(self):\n        return STOP_STR\n    def _is_correct(self, completion):\n        answer = extract_answer(completion)\n        return judge_correct(\n            self.math_problem[\"question\"], self.math_problem[\"answer\"], answer\n        )\n    def get_reward(self):\n        return 0.0",
         "type": "code",
         "location": "/tsllm/envs/prontoqa/env.py:80-96"
     },
-    "291": {
-        "file_id": 44,
+    "275": {
+        "file_id": 42,
         "content": "This code defines a class with properties and methods for a QA (Question-Answer) environment. It stores questions and answers in the 'qa_map' dictionary, provides a stop string via the property 'stop_str', checks if a completion is correct using the '_is_correct' method, and returns a fixed reward of 0.0 using the 'get_reward' method.",
         "type": "comment"
     },
-    "292": {
-        "file_id": 45,
+    "276": {
+        "file_id": 43,
         "content": "/tsllm/envs/prontoqa/prompt.py",
         "type": "filepath"
     },
-    "293": {
-        "file_id": 45,
+    "277": {
+        "file_id": 43,
         "content": "The code presents two logical reasoning scenarios using arthropods as an example and determines if given statements are true or false based on defined mathematical and scientific concepts.",
         "type": "summary"
     },
-    "294": {
-        "file_id": 45,
+    "278": {
+        "file_id": 43,
         "content": "COT_TASK_DESC = \"\"\"Given a problem statement as contexts, the task is to answer a logical reasoning question step by step.\"\"\"\n# 5-shot\nCOT_EXAMPLES = f\"\"\"Question: Lepidopterans are insects. Every animal is multicellular. Each insect is an arthropod. Each invertebrate is an animal. Insects are six-legged. Arthropods are small. Arthropods are invertebrates. Each butterfly is a lepidopteran. Whales are not small. Polly is a lepidopteran. Is the statement \\\"Polly is not small\\\" true or false?\nSteps:\nPolly is a lepidopteran.\nLepidopterans are insects.\nPolly is an insect.\nEach insect is an arthropod.\nPolly is an arthropod.\nArthropods are small.\nPolly is small.\nThe answer is false.\nQuestion: Every natural number is positive. Real numbers are numbers. Mersenne primes are prime. Natural numbers are integers. Prime numbers are prime. Mersenne primes are prime numbers. Prime numbers are natural numbers. Every integer is a real number. Real numbers are not imaginary. Every complex number is imaginary. 131071 is a Mersenne prime. Is the statement \\\"131071 is not imaginary\\\" true or false?",
         "type": "code",
         "location": "/tsllm/envs/prontoqa/prompt.py:1-15"
     },
-    "295": {
-        "file_id": 45,
+    "279": {
+        "file_id": 43,
         "content": "This code defines two example scenarios for a logical reasoning task, where given a problem statement as context, the task is to answer a question step by step. The examples involve various relationships between different concepts such as animals, insects, arthropods, and numbers. The goal is to determine if provided statements are true or false based on the information provided in the context.",
         "type": "comment"
     },
-    "296": {
-        "file_id": 45,
+    "280": {
+        "file_id": 43,
         "content": "Steps:\n131071 is a Mersenne prime.\nMersenne primes are prime numbers.\n131071 is a prime number.\nPrime numbers are natural numbers.\n131071 is a natural number.\nNatural numbers are integers.\n131071 is an integer.\nEvery integer is a real number.\n131071 is a real number.\nReal numbers are not imaginary.\n131071 is not imaginary.\nThe answer is true.\nQuestion: Every whale is bony. Every insect is an arthropod. Animals are not unicellular. Each butterfly is a lepidopteran. Every lepidopteran is an insect. Each arthropod is an invertebrate. Insects are not eight-legged. Arthropods are not bony. Every invertebrate is an animal. Rex is a lepidopteran. Is the statement \\\"Rex is bony\\\" true or false?\nSteps:\nRex is a lepidopteran.\nEvery lepidopteran is an insect.\nRex is an insect.\nEvery insect is an arthropod.\nRex is an arthropod.\nArthropods are not bony.\nRex is not bony.\nThe answer is false.\nQuestion: Every whale is bony. Each arthropod is an invertebrate. Insects are arthropods. Each lepidopteran is an insect. Each butte",
         "type": "code",
         "location": "/tsllm/envs/prontoqa/prompt.py:16-41"
     },
-    "297": {
-        "file_id": 45,
+    "281": {
+        "file_id": 43,
         "content": "The code determines if the statement \"Rex is bony\" is true or false based on given information: Rex is a lepidopteran, every lepidopteran is an insect, every insect is an arthropod, and arthropods are not bony. The code concludes that \"Rex is not bony.\"",
         "type": "comment"
     },
-    "298": {
-        "file_id": 45,
+    "282": {
+        "file_id": 43,
         "content": "rfly is a lepidopteran. Invertebrates are animals. Animals are not unicellular. Insects are not eight-legged. Arthropods are not bony. Polly is a butterfly. Is the statement \\\"Polly is bony\\\" true or false?\nSteps:\nPolly is a butterfly.\nEach butterfly is a lepidopteran.\nPolly is a lepidopteran.\nEach lepidopteran is an insect.\nPolly is an insect.\nInsects are arthropods.\nPolly is an arthropod.\nArthropods are not bony.\nPolly is not bony.\nThe answer is false.\nQuestion: Integers are real numbers. Mersenne primes are prime. Each natural number is positive. Every imaginary number is not real. Each prime number is a natural number. Prime numbers are not composite. Every real number is real. Real numbers are numbers. Each natural number is an integer. Every Mersenne prime is a prime number. 127 is a natural number. Is the statement \\\"127 is not real\\\" true or false?\nSteps:\n127 is a natural number.\nEach natural number is an integer.\n127 is an integer.\nIntegers are real numbers.\n127 is a real number.\nEvery real number is real.",
         "type": "code",
         "location": "/tsllm/envs/prontoqa/prompt.py:41-61"
     },
+    "283": {
+        "file_id": 43,
+        "content": "The code provides a reasoning process to determine if statements about given subjects are true or false. It does this by using a series of logical steps, where each step is derived from an established fact about the subject. The code checks whether \"127 is not real\" by first establishing that 127 is a natural number, and then working through the properties of integers, real numbers, and primes to conclude that the statement is false.",
+        "type": "comment"
+    },
+    "284": {
+        "file_id": 43,
+        "content": "127 is real.\nThe answer is false.\"\"\"\nPROBLEM_FORMAT_STR = \"Question: {question}\\nSteps:\"\nSEP = \"\\n\"\n# 5-shot\nstandard_task_desc = \"\"\"Given a problem statement as contexts, the task is to answer a logical reasoning question.\"\"\"\nstandard_5shot_examples = f\"\"\"Question: Lepidopterans are insects. Every animal is multicellular. Each insect is an arthropod. Each invertebrate is an animal. Insects are six-legged. Arthropods are small. Arthropods are invertebrates. Each butterfly is a lepidopteran. Whales are not small. Polly is a lepidopteran. Is the statement \\\"Polly is not small\\\" true or false?\nThe answer is false.\nQuestion: Every natural number is positive. Real numbers are numbers. Mersenne primes are prime. Natural numbers are integers. Prime numbers are prime. Mersenne primes are prime numbers. Prime numbers are natural numbers. Every integer is a real number. Real numbers are not imaginary. Every complex number is imaginary. 131071 is a Mersenne prime. Is the statement \\\"131071 is not imaginary\\\" true or false?",
+        "type": "code",
+        "location": "/tsllm/envs/prontoqa/prompt.py:62-71"
+    },
+    "285": {
+        "file_id": 43,
+        "content": "The code defines a problem format string, a separator for formatting output, and a standard task description along with two example 5-shot problems. These examples illustrate the context and question structure, providing a logical reasoning task to answer.",
+        "type": "comment"
+    },
+    "286": {
+        "file_id": 43,
+        "content": "The answer is true.\nQuestion: Every whale is bony. Every insect is an arthropod. Animals are not unicellular. Each butterfly is a lepidopteran. Every lepidopteran is an insect. Each arthropod is an invertebrate. Insects are not eight-legged. Arthropods are not bony. Every invertebrate is an animal. Rex is a lepidopteran. Is the statement \\\"Rex is bony\\\" true or false?\nThe answer is false.\nQuestion: Every whale is bony. Each arthropod is an invertebrate. Insects are arthropods. Each lepidopteran is an insect. Each butterfly is a lepidopteran. Invertebrates are animals. Animals are not unicellular. Insects are not eight-legged. Arthropods are not bony. Polly is a butterfly. Is the statement \\\"Polly is bony\\\" true or false?\nThe answer is false.\nQuestion: Integers are real numbers. Mersenne primes are prime. Each natural number is positive. Every imaginary number is not real. Each prime number is a natural number. Prime numbers are not composite. Every real number is real. Real numbers are numb",
+        "type": "code",
+        "location": "/tsllm/envs/prontoqa/prompt.py:72-77"
+    },
+    "287": {
+        "file_id": 43,
+        "content": "The code presents a series of questions and answers related to various mathematical and scientific concepts. Each question tests the understanding of definitions, relationships, and classifications among different types of numbers, animals, and mathematical entities. The answers are provided for each question, highlighting whether a given statement is true or false based on the concepts defined in the code.",
+        "type": "comment"
+    },
+    "288": {
+        "file_id": 43,
+        "content": "ers. Each natural number is an integer. Every Mersenne prime is a prime number. 127 is a natural number. Is the statement \\\"127 is not real\\\" true or false?\nThe answer is false.\n\"\"\"",
+        "type": "code",
+        "location": "/tsllm/envs/prontoqa/prompt.py:77-79"
+    },
+    "289": {
+        "file_id": 43,
+        "content": "This code defines a function that determines whether a given statement is true or false. It uses the provided prompt to formulate a response and stores it in the \"answer\" variable. In this case, the answer is \"false\".",
+        "type": "comment"
+    },
+    "290": {
+        "file_id": 44,
+        "content": "/tsllm/envs/rlhf/__init__.py",
+        "type": "filepath"
+    },
+    "291": {
+        "file_id": 44,
+        "content": "Imports necessary components for RLHF environment: Env, data-related functions, and prompt elements.",
+        "type": "summary"
+    },
+    "292": {
+        "file_id": 44,
+        "content": "from .env import RLHF_TokenEnv as Env\nfrom .data import get_train_test_dataset, build_offline_data_component\nfrom .prompt import SEP, COT_TASK_DESC, COT_EXAMPLES, PROBLEM_FORMAT_STR",
+        "type": "code",
+        "location": "/tsllm/envs/rlhf/__init__.py:1-3"
+    },
+    "293": {
+        "file_id": 44,
+        "content": "Imports necessary components for RLHF environment: Env, data-related functions, and prompt elements.",
+        "type": "comment"
+    },
+    "294": {
+        "file_id": 45,
+        "content": "/tsllm/envs/rlhf/data.py",
+        "type": "filepath"
+    },
+    "295": {
+        "file_id": 45,
+        "content": "The code generates train and test datasets, customizes for specific models, encodes answer tokens, and builds query strings for unique answers, removing duplicates. It also creates a list of dictionaries containing query string, answer, value index, and reward list using relevant functions/classes.",
+        "type": "summary"
+    },
+    "296": {
+        "file_id": 45,
+        "content": "from transformers import AutoTokenizer\nfrom datasets import load_dataset, load_from_disk\nimport json\nimport numpy as np\nfrom tsllm.distributed.utils import print_with_rank\nfrom tsllm.offline_rl.utils import load_jsonl\nfrom .prompt import PROBLEM_FORMAT_STR, SEP\nfrom .env import RLHF_TokenEnv\n'''\ndef get_train_test_dataset(*args, **kwargs):\n    train_dataset = build_dataset(dataset_name = \"imdb\", setting = \"train\", **kwargs)\n    test_dataset = build_dataset(dataset_name = \"imdb\", setting = \"test\", **kwargs)\n    return train_dataset, test_dataset\ndef build_dataset(model_name, dataset_name=\"imdb\", setting=\"train\", input_text_length=5):\n    \"\"\"\n    Build dataset for training. This builds the dataset from `load_dataset`, one should\n    customize this function to train the model on its own dataset.\n    Args:\n        dataset_name (`str`):\n            The name of the dataset to be loaded.\n    Returns:\n        dataloader (`torch.utils.data.DataLoader`):\n            The dataloader for the dataset.\n    \"\"\"\n    tokenizer = AutoTokenizer.from_pretrained(model_name)",
+        "type": "code",
+        "location": "/tsllm/envs/rlhf/data.py:1-30"
+    },
+    "297": {
+        "file_id": 45,
+        "content": "This code defines two functions: `get_train_test_dataset` and `build_dataset`. The former builds train and test datasets using the latter function. The latter function builds a dataset for training, which loads data from `load_dataset`, and requires customization for training models on specific datasets. It returns a dataloader for the dataset.",
+        "type": "comment"
+    },
+    "298": {
+        "file_id": 45,
+        "content": "    tokenizer.pad_token = tokenizer.eos_token\n    # load imdb with datasets\n    ds = load_dataset(dataset_name, split=setting)\n    ds = ds.rename_columns({\"text\": \"review\"})\n    #ds = ds.filter(lambda x: len(x[\"review\"]) > 200, batched=False)\n    #input_size = LengthSampler(input_min_text_length, input_max_text_length)\n    def tokenize(sample):\n        input_ids = tokenizer.encode(sample[\"review\"])[: input_text_length]\n        sample[\"question\"] = tokenizer.decode(input_ids)\n        return sample\n    ds = ds.map(tokenize, batched=False)\n    ds.set_format(type=\"torch\")\n    return ds\n'''\ndef get_train_test_dataset(*args, **kwargs):\n    if \"num_train_data\" in kwargs.keys():\n        num_train_data = kwargs.pop(\"num_train_data\")\n        if \"path\" in kwargs.keys():\n            train_dataset = load_dataset(**kwargs, split=f\"train[:{num_train_data}]\")\n            test_dataset = load_dataset(**kwargs, split=f\"train[{num_train_data}:]\")\n        else:\n            full_dataset = load_from_disk(**kwargs)[\"train\"]\n            train_dataset = full_dataset.select([i for i in range(num_train_data)])",
+        "type": "code",
+        "location": "/tsllm/envs/rlhf/data.py:31-58"
+    },
     "299": {
         "file_id": 45,
-        "content": "The code provides a reasoning process to determine if statements about given subjects are true or false. It does this by using a series of logical steps, where each step is derived from an established fact about the subject. The code checks whether \"127 is not real\" by first establishing that 127 is a natural number, and then working through the properties of integers, real numbers, and primes to conclude that the statement is false.",
+        "content": "Code chunk loads and processes a dataset for training and testing. It pads tokens, tokenizes samples, sets data format to torch, and defines function to get train/test datasets based on the number of samples required.",
         "type": "comment"
     }
 }

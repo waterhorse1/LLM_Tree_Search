@@ -1,505 +1,505 @@
 {
     "400": {
         "file_id": 58,
-        "content": "            trust_remote_code,\n        )\n        self.model = model\n    def load_model(self, model_class, model_name_or_path, **kwargs):\n        if self.model is None:\n            return model_class.from_pretrained(model_name_or_path, **kwargs)\n        else:\n            return self.model",
-        "type": "code",
-        "location": "/tsllm/llm/ct2_utils.py:55-63"
-    },
-    "401": {
-        "file_id": 58,
-        "content": "This code defines a class that initializes a model and provides a method to load the model. The `trust_remote_code` parameter is used for trusting remote code, but it is not utilized in this context. If the model is None, it loads the model using the provided `model_class` and `model_name_or_path`. Otherwise, it returns the already initialized model.",
-        "type": "comment"
-    },
-    "402": {
-        "file_id": 59,
-        "content": "/tsllm/llm/text_generation.py",
-        "type": "filepath"
-    },
-    "403": {
-        "file_id": 59,
-        "content": "The code utilizes the ChatGLM model for text generation, and handles cases where a specific substring is not found in the original text by tokenizing EOS tokens, checking for duplicates, and updating log probabilities.",
-        "type": "summary"
-    },
-    "404": {
-        "file_id": 59,
         "content": "import requests\nimport torch\ndef llm_gen_ct2(\n    generator, tokenizer, static_prompt, prompt, num_sequence, stop, **generation_config\n):\n    prompt_tokens = tokenizer.convert_ids_to_tokens(\n        tokenizer.encode(prompt, add_special_tokens=False)\n    )\n    if static_prompt is not None:\n        static_prompt_tokens = tokenizer.convert_ids_to_tokens(\n            tokenizer.encode(static_prompt)\n        )\n    else:\n        static_prompt_tokens = None\n        prompt_tokens = tokenizer.convert_ids_to_tokens(tokenizer.encode(prompt))\n    if isinstance(stop, int):\n        stop = [stop]\n    step_results = generator.generate_batch(\n        [prompt_tokens],\n        sampling_temperature=generation_config.get(\"temperature\", 1.0),\n        sampling_topp=generation_config.get(\"top_p\", 1.0),\n        sampling_topk=generation_config.get(\"top_k\", 1),\n        max_length=generation_config.get(\"max_new_tokens\", 16),\n        return_scores=True,\n        include_prompt_in_result=False,\n        end_token=stop,\n        static_prompt=static_prompt_tokens,",
         "type": "code",
         "location": "/tsllm/llm/text_generation.py:1-30"
     },
-    "405": {
-        "file_id": 59,
+    "401": {
+        "file_id": 58,
         "content": "This function uses a generator to generate text based on a prompt. It takes in a tokenizer, static_prompt, and prompt as input. The prompt is encoded into tokens, and if a static_prompt exists, it's also encoded. The stop token is checked for being an integer. The generator generates batches of text using the provided parameters like temperature, top_p, top_k, etc. The max_length determines the maximum length of generated text, and return_scores returns scores alongside results if set to True. Finally, include_prompt_in_result specifies whether or not the prompt should be included in the result.",
         "type": "comment"
     },
-    "406": {
-        "file_id": 59,
+    "402": {
+        "file_id": 58,
         "content": "        max_batch_size=generation_config.get(\"max_batch_size\", 0),\n        num_hypotheses=num_sequence,\n    )\n    results = list(step_results)\n    texts = [tokenizer.decode(seq) for seq in results[0].sequences_ids]\n    logps = results[0].scores\n    return texts, logps\ndef llm_forward_ct2(generator, tokenizer, prompt):\n    prompt_tokens = tokenizer.convert_ids_to_tokens(tokenizer.encode(prompt))\n    step_logits = generator.forward_batch(\n        [prompt_tokens],\n    )\n    # Currently this only supports float32\n    logits = torch.as_tensor(step_logits)[:, -1]\n    return logits\n# def llm_gen_ct2(generator, sp, static_prompt, prompt, num_sequence, stop,\n#                 **generation_config):\n#     prompt_tokens = sp.encode(prompt, out_type=str)\n#     if static_prompt is not None:\n#         static_prompt_tokens = [\"<s>\"] + sp.encode(static_prompt, out_type=str)\n#     else:\n#         static_prompt_tokens = None\n#         prompt_tokens = [\"<s>\"] + prompt_tokens\n#     if isinstance(stop, int):\n#         stop = [stop]",
         "type": "code",
         "location": "/tsllm/llm/text_generation.py:31-63"
     },
-    "407": {
-        "file_id": 59,
+    "403": {
+        "file_id": 58,
         "content": "The code defines a function 'llm_gen_ct2' for generating text using an LLM model, considering both static and dynamic prompts. It takes a generator, tokenizer, static prompt, dynamic prompt, number of sequences to generate, and stop conditions as inputs. The 'forward_batch' method of the generator is used to predict logits from the input tokens. The code also includes a function 'llm_forward_ct2' for getting logits from a single input token sequence using the LLM model.",
         "type": "comment"
     },
-    "408": {
-        "file_id": 59,
+    "404": {
+        "file_id": 58,
         "content": "#     step_results = generator.generate_batch(\n#         [prompt_tokens] * num_sequence,\n#         sampling_temperature=generation_config.get(\"temperature\", 1.0),\n#         sampling_topp=generation_config.get(\"top_p\", 1.0),\n#         sampling_topk=generation_config.get(\"top_k\", 1),\n#         max_length=generation_config.get(\"max_new_tokens\", 16),\n#         return_scores=True,\n#         include_prompt_in_result=False,\n#         end_token=stop,\n#         static_prompt=static_prompt_tokens,\n#         max_batch_size=generation_config.get(\"max_batch_size\", 0),\n#     )\n#     results = list(step_results)\n#     texts = [sp.decode(r.sequences_ids[0]) for r in results]\n#     logps = [[r.scores[0]] for r in results]\n#     return texts, logps\n@torch.no_grad()\ndef llm_gen_with_logp_v1(\n    model, tokenizer, static_prompt, prompt, num_sequence, stop, **generation_config\n):\n    state_all = [static_prompt + prompt for _ in range(num_sequence)]\n    inputs = tokenizer(\n        state_all,\n        truncation=True,\n        max_length=2048,",
         "type": "code",
         "location": "/tsllm/llm/text_generation.py:64-92"
     },
-    "409": {
-        "file_id": 59,
+    "405": {
+        "file_id": 58,
         "content": "Code generates text responses using LLM with logging of probability scores for each generated response. The function takes a model, tokenizer, static prompt, and input prompt. It also considers generation configuration like temperature, top_p, and max_new_tokens. It generates batch of sequences, decodes them into texts, and logs their associated probabilities before returning the texts and logps.",
         "type": "comment"
     },
-    "410": {
-        "file_id": 59,
+    "406": {
+        "file_id": 58,
         "content": "        return_tensors=\"pt\",\n        return_token_type_ids=False,\n    ).to(model.device)\n    input_length = inputs.input_ids.shape[1]\n    with torch.no_grad():\n        outputs = model.generate(**inputs, **generation_config)\n    transition_scores = model.compute_transition_scores(\n        outputs.sequences, outputs.scores, normalize_logits=True\n    )\n    transition_scores = transition_scores.cpu().float().numpy()\n    output_tokens = outputs.sequences[:, input_length:]\n    split_list = []\n    logprob_list = []\n    # for ChatGLM 13 means <0x0A> for \\n\n    split_token_id = 13\n    def find_index(tensor, element):\n        equals_value = torch.eq(tensor, element)\n        if sum(equals_value) == 0:\n            return -1\n        return torch.nonzero(equals_value)[0].item()\n    for scores, ot in zip(transition_scores, output_tokens):\n        assert len(ot) == len(scores)\n        pos = find_index(ot, split_token_id)\n        if pos != 0 and pos != -1:  # 0 means the first token is split str\n            ot = ot[:pos]\n            scores = scores[:pos]",
         "type": "code",
         "location": "/tsllm/llm/text_generation.py:93-123"
     },
-    "411": {
-        "file_id": 59,
+    "407": {
+        "file_id": 58,
         "content": "This code is responsible for generating text using the ChatGLM model. It generates output sequences and computes transition scores to determine the most probable continuation of the input text. The split_token_id is used to find the index where the output token sequence should be split, and then the corresponding log probabilities are extracted from the transition scores.",
         "type": "comment"
     },
-    "412": {
-        "file_id": 59,
+    "408": {
+        "file_id": 58,
         "content": "        elif pos == -1:  # -1 means doesn't contain split str,\n            #  just use the whole string as the action, for chatglm\n            eos_token_id = tokenizer.eos_token_id\n            eos_pos = find_index(ot, eos_token_id)\n            ot = ot[:eos_pos]\n            scores = scores[:eos_pos]\n        else:\n            continue\n        os = tokenizer.decode(ot)\n        if os in split_list:\n            continue\n        else:\n            if len(scores) == 0:\n                print(123, state_all[-1], os)\n                exit()\n            split_list.append(os)\n            # todo determine np.sum or np.mean\n            logprob_list.append(scores)\n    return split_list, logprob_list",
         "type": "code",
         "location": "/tsllm/llm/text_generation.py:124-143"
     },
-    "413": {
-        "file_id": 59,
+    "409": {
+        "file_id": 58,
         "content": "This code handles the case when a specific substring is not found in the original text. It uses tokenizer to find the end of sentence (EOS) token's position and creates a new list with only the EOS part. Then, it checks if the generated output string (os) already exists in the split_list, and appends it if not. Finally, it adds scores to logprob_list and continues to next iteration.",
         "type": "comment"
     },
-    "414": {
-        "file_id": 60,
+    "410": {
+        "file_id": 59,
         "content": "/tsllm/mcts/tree.py",
         "type": "filepath"
     },
-    "415": {
-        "file_id": 60,
+    "411": {
+        "file_id": 59,
         "content": "The code features tree-based search algorithms for games and language tasks, incorporating MCTS and Beam Search, initializing parameters and expanding decision trees based on game conditions while utilizing critic or policy forward functions and UCB score computing functions in a Monte Carlo Tree Search algorithm using a LanguageNode tree constructed from JSON data.",
         "type": "summary"
     },
-    "416": {
-        "file_id": 60,
+    "412": {
+        "file_id": 59,
         "content": "\"\"\"\nThe Node and MCTS class for AlphaZero.\n\"\"\"\n#\nimport copy\nimport json\nimport math\nimport numpy as np\nimport torch\nimport torch.nn as nn\nfrom typing import List, Dict, Any, Optional, Tuple, Union, Callable, Type\nfrom tsllm.distributed.utils import print_rank_0, print_with_rank\nfrom tsllm.envs.base_env import CoTEnv\nimport pdb\nfrom tqdm import tqdm\nimport heapq\nclass Node(object):\n    \"\"\"\n    Overview:\n        The node base class for tree_search.\n    \"\"\"\n    def __init__(\n        self, parent: \"Node\" = None, prior_p: float = 1.0, initial_value: float = 0.0\n    ) -> None:\n        self._parent = parent\n        self._children = {}\n        self._visit_count = 0\n        self._value_sum = 0\n        self.prior_p = prior_p\n        self.prior_p_ori = prior_p\n        self._initial_value = initial_value\n        self._terminated = False\n    def __lt__(self, other):\n        return self._initial_value < other._initial_value\n    @property\n    def terminated(self):\n        return self._terminated\n    def set_as_terminate_node(self):\n        self._terminated = True",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:1-47"
     },
-    "417": {
-        "file_id": 60,
+    "413": {
+        "file_id": 59,
         "content": "This code defines a base class for nodes in a tree-search algorithm. The Node class has attributes like parent, children, visit count, value sum, and termination status. It also has an initializer that takes a prior probability, prior probability original value, and initial value. The class also implements the less than operator to compare node values.",
         "type": "comment"
     },
-    "418": {
-        "file_id": 60,
+    "414": {
+        "file_id": 59,
         "content": "    @property\n    def value(self) -> float:\n        \"\"\"\n        Overview:\n            The value of the current node.\n        Returns:\n            - output (:obj:`Int`): Current value, used to compute ucb score.\n        \"\"\"\n        if self._visit_count == 0:\n            return self._initial_value\n        return self._value_sum / self._visit_count\n    def update(self, value: float) -> None:\n        \"\"\"\n        Overview:\n            Updata the current node information, such as visit_count and value_sum.\n        Arguments:\n            - value (:obj:`Int`): The value of the node.\n        \"\"\"\n        self._visit_count += 1\n        self._value_sum += value\n    def update_recursive(self, leaf_value: float, mcts_mode: str) -> None:\n        \"\"\"\n        Overview:\n            Update node information recursively.\n        Arguments:\n            - leaf_value (:obj:`Int`): The value of the node.\n        \"\"\"\n        if mcts_mode == \"self_play_mode\":\n            self.update(leaf_value)\n            if self.is_root():\n                return",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:49-81"
     },
-    "419": {
-        "file_id": 60,
+    "415": {
+        "file_id": 59,
         "content": "This code defines a class for a tree node in a Monte Carlo Tree Search (MCTS) algorithm. The node has properties such as visit_count, value_sum, and is_root flag. It also provides methods to update these properties recursively during the search process. The update method updates the node's visit_count and value_sum based on the given value.",
         "type": "comment"
     },
-    "420": {
-        "file_id": 60,
+    "416": {
+        "file_id": 59,
         "content": "            self._parent.update_recursive(-leaf_value, mcts_mode)\n        if mcts_mode == \"play_with_bot_mode\":\n            self.update(leaf_value)\n            if self.is_root():\n                return\n            self._parent.update_recursive(leaf_value, mcts_mode)\n    def is_leaf(self) -> Dict:\n        \"\"\"\n        Overview:\n            Check if the current node is a leaf node or not.\n        Returns:\n            - output (:obj:`Dict`): Dict type children node.\n        \"\"\"\n        return self._children == {}\n    def is_root(self) -> bool:\n        \"\"\"\n        Overview:\n            Check if the current node is a root node or not.\n        Returns:\n            - output (:obj:`Bool`): Whether it is the parent node.\n        \"\"\"\n        return self._parent is None\n    @property\n    def parent(self) -> None:\n        return self._parent\n    @property\n    def children(self) -> None:\n        return self._children\n    @property\n    def visit_count(self) -> None:\n        return self._visit_count\n    def get_info(self):\n        # return [",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:82-120"
     },
-    "421": {
-        "file_id": 60,
+    "417": {
+        "file_id": 59,
         "content": "The code defines a node class for a game tree. It includes methods to check if the node is a leaf or root, get parent and children information, and update values recursively in the tree based on MCTS mode.",
         "type": "comment"
     },
-    "422": {
-        "file_id": 60,
+    "418": {
+        "file_id": 59,
         "content": "        #     \"visit_cnt: {}, value: {:.6f}, prior: {:.6f}\".format(\n        #         self.visit_count, self.value, self.prior_p)\n        # ]\n        return {\n            \"visit_cnt\": self.visit_count,\n            \"value\": self.value,\n            \"prior_p\": float(self.prior_p_ori),\n            \"initial_value\": self._initial_value,\n            \"terminated\": self.terminated,\n        }\n    def clear(self):\n        self._visit_count = 0\n        self._value_sum = 0\n        self.prior_p = self.prior_p_ori\n    def to_json(self):\n        childrens = {}\n        for name, child_node in self.children.items():\n            childrens[name] = child_node.to_json()\n        rets = {\"children\": childrens, \"info\": self.get_info()}\n        return rets\nclass LanguageNode(Node):\n    text_state: Optional[str] = None\n    last_action: Optional[str] = None\n    prm_value: Optional[float] = None\n    num_generated_token: Optional[int] = None\n    def __init__(\n        self,\n        parent: Node = None,\n        prior_p: float = 1.0,\n        prm_value: Optional[float] = None,",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:121-156"
     },
-    "423": {
-        "file_id": 60,
+    "419": {
+        "file_id": 59,
         "content": "This code defines a class `LanguageNode` that extends the `Node` class. It includes attributes such as `text_state`, `last_action`, `prior_p`, and `prm_value`. The class also has methods `get_info()`, `to_json()`, and `clear()`. `get_info()` returns information about the node, `to_json()` converts the node to a JSON object, and `clear()` resets the visit count and value of the node.",
         "type": "comment"
     },
-    "424": {
-        "file_id": 60,
+    "420": {
+        "file_id": 59,
         "content": "        text_state: Optional[str] = None,\n        last_action: Optional[str] = None,\n        initial_value: float = 0.0,\n        num_generated_token: Optional[int] = None,\n    ) -> None:\n        super().__init__(parent, prior_p, initial_value)\n        self.text_state = text_state\n        self.last_action = last_action\n        self.prm_value = prm_value\n        self.num_generated_token = num_generated_token\n        self.has_collected_token_num = False\n    def get_path(self):\n        ans = []\n        node = self\n        while not node.is_root():\n            ans.append(node.last_action)\n            node = node.parent\n        return \"\\n\".join(reversed(ans))\n    def get_info(self):\n        info_dict = super().get_info()\n        if not self.is_root():\n            info_dict[\"last_action\"] = self.last_action\n            info_dict[\"prm_value\"] = self.prm_value\n        else:\n            info_dict[\"text_state\"] = self.text_state\n        return info_dict\ndef get_root(node: Node):\n    while not node.is_root():\n        node = node.parent",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:157-190"
     },
-    "425": {
-        "file_id": 60,
+    "421": {
+        "file_id": 59,
         "content": "This code defines a class for storing tree nodes with optional parameters like text_state, last_action, initial_value, and num_generated_token. It has methods to get the node's path, retrieve information about the node including last action or text state, and return the root of the tree.",
         "type": "comment"
     },
-    "426": {
-        "file_id": 60,
+    "422": {
+        "file_id": 59,
         "content": "    return node\nclass MCTS(object):\n    \"\"\"\n    Overview:\n        MCTS search process.\n    \"\"\"\n    def __init__(self, cfg) -> None:\n        self._cfg = cfg\n        self._num_simulations = self._cfg.get(\"num_simulations\", 20)\n        # UCB formula\n        self._pb_c_base = self._cfg.get(\"pb_c_base\", 19652)  # 19652\n        self._pb_c_init = self._cfg.get(\"pb_c_init\", 1.25)  # 1.25\n        # Root prior exploration noise.\n        self._root_dirichlet_alpha = self._cfg.get(\n            \"root_dirichlet_alpha\", 0.3\n        )  # 0.3  # for chess, 0.03 for Go and 0.15 for shogi.\n        self._root_noise_weight = self._cfg.get(\"root_noise_weight\", 0.25)  # 0.25\n        self._prm_factor = self._cfg.get(\"prm_factor\", 0.5)\n        self.root = None\n        self.answers = set()\n        self.wrong_answers = set()\n        self.visited_paths = None\n        self.no_terminal_reward = self._cfg.get(\"no_terminal_reward\", True)\n        self.mask_non_terminal_node_value = self._cfg.get(\n            \"mask_non_terminal_node_value\", False",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:191-224"
     },
-    "427": {
-        "file_id": 60,
+    "423": {
+        "file_id": 59,
         "content": "The code defines a class \"MCTS\" representing the Monte Carlo Tree Search algorithm. It initializes various parameters such as the number of simulations, UCB formula coefficients, root prior exploration noise, root noise weight, PRM factor, and more. The instance variables include root node, sets for answers and wrong answers, visited paths, whether to reward no terminal nodes, and whether to mask non-terminal node values.",
         "type": "comment"
     },
-    "428": {
-        "file_id": 60,
+    "424": {
+        "file_id": 59,
         "content": "        )\n        self._init_critic_value = self._cfg.get(\"init_critic_value\", True)\n        self._num_generated_token = 0\n        self._prune_node_under_v = self._cfg.get(\"prune_node_under_v\", None)\n    @property\n    def num_generated_token(self):\n        return self._num_generated_token\n    def clear_node(self, node):\n        assert node is not None\n        node.clear()\n        for child in node.children.values():\n            self.clear_node(child)\n    def get_next_action(\n        self,\n        simulate_env: Type[CoTEnv],\n        policy_forward_fn: Optional[Callable] = None,\n        temperature: int = 1.0,\n        sample: bool = True,\n        return_tree=False,\n    ) -> Tuple[int, List[float]]:\n        \"\"\"\n        Overview:\n            calculate the move probabilities based on visit counts at the root node.\n        Arguments:\n            - simulate_env (:obj:`Class BaseGameEnv`): The class of simulate env.\n            - policy_forward_fn (:obj:`Function`): The Callable to compute the action probs and state value.",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:225-256"
     },
-    "429": {
-        "file_id": 60,
+    "425": {
+        "file_id": 59,
         "content": "This code defines a class for tree search and Monte Carlo Tree Search (MCTS) algorithm. The class has attributes such as _init_critic_value, _num_generated_token, and _prune_node_under_v. It also includes methods like clear_node to clear a node and its children, get_next_action to calculate move probabilities based on visit counts, etc. The class can be used for decision making in games or reinforcement learning tasks.",
         "type": "comment"
     },
-    "430": {
-        "file_id": 60,
+    "426": {
+        "file_id": 59,
         "content": "            - temperature (:obj:`Int`): Temperature is a parameter that controls the \"softness\" of the probability distribution.\n            - sample (:obj:`Bool`): The value of the node.\n        Returns:\n            - action (:obj:`Bool`): Select the action with the most visits as the final action.\n            - action_probs (:obj:`List`): The output probability of each action.\n        \"\"\"\n        if self.root is None:\n            root = LanguageNode(text_state=simulate_env.get_state())\n            self._expand_leaf_node(root, simulate_env, policy_forward_fn)\n            self.root = root\n        else:\n            root = self.root\n        if root.is_leaf():\n            # if root is leaf node, expand it\n            # We have updated the environment legal action when we test the node is leaf node\n            # So the expansion won't have bugs\n            self._expand_leaf_node(root, simulate_env, policy_forward_fn)\n        if sample:\n            self._add_exploration_noise(root)\n        for n in range(self._num_simulations):",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:257-279"
     },
-    "431": {
-        "file_id": 60,
+    "427": {
+        "file_id": 59,
         "content": "This code initializes a language tree and sets the root node. If the root is a leaf node, it expands the node by updating the environment's legal actions. It then adds exploration noise if sampling is enabled. Finally, it simulates the number of simulations specified.",
         "type": "comment"
     },
-    "432": {
-        "file_id": 60,
+    "428": {
+        "file_id": 59,
         "content": "            simulate_env_copy = simulate_env.copy()\n            simulate_env_copy.battle_mode = simulate_env_copy.mcts_mode\n            self._simulate(root, simulate_env_copy, policy_forward_fn)\n        # for debugging\n        # print('after simulation')\n        # print('value= {}'.format([(k, v.value) for k,v in root.children.items()]))\n        # print('visit_count= {}'.format([(k, v.visit_count) for k,v in root.children.items()]))\n        action_visits = []\n        for action_dict in simulate_env.legal_actions:\n            action = action_dict[\"action\"]\n            if action in root.children:\n                action_visits.append((action, root.children[action].visit_count))\n            else:\n                action_visits.append((action, 0))\n        actions, visits = zip(*action_visits)\n        action_probs = nn.functional.softmax(\n            1.0\n            / temperature\n            * np.log(torch.as_tensor(visits, dtype=torch.float32) + 1e-10),\n            dim=0,\n        ).numpy()\n        if sample:\n            action = np.random.choice(actions, p=action_probs)",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:280-305"
     },
-    "433": {
-        "file_id": 60,
+    "429": {
+        "file_id": 59,
         "content": "This code copies the simulation environment, sets its mode to battle, simulates it using a policy forward function, and then calculates action visits based on the result. It creates an array of actions and their corresponding visit counts. Using softmax, it computes action probabilities from the visits and optionally samples a random action according to these probabilities if the 'sample' parameter is set.",
         "type": "comment"
     },
-    "434": {
-        "file_id": 60,
+    "430": {
+        "file_id": 59,
         "content": "            self.reset_prior(root)\n        else:\n            action = actions[np.argmax(action_probs)]\n        self.root = root\n        if return_tree:\n            return action, action_probs, root\n        return action, action_probs\n    @torch.inference_mode()\n    def try_search_right_answer(\n        self,\n        simulate_env: Type[CoTEnv],\n        policy_forward_fn: Optional[Callable] = None,\n        sample: bool = True,\n        save_path: Optional[str] = None,\n    ) -> Tuple[int, List[float]]:\n        if self.root is None:\n            root = LanguageNode(text_state=simulate_env.get_state())\n            self.root = root\n            self._expand_leaf_node(root, simulate_env, policy_forward_fn)\n        if sample:\n            self._add_exploration_noise(root)\n        def save_tree():\n            if save_path is not None:\n                json.dump(root.to_json(), open(save_path, \"w\"), indent=2)\n        for n in range(self._num_simulations):\n            simulate_env_copy = simulate_env.copy()\n            simulate_env_copy.battle_mode = simulate_env_copy.mcts_mode",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:306-336"
     },
-    "435": {
-        "file_id": 60,
+    "431": {
+        "file_id": 59,
         "content": "Function \"try_search_right_answer\" initializes and expands tree if root is None, applies exploration noise if sample=True. It then performs the specified number of simulations using the given environment, and optionally saves the resulting tree to a JSON file.",
         "type": "comment"
     },
-    "436": {
-        "file_id": 60,
+    "432": {
+        "file_id": 59,
         "content": "            self._simulate(root, simulate_env_copy, policy_forward_fn)\n            if len(self.answers) > 0:\n                save_tree()\n                return True\n        save_tree()\n        return False\n    def rollout(\n        self,\n        simulate_env: Type[CoTEnv],\n        num_paths: int,\n        policy_forward_fn: Optional[Callable] = None,\n        *,\n        max_num_simulation: Optional[int] = 200,\n        max_token: Optional[int] = 25482,\n        sample: bool = True,\n        return_tree: bool = False\n    ) -> List[Dict]:\n        assert (max_num_simulation is None) ^ (max_token is None)\n        if self.root is None:\n            root = LanguageNode(text_state=simulate_env.get_state())\n            self._expand_leaf_node(root, simulate_env, policy_forward_fn)\n            self.root = root\n        else:\n            root = self.root\n        self.visited_paths = []\n        cnt = 0\n        traj_list = []\n        visit_path_num = 0\n        while len(self.visited_paths) < num_paths:\n            cnt += 1\n            if max_num_simulation is not None and cnt > max_num_simulation:",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:337-373"
     },
-    "437": {
-        "file_id": 60,
+    "433": {
+        "file_id": 59,
         "content": "The code contains two main functions: `_expand_leaf_node` and `rollout`. The `_expand_leaf_node` function expands a leaf node in the tree by simulating the environment and updating the tree based on the results. The `rollout` function performs multiple paths of simulation using policy forward, returns a list of dictionaries containing information about the paths if `return_tree` is True. It also ensures that only one type of constraint for maximum number of simulations or maximum token is provided.",
         "type": "comment"
     },
-    "438": {
-        "file_id": 60,
+    "434": {
+        "file_id": 59,
         "content": "                print_with_rank(\n                    \"exit for max num simulation, #current_paths: {}\".format(\n                        len(self.visited_paths)\n                    )\n                )\n                break\n            elif max_token is not None and self._num_generated_token > max_token:\n                print_with_rank(\n                    \"exit for exceed max generated token {}>{}, #current_paths: {}\".format(\n                        self._num_generated_token, max_token, len(self.visited_paths)\n                    )\n                )\n                break\n            simulate_env_copy = simulate_env.copy()\n            simulate_env_copy.battle_mode = simulate_env_copy.mcts_mode\n            self._simulate(root, simulate_env_copy, policy_forward_fn)\n            if len(self.visited_paths) > len(traj_list):\n                assert len(self.visited_paths) == len(traj_list) + 1\n                # which means include new path\n                new_visit_path = self.visited_paths[-1]\n                traj_data = {",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:374-395"
     },
-    "439": {
-        "file_id": 60,
+    "435": {
+        "file_id": 59,
         "content": "This code exits the simulation if the maximum number of paths or the maximum generated token is exceeded, then creates a copy of the environment, sets its battle mode to MCTS mode, simulates the new environment with the given policy, and checks if the number of visited paths is greater than the expected number of trajectories. If so, it stores the last visited path as a new trajectory in the traj_data dictionary.",
         "type": "comment"
     },
-    "440": {
-        "file_id": 60,
+    "436": {
+        "file_id": 59,
         "content": "                    \"path_idx\": len(traj_list),\n                    \"text\": new_visit_path[\"text\"],\n                    \"value\": new_visit_path[\"value\"],\n                    \"num_generated_token\": self._num_generated_token,\n                }\n                traj_list.append(traj_data)\n        if return_tree:\n            return traj_list, cnt, self.root\n        return traj_list, cnt\n    def rap(\n        self,\n        simulate_env: Type[CoTEnv],\n        num_paths: int,\n        policy_forward_fn: Optional[Callable] = None,\n        select_by_prior: bool = False,\n    ) -> List[Dict]:\n        if self.root is None:\n            root = LanguageNode(text_state=simulate_env.get_state())\n            self._expand_leaf_node(root, simulate_env, policy_forward_fn)\n            self.root = root\n        traj_list = []\n        for i_path in range(num_paths):\n            node = self.root\n            env_copy = simulate_env.copy()\n            done = False\n            while not done:\n                if select_by_prior:\n                    # select action node by the logp_score of LLM itself",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:396-426"
     },
-    "441": {
-        "file_id": 60,
+    "437": {
+        "file_id": 59,
         "content": "This code initializes a language model tree, generates multiple paths from the root to leaf nodes using Monte Carlo Tree Search (MCTS), and returns the generated paths. If `return_tree` is True, it also returns the complete tree and the visit count for each node. The `rap` function sets up the tree if it's empty, then simulates paths based on user-defined parameters.",
         "type": "comment"
     },
-    "442": {
-        "file_id": 60,
+    "438": {
+        "file_id": 59,
         "content": "                    action, node = self._select_by_prior(node, env_copy)\n                else:\n                    # select by PUCT\n                    action, node = self._select_child(node, env_copy)\n                _, _, terminated, truncated, info = env_copy.step(\n                    action, update_legal_action=node.is_leaf()\n                )\n                done = terminated or truncated\n                if not done and node.is_leaf():\n                    self._expand_leaf_node(node, env_copy, policy_forward_fn)\n            if not self.no_terminal_reward:  \n                winner = info[\"winner\"]\n                if \"reward\" in info.keys(): # handle rlhf special case\n                    leaf_value = info[\"reward\"]\n                else:\n                    if winner == -1:\n                        leaf_value = 0\n                    elif winner == 1:\n                        leaf_value = 1\n                    elif winner == 2:\n                        leaf_value = -1\n            else:\n                if node.visit_count > 0:",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:427-451"
     },
-    "443": {
-        "file_id": 60,
+    "439": {
+        "file_id": 59,
         "content": "This code snippet is responsible for selecting an action and updating the tree based on certain conditions. It uses the \"_select_by_prior\" method if no other node has been visited, otherwise it uses the \"_select_child\" method to select a child node. After taking the action, it checks whether the game is done or not, and expands the leaf node if necessary. Finally, it calculates the terminal reward based on the game state and updates the leaf node's value accordingly.",
         "type": "comment"
     },
-    "444": {
-        "file_id": 60,
+    "440": {
+        "file_id": 59,
         "content": "                    leaf_value = node.value\n                else:\n                    if self._init_critic_value:\n                        leaf_value = node._initial_value\n                    else:\n                        leaf_value = policy_forward_fn(env_copy.get_state()).item()\n            node.update_recursive(leaf_value, env_copy.mcts_mode)\n            traj_data = {\n                \"path_idx\": i_path,\n                \"text\": env_copy.answer,\n                \"value\": leaf_value,\n                \"num_generated_token\": self._num_generated_token,\n            }\n            traj_list.append(traj_data)\n        return traj_list\n    def beam_search(\n        self,\n        simulate_env: Type[CoTEnv],\n        beam_size: int,\n        max_step: int,\n        policy_forward_fn: Optional[Callable] = None,\n    ) -> List[Dict]:\n        if self.root is None:\n            root = LanguageNode(text_state=simulate_env.get_state())\n            self._expand_leaf_node(root, simulate_env, policy_forward_fn)\n            self.root = root",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:452-482"
     },
-    "445": {
-        "file_id": 60,
+    "441": {
+        "file_id": 59,
         "content": "This code is a part of a tree search algorithm that initializes the root node, expands the tree based on the provided environment and policy function, and performs a beam search to find the best path. The leaf value is calculated based on whether the critic function has been initialized or not. If initialized, it uses the initial value; otherwise, it calculates the value using the policy forward function applied to the environment state. Finally, it returns a list of dictionaries containing path index, text, value, and number of generated tokens for each path.",
         "type": "comment"
     },
-    "446": {
-        "file_id": 60,
+    "442": {
+        "file_id": 59,
         "content": "        end_nodes, top_k_nodes = [], [(-root._initial_value, root, simulate_env.copy())]\n        k = beam_size\n        for _ in range(max_step + 1):\n            cur_nodes_to_search = top_k_nodes\n            top_k_nodes = []\n            for cur_neg_v, cur_node, cur_env in cur_nodes_to_search:\n                if cur_node.terminated:\n                    end_nodes.append((cur_neg_v, cur_node, cur_env))\n                    k -= 1\n                elif k > 0:\n                    # select at most topk children add push to heap\n                    assert (\n                        len(cur_node.children) > 0\n                    ), \"in beam search you should expand this non-terminal node at first.\"\n                    self._num_generated_token += sum(\n                        c.num_generated_token for c in cur_node.children.values()\n                    )\n                    top_k_children = sorted(\n                        [\n                            (action, child, child._initial_value)\n                            for action, child in cur_node.children.items()",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:484-505"
     },
-    "447": {
-        "file_id": 60,
+    "443": {
+        "file_id": 59,
         "content": "This code implements a Beam Search algorithm for tree traversal. It maintains a list of top K nodes to search and iteratively selects the next nodes to explore, appending terminated nodes to the end_nodes list. The process continues until either all nodes are expanded or the maximum step is reached.",
         "type": "comment"
     },
-    "448": {
-        "file_id": 60,
+    "444": {
+        "file_id": 59,
         "content": "                        ],\n                        key=lambda x: x[2],\n                        reverse=True,\n                    )[:k]\n                    for c_act, c_node, c_value in top_k_children:\n                        # new_env = cur_env.copy()\n                        # _, _, terminated, truncated, info = new_env.step(\n                        #     c_act, update_legal_action=True\n                        # )\n                        # if terminated or truncated:\n                        #     c_node.set_as_terminate_node()\n                        # else:\n                        #     self._expand_leaf_node(c_node, new_env, policy_forward_fn)\n                        new_env = cur_env.copy()\n                        heapq.heappush(top_k_nodes, (-c_value, c_node, new_env))\n            # nsmallest since we negate the value\n            top_k_nodes = heapq.nsmallest(k, top_k_nodes)\n            # expand selected nodes\n            for value, node, new_env in top_k_nodes:\n                _, _, terminated, truncated, info = new_env.step(",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:506-526"
     },
-    "449": {
-        "file_id": 60,
+    "445": {
+        "file_id": 59,
         "content": "This code appears to be part of a Monte Carlo Tree Search (MCTS) algorithm. The function selects the best k children nodes based on their values, and then pushes them onto a priority queue for expansion. It seems that the selected children are expanded in a new environment, with some actions potentially leading to termination or truncation.",
         "type": "comment"
     },
-    "450": {
-        "file_id": 60,
+    "446": {
+        "file_id": 59,
         "content": "                    node.last_action, update_legal_action=True\n                )\n                if terminated or truncated:\n                    node.set_as_terminate_node()\n                else:\n                    self._expand_leaf_node(node, new_env, policy_forward_fn)\n            if len(end_nodes) == beam_size:\n                assert k == 0\n                break\n        traj_list = []\n        for i, (neg_e_v, e_node, e_env) in enumerate(end_nodes):\n            traj_list.append(\n                {\n                    \"path_idx\": i,\n                    \"text\": e_env.answer,\n                    \"value\": -neg_e_v,\n                    \"num_generated_token\": None,\n                    # num_generated_token is hard to compute, since we\n                    #  allow beam size to be larger than max_action of a node.\n                }\n            )\n        traj_list[-1][\"num_generated_token\"] = self._num_generated_token\n        return traj_list\n    def dfs(\n        self,\n        simulate_env: Type[CoTEnv],\n        num_paths: int,",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:527-556"
     },
-    "451": {
-        "file_id": 60,
+    "447": {
+        "file_id": 59,
         "content": "This code is a part of a Monte Carlo Tree Search algorithm. It selects and expands leaf nodes, evaluates and terminates or continues nodes, stores multiple paths from root to leaves in a list, then computes the final number of generated tokens for the last path, and returns the list of paths with their values and other information.",
         "type": "comment"
     },
-    "452": {
-        "file_id": 60,
+    "448": {
+        "file_id": 59,
         "content": "        policy_forward_fn: Optional[Callable] = None,\n        prune_value: Optional[float] = None,\n        prune_ratio: Optional[float] = None,\n    ) -> List[Dict]:\n        if prune_ratio:\n            assert 1 > prune_ratio > 0\n        if self.root is None:\n            root = LanguageNode(text_state=simulate_env.get_state())\n            self._expand_leaf_node(root, simulate_env, policy_forward_fn)\n            self.root = root\n        # end_nodes = []\n        traj_list = []\n        # num_visited_node = 0\n        def execute_dfs(cur_node, cur_env):\n            if cur_node.terminated:\n                # end_nodes.append((cur_node._initial_value, cur_node, cur_env))\n                traj_list.append(\n                    {\n                        \"path_idx\": len(traj_list),\n                        \"text\": cur_env.answer,\n                        \"value\": cur_node._initial_value,\n                        \"num_generated_token\": self._num_generated_token,\n                    }\n                )\n            else:\n                assert len(cur_node.children.values()) > 0, \"node must have children\"",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:557-585"
     },
-    "453": {
-        "file_id": 60,
+    "449": {
+        "file_id": 59,
         "content": "This code defines a function that takes in parameters like `prune_ratio`, `policy_forward_fn`, and `simulate_env`. It creates or updates the root node of a tree, then performs a depth-first search (DFS) on the tree to collect trajectories. The DFS stops when it reaches terminal nodes or nodes pruned based on the given criteria. The function returns a list of dictionaries containing information about each collected trajectory, such as its path index, text output from the simulation environment, value, and number of generated tokens.",
         "type": "comment"
     },
-    "454": {
-        "file_id": 60,
+    "450": {
+        "file_id": 59,
         "content": "                self._num_generated_token += sum(\n                    c.num_generated_token for c in cur_node.children.values()\n                )\n                # you can select only top k children to expand here with [:k].\n                for i, child in enumerate(\n                    sorted(\n                        cur_node.children.values(),\n                        key=lambda x: x._initial_value,\n                        reverse=True,\n                    )\n                ):\n                    # # pruned by enough visited nodes.\n                    # if num_visited_node >= step_limit:\n                    #     return\n                    # else:\n                    #     num_visited_node += 1\n                    # sample at most num_paths answers\n                    if len(traj_list) >= num_paths:\n                        return\n                    if prune_value is not None and child._initial_value < prune_value:\n                        # if we don't have any answer yet, we will not prune.\n                        # since we sorted w.r.t. _initial_value",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:586-610"
     },
-    "455": {
-        "file_id": 60,
+    "451": {
+        "file_id": 59,
         "content": "This code is calculating the total number of generated tokens and sorting the children nodes in a tree based on their _initial_value. It then checks if there are enough visited nodes or the maximum number of paths has been reached, and if not, it expands the next child node according to the sort order.",
         "type": "comment"
     },
-    "456": {
-        "file_id": 60,
+    "452": {
+        "file_id": 59,
         "content": "                        return\n                    if prune_ratio is not None and i > (1 - prune_ratio) * len(\n                        cur_node.children\n                    ):\n                        return\n                    copy_env = cur_env.copy()\n                    _, _, terminated, truncated, info = copy_env.step(\n                        child.last_action, update_legal_action=True\n                    )\n                    if terminated or truncated:\n                        child.set_as_terminate_node()\n                    else:\n                        self._expand_leaf_node(child, copy_env, policy_forward_fn)\n                    execute_dfs(child, copy_env)\n        execute_dfs(self.root, simulate_env.copy())\n        return traj_list\n    def _simulate(\n        self,\n        node: Node,\n        simulate_env: Type[CoTEnv],\n        policy_forward_fn: Optional[Callable] = None,\n    ) -> None:\n        \"\"\"\n        Overview:\n            Run a single playout from the root to the leaf, getting a value at the leaf and propagating it back through its parents.",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:611-641"
     },
-    "457": {
-        "file_id": 60,
+    "453": {
+        "file_id": 59,
         "content": "This code executes a depth-first search in the game tree, updating the node values as it goes. The search is pruned if necessary based on a given prune ratio. It also handles terminated and truncated nodes, setting them accordingly and propagating their values back up the tree. Ultimately, it returns a list of trajectories representing the playout results.",
         "type": "comment"
     },
-    "458": {
-        "file_id": 60,
+    "454": {
+        "file_id": 59,
         "content": "            State is modified in-place, so a deepcopy must be provided.\n        Arguments:\n            - node (:obj:`Class Node`): Current node when performing mcts search.\n            - simulate_env (:obj:`Class BaseGameEnv`): The class of simulate env.\n            - policy_forward_fn (:obj:`Function`): The Callable to compute the action probs and state value.\n        \"\"\"\n        # XXX: fix the bug temporally, better implementation is required.\n        winner = None\n        done = False\n        while not node.is_leaf():\n            action, node = self._select_child(node, simulate_env)\n            _, _, terminated, truncated, info = simulate_env.step(\n                action, update_legal_action=(node.is_leaf() and node.visit_count == 1)\n            )\n            done = terminated or truncated\n            # In original AlphaZero, the leaf node will be expanded once it is reached\n            # In our setting, computing legal action is computational inefficient\n            # Thus when we reach a leaf node, we will not directly expand it",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:642-660"
     },
-    "459": {
-        "file_id": 60,
+    "455": {
+        "file_id": 59,
         "content": "This code implements a Monte Carlo Tree Search (MCTS) algorithm for game AI. It performs iterative search on the game tree to select the best action and update the MCTS tree. The search ends when it reaches a leaf node, at which point it decides whether to expand the node based on computational efficiency considerations.",
         "type": "comment"
     },
-    "460": {
-        "file_id": 60,
+    "456": {
+        "file_id": 59,
         "content": "            # Until the next time, when this node's children are required to be selected\n            # In this case, node is leaf node and the visit count number of node is 1\n            # Then we expand it\n            if not done and node.is_leaf() and node.visit_count == 1:\n                # Once we expand the node, the node will not be leaf node any more\n                # And the while won't break\n                self._expand_leaf_node(node, simulate_env, policy_forward_fn)\n            winner = info[\"winner\"]\n        \"\"\"\n        in ``self_play_mode``, the leaf_value is calculated from the perspective of player ``simulate_env.current_player``.\n        in ``play_with_bot_mode``, the leaf_value is calculated from the perspective of player 1.\n        \"\"\"\n        if not done:\n            # leaf_value = self._expand_leaf_node(node, simulate_env,\n            #                                     policy_forward_fn)\n            if not done and self.mask_non_terminal_node_value:\n                leaf_value = 0.0",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:661-680"
     },
-    "461": {
-        "file_id": 60,
+    "457": {
+        "file_id": 59,
         "content": "This code snippet is part of a Monte Carlo Tree Search (MCTS) algorithm. It checks if the current node is a leaf node and has a visit count of 1, then expands it. The leaf_value calculation depends on the self_play_mode or play_with_bot_mode. If not done (game not over), it sets the leaf value to 0 if mask_non_terminal_node_value is True.",
         "type": "comment"
     },
-    "462": {
-        "file_id": 60,
+    "458": {
+        "file_id": 59,
         "content": "            else:\n                if not self._init_critic_value:\n                    leaf_value = policy_forward_fn(simulate_env.get_state()).item()\n                else:\n                    leaf_value = node._initial_value\n        else:\n            if not self.no_terminal_reward:\n                if winner is not None:\n                    if winner == 1:\n                        self.answers.add(simulate_env.answer)\n                    else:\n                        self.wrong_answers.add(simulate_env.answer)\n                # if simulate_env.mcts_mode == 'self_play_mode':\n                #     if winner == -1:\n                #         leaf_value = 0\n                #     else:\n                #         leaf_value = 1 if simulate_env.current_player == winner else -1\n                if simulate_env.mcts_mode == \"play_with_bot_mode\":\n                    # in ``play_with_bot_mode``, the leaf_value should be transformed to the perspective of player 1.\n                    if \"reward\" in info.keys():\n                        leaf_value = info[\"reward\"]",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:681-703"
     },
-    "463": {
-        "file_id": 60,
+    "459": {
+        "file_id": 59,
         "content": "This code is part of a tree-based search algorithm that uses Monte Carlo Tree Search (MCTS). If the node does not have children, it checks if the critic value initialization flag is set. If so, it takes the initial value from the node; otherwise, it calculates the leaf value using policy forward function. If there's a winner and MCTS mode is 'self_play_mode', the code assigns leaf values accordingly. In 'play_with_bot_mode', the reward information is considered for setting the leaf value.",
         "type": "comment"
     },
-    "464": {
-        "file_id": 60,
+    "460": {
+        "file_id": 59,
         "content": "                    else:\n                        if winner == -1:\n                            leaf_value = 0\n                        elif winner == 1:\n                            leaf_value = 1\n                        elif winner == 2:\n                            leaf_value = -1\n            else:\n                if node.visit_count > 0:\n                    # because leaf value has been calculated and backpropogated\n                    leaf_value = node.value\n                else:\n                    if self._init_critic_value:\n                        leaf_value = node._initial_value\n                    else:\n                        leaf_value = policy_forward_fn(simulate_env.get_state()).item()\n        if done:\n            node.set_as_terminate_node()\n            if self.visited_paths is not None:\n                self.visited_paths.append(\n                    {\n                        \"text\": simulate_env.answer,\n                        \"correct\": winner == 1,\n                        \"value\": leaf_value,\n                    }",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:704-729"
     },
-    "465": {
-        "file_id": 60,
+    "461": {
+        "file_id": 59,
         "content": "This code checks if the current node is a leaf and calculates its value based on whether it's a win, loss, or draw. If the node is not a leaf and has been visited before, it uses the stored value. If not, it either uses the initial value or calculates using a policy forward function. If the simulation is done, it marks the node as terminal and adds the result to visited paths if applicable.",
         "type": "comment"
     },
-    "466": {
-        "file_id": 60,
+    "462": {
+        "file_id": 59,
         "content": "                )\n        # Update value and visit count of nodes in this traversal.\n        if simulate_env.mcts_mode == \"play_with_bot_mode\":\n            node.update_recursive(leaf_value, simulate_env.mcts_mode)\n        elif simulate_env.mcts_mode == \"self_play_mode\":\n            # NOTE: e.g.\n            #       to_play: 1  ---------->  2  ---------->  1  ----------> 2\n            #         state: s1 ---------->  s2 ---------->  s3 ----------> s4\n            #                                     action    node\n            #                                            leaf_value\n            # leaf_value is calculated from the perspective of player 1, leaf_value = value_func(s3),\n            # but node.value should be the value of E[q(s2, action)], i.e. calculated from the perspective of player 2.\n            # thus we add the negative when call update_recursive().\n            node.update_recursive(-leaf_value, simulate_env.mcts_mode)\n    def _select_child(\n        self, node: LanguageNode, simulate_env: Type[CoTEnv]",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:730-748"
     },
-    "467": {
-        "file_id": 60,
+    "463": {
+        "file_id": 59,
         "content": "This code updates the value and visit count of nodes in a tree traversal based on the current MCTS mode. If in \"play_with_bot_mode\", the leaf_value is directly updated. In \"self_play_mode\", the leaf_value is calculated from player 1's perspective, so it negates the value before updating the node.",
         "type": "comment"
     },
-    "468": {
-        "file_id": 60,
+    "464": {
+        "file_id": 59,
         "content": "    ) -> Tuple[Union[int, float], Node]:\n        \"\"\"\n        Overview:\n            Select the child with the highest UCB score.\n        Arguments:\n            - node (:obj:`Class Node`): Current node.\n        Returns:\n            - action (:obj:`Int`): choose the action with the highest ucb score.\n            - child (:obj:`Node`): the child node reached by executing the action with the highest ucb score.\n        \"\"\"\n        if not node.has_collected_token_num:\n            self._num_generated_token += sum(\n                c.num_generated_token for c in node.children.values()\n            )\n            node.has_collected_token_num = True\n        action = None\n        child = None\n        best_score = -9999999\n        scores = {}\n        for action_tmp, child_tmp in node.children.items():\n            # print(a, simulate_env.legal_actions)\n            # if action_tmp in simulate_env.legal_actions:\n            ucb_score = self._ucb_score(node, child_tmp)\n            prm_value = 0.0 if child_tmp.prm_value is None else child_tmp.prm_value",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:749-775"
     },
-    "469": {
-        "file_id": 60,
+    "465": {
+        "file_id": 59,
         "content": "This function selects the child node with the highest UCB score from a given current node. It first checks if the current node has collected its token count, then iterates through each child node and calculates their respective UCB scores. The function returns the action corresponding to the selected child node as well as the child node itself.",
         "type": "comment"
     },
-    "470": {
-        "file_id": 60,
+    "466": {
+        "file_id": 59,
         "content": "            score = ucb_score + self._prm_factor * prm_value\n            if score > best_score:\n                best_score = score\n                action = action_tmp\n                child = child_tmp\n            scores[action_tmp] = (score, ucb_score, child_tmp.prm_value)\n        if child is None:\n            child = node  # child==None, node is leaf node in play_with_bot_mode.\n        # print(\"score: {}\\n\\n\\tchoose_action: {}\\n\".format(\n        #     json.dumps(scores, indent=2), action))\n        return action, child\n    def _select_by_prior(self, node: Node, simulate_env):\n        data_tmp = [\n            (x_action, x_node.prior_p) for x_action, x_node in node.children.items()\n        ]\n        action_list, prior_list = list(zip(*data_tmp))\n        chosen_action = np.random.choice(action_list, p=np.array(prior_list))\n        chosen_node = node.children[chosen_action]\n        #  For select by prior, we should only calculate the token that\n        #  is actually selected\n        if not chosen_node.has_collected_token_num:",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:776-800"
     },
-    "471": {
-        "file_id": 60,
+    "467": {
+        "file_id": 59,
         "content": "This code selects the best action to take in a game by comparing the UCB score and PRM value. It updates the best_score and corresponding child node if the current score is higher. The scores dictionary keeps track of scores for each action. If child is None, it means this is a leaf node. The _select_by_prior function selects an action based on prior probabilities and returns the chosen action and corresponding node.",
         "type": "comment"
     },
-    "472": {
-        "file_id": 60,
+    "468": {
+        "file_id": 59,
         "content": "            self._num_generated_token += chosen_node.num_generated_token\n            chosen_node.has_collected_token_num = True\n        return chosen_action, chosen_node\n    def _expand_leaf_node_without_value(\n        self, node: Node, simulate_env: Type[CoTEnv]\n    ) -> None:\n        \"\"\"\n        Overview:\n            expand the node without the policy_forward_fn.\n        Arguments:\n            - node (:obj:`Class Node`): current node when performing mcts search.\n            - simulate_env (:obj:`Class BaseGameEnv`): the class of simulate env.\n            - policy_forward_fn (:obj:`Function`): the Callable to compute the action probs and state value.\n        Returns:\n            - leaf_value (:obj:`Bool`): the leaf node's value.\n        \"\"\"\n        text_state = simulate_env.get_state()\n        for i, action_dict in enumerate(simulate_env.legal_actions):\n            action, prob = action_dict[\"action\"], action_dict[\"prob\"]\n            node.children[action] = LanguageNode(\n                parent=node,\n                prior_p=prob,",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:801-824"
     },
-    "473": {
-        "file_id": 60,
+    "469": {
+        "file_id": 59,
         "content": "This function expands a leaf node without using the policy_forward_fn and returns the leaf's value. It takes a current node and a simulated environment as input, gets the state from the environment, and creates child nodes for each action with their respective probabilities.",
         "type": "comment"
     },
-    "474": {
-        "file_id": 60,
+    "470": {
+        "file_id": 59,
         "content": "                #  prm_value=prm_value,\n                text_state=text_state,\n                last_action=action,\n                num_generated_token=action_dict[\"num_token\"],\n            )\n    def _expand_leaf_node(\n        self,\n        node: Node,\n        simulate_env: Type[CoTEnv],\n        policy_forward_fn: Optional[Callable] = None,\n    ) -> float:\n        \"\"\"\n        Overview:\n            expand the node with the policy_forward_fn.\n        Arguments:\n            - node (:obj:`Class Node`): current node when performing mcts search.\n            - simulate_env (:obj:`Class BaseGameEnv`): the class of simulate env.\n            - policy_forward_fn (:obj:`Function`): the Callable to compute the action probs and state value.\n        Returns:\n            - leaf_value (:obj:`Bool`): the leaf node's value.\n        \"\"\"\n        \"\"\"\n        action_probs_dict, leaf_value = policy_forward_fn(simulate_env)\n        for action, prior_p in action_probs_dict.items():\n            if action in simulate_env.legal_actions:\n                node.children[action] = Node(parent=node, prior_p=prior_p)",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:825-851"
     },
-    "475": {
-        "file_id": 60,
+    "471": {
+        "file_id": 59,
         "content": "This code defines a function named `_expand_leaf_node` that expands a leaf node using the policy_forward_fn. It takes in a current node, a simulate env class, and an optional Callable for computing action probs and state value. The function computes the action probs dict and leaf value using policy_forward_fn, then adds child nodes to the parent node based on legal actions from the simulate env.",
         "type": "comment"
     },
-    "476": {
-        "file_id": 60,
+    "472": {
+        "file_id": 59,
         "content": "        \"\"\"\n        # To implement for leaf value calcuation\n        # if policy_forward_fn is not None:\n        #     q_str = simulate_env.math_problem[\"question\"]\n        #     prefix = node.get_path()\n        text_state = simulate_env.get_state()\n        if not self._init_critic_value:\n            leaf_value = policy_forward_fn(text_state).item()\n        else:\n            leaf_value = node._initial_value\n            assert len(simulate_env.legal_actions) > 0\n            child_values = policy_forward_fn(\n                [\n                    text_state + x[\"action\"] + simulate_env.sep\n                    for x in simulate_env.legal_actions\n                ]\n            ).tolist()\n        assert len(node.children) == 0\n        for i, action_dict in enumerate(simulate_env.legal_actions):\n            action, prob = action_dict[\"action\"], action_dict[\"prob\"]\n            # self._num_generated_token += action_dict[\"num_token\"]\n            # if policy_forward_fn is None:\n            #     prm_value = None\n            # else:",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:852-879"
     },
-    "477": {
-        "file_id": 60,
+    "473": {
+        "file_id": 59,
         "content": "This code calculates the leaf value of a decision tree in the context of text-based simulations. It uses a policy forward function to determine the value for each possible action in the simulation environment, and stores these values in child_values. The final leaf value is determined by checking if the critic has been initialized or not, and assigning the appropriate initial value accordingly.",
         "type": "comment"
     },
-    "478": {
-        "file_id": 60,
+    "474": {
+        "file_id": 59,
         "content": "            #     prm_value = policy_forward_fn(q_str,\n            #                                   prefix + \"\\n\" + action + \"\\n\")\n            if self._init_critic_value:\n                child_value = child_values[i]\n            else:\n                child_value = 0.0\n            if self._prune_node_under_v is not None:\n                assert (\n                    self._init_critic_value\n                ), \"currently only support prune for init_critic_value setting.\"\n                if child_value < self._prune_node_under_v:\n                    # print_rank_0(\"Prune node of value {:.4f} < {:.4f}\".format(\n                    #     child_value, self._prune_node_under_v\n                    # ))\n                    continue\n            node.children[action] = LanguageNode(\n                parent=node,\n                prior_p=prob,\n                #  prm_value=prm_value,\n                text_state=text_state,\n                last_action=action,\n                initial_value=child_value,\n                num_generated_token=action_dict[\"num_token\"],",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:880-905"
     },
-    "479": {
-        "file_id": 60,
+    "475": {
+        "file_id": 59,
         "content": "This code creates a child node in the language tree. If init_critic_value is set, it checks if the child value is below prune_node_under_v and skips creating the node if so. The node's initial_value is assigned based on either the child_values or 0.0, depending on init_critic_value setting.",
         "type": "comment"
     },
-    "480": {
-        "file_id": 60,
+    "476": {
+        "file_id": 59,
         "content": "            )\n        if len(node.children) == 0:\n            print_rank_0(\n                \"Prune all current children at node {}\".format(node.last_action)\n            )\n        return leaf_value\n    def _ucb_score(self, parent: Node, child: Node) -> float:\n        \"\"\"\n        Overview:\n            Compute UCB score. The score for a node is based on its value, plus an exploration bonus based on the prior.\n        Arguments:\n            - parent (:obj:`Class Node`): Current node.\n            - child (:obj:`Class Node`): Current node's child.\n        Returns:\n            - score (:obj:`Bool`): The UCB score.\n        \"\"\"\n        pb_c = (\n            math.log((parent.visit_count + self._pb_c_base + 1) / self._pb_c_base)\n            + self._pb_c_init\n        )\n        pb_c *= math.sqrt(parent.visit_count) / (child.visit_count + 1)\n        prior_score = pb_c * child.prior_p\n        value_score = child.value\n        return prior_score + value_score\n        # return value_score\n    def reset_prior(self, node: Node) -> None:",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:906-936"
     },
-    "481": {
-        "file_id": 60,
+    "477": {
+        "file_id": 59,
         "content": "This code snippet contains functions that calculate UCB scores for decision nodes in a Monte Carlo tree search. The _ucb_score function computes the score based on a node's value and an exploration bonus determined by the prior probabilities of its children. The reset_prior function resets the prior probability for a given node.",
         "type": "comment"
     },
-    "482": {
-        "file_id": 60,
+    "478": {
+        "file_id": 59,
         "content": "        \"\"\"\n        Overview:\n            Reset prior probability\n        Arguments:\n            - node (:obj:`Class Node`): Current node.\n        \"\"\"\n        for a in node.children.keys():\n            node.children[a].prior_p = node.children[a].prior_p_ori\n    def _add_exploration_noise(self, node: Node) -> None:\n        \"\"\"\n        Overview:\n            Add exploration noise.\n        Arguments:\n            - node (:obj:`Class Node`): Current node.\n        \"\"\"\n        # Get a list of actions corresponding to the child nodes.\n        actions = list(node.children.keys())\n        # Create a list of alpha values for Dirichlet noise.\n        alpha = [self._root_dirichlet_alpha] * len(actions)\n        # Generate Dirichlet noise using the alpha values.\n        noise = np.random.dirichlet(alpha)\n        # Compute the weight of the exploration noise.\n        frac = self._root_noise_weight\n        # Update the prior probability of each child node with the exploration noise.\n        for a, n in zip(actions, noise):\n            node.children[a].prior_p = node.children[a].prior_p * (1 - frac) + n * frac",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:937-963"
     },
-    "483": {
-        "file_id": 60,
+    "479": {
+        "file_id": 59,
         "content": "This code resets prior probabilities and adds exploration noise to a node's children, updating their prior probabilities using Dirichlet distribution and a specified noise weight.",
         "type": "comment"
     },
-    "484": {
-        "file_id": 60,
+    "480": {
+        "file_id": 59,
         "content": "    @classmethod\n    def from_json(cls, cfg: dict, json_path: str, reset_visit_info: bool):\n        tree_json = json.load(open(json_path, \"r\"))\n        def build_tree(tree_dict: dict) -> Node:\n            node_info = tree_dict[\"info\"]\n            current_node = LanguageNode(\n                text_state=node_info.get(\"text_state\", None),\n                last_action=node_info.get(\"last_action\", None),\n                prior_p=node_info[\"prior_p\"],\n                prm_value=node_info.get(\"prm_value\", None),\n                initial_value=node_info.get(\"initial_value\", 0.0),\n            )\n            if not reset_visit_info:\n                current_node._visit_count = node_info[\"visit_cnt\"]\n                current_node._value_sum = node_info[\"value\"] * current_node.visit_count\n            if node_info.get(\"terminated\", False):\n                current_node.set_as_terminate_node()\n            for name, child_dict in tree_dict[\"children\"].items():\n                child_node = build_tree(child_dict)\n                current_node._children[name] = child_node",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:965-987"
     },
-    "485": {
-        "file_id": 60,
+    "481": {
+        "file_id": 59,
         "content": "This function, from_json, builds a LanguageNode tree by parsing JSON data from the file specified in json_path. The method takes in a dictionary configuration, the path to the JSON file, and a boolean reset_visit_info. The reset_visit_info parameter determines whether to reset the visit count and value sum for each node. If there is an existing terminated node in the data, it will be marked as such.",
         "type": "comment"
     },
-    "486": {
-        "file_id": 60,
+    "482": {
+        "file_id": 59,
         "content": "                child_node._parent = current_node\n            return current_node\n        root_node = build_tree(tree_dict=tree_json)\n        obj = cls(cfg)\n        obj.root = root_node\n        return obj\nif __name__ == \"__main__\":\n    mcts_cfg = {\n        \"num_simulations\": 200,\n        \"pb_c_base\": 19652,\n        \"pb_c_init\": 10,\n        \"root_dirichlet_alpha\": 0.3,\n        \"root_noise_weight\": 0.25,\n    }\n    tree_path = \"./tree.json\"\n    mcts = MCTS.from_json(mcts_cfg, tree_path)",
         "type": "code",
         "location": "/tsllm/mcts/tree.py:988-1010"
     },
-    "487": {
-        "file_id": 60,
+    "483": {
+        "file_id": 59,
         "content": "This code defines a class MCTS which builds a tree from JSON and initializes an object of the class. It also sets the root node of the tree, performs simulations and possibly updates the tree based on some configuration parameters like \"num_simulations\", \"pb_c_base\", \"pb_c_init\", \"root_dirichlet_alpha\" and \"root_noise_weight\". The code can be used to build a Monte Carlo Tree Search algorithm.",
         "type": "comment"
     },
-    "488": {
-        "file_id": 61,
+    "484": {
+        "file_id": 60,
         "content": "/tsllm/mcts/utils.py",
         "type": "filepath"
     },
-    "489": {
-        "file_id": 61,
+    "485": {
+        "file_id": 60,
         "content": "This function retrieves the root node of a tree by traversing upwards until it reaches a node with no parent (root).",
         "type": "summary"
     },
-    "490": {
-        "file_id": 61,
+    "486": {
+        "file_id": 60,
         "content": "from .tree import Node\ndef get_root(node: Node):\n    while not node.is_root():\n        node = node.parent\n    return node",
         "type": "code",
         "location": "/tsllm/mcts/utils.py:1-7"
     },
+    "487": {
+        "file_id": 60,
+        "content": "This function retrieves the root node of a tree by traversing upwards until it reaches a node with no parent (root).",
+        "type": "comment"
+    },
+    "488": {
+        "file_id": 61,
+        "content": "/tsllm/merge_jsonl.py",
+        "type": "filepath"
+    },
+    "489": {
+        "file_id": 61,
+        "content": "This Python script merges multiple JSONL files in a target directory, excluding any file named \"merged.jsonl\". It reads each JSONL file, creates a dictionary with the index as key and object as value, then writes the merged data to a \"merged.jsonl\" file within the target directory. The script also handles KeyError exceptions that may occur when processing.",
+        "type": "summary"
+    },
+    "490": {
+        "file_id": 61,
+        "content": "import jsonlines\nimport pathlib\nimport argparse\ndef merge_jsonl_files(target_dir):\n    target_dir = pathlib.Path(target_dir)\n    total_data = dict()\n    for jl_file in target_dir.glob(r\"*.jsonl\"):\n        if \"merged.jsonl\" in str(jl_file):\n            print(\"WARNING!!: SKIP {}\".format(jl_file))\n            continue\n        print(jl_file)\n        with jsonlines.open(jl_file, \"r\") as reader:\n            for obj in reader:\n                total_data[obj[\"i\"]] = obj\n    with jsonlines.open(target_dir / \"merged.jsonl\", \"w\") as writer:\n        for i in range(len(total_data)):\n            try:\n                writer.write(total_data[i])\n            except KeyError as e:\n                print(\"key i not exist: \", i)\n                raise e\nif __name__ == \"__main__\":\n    parser = argparse.ArgumentParser()\n    parser.add_argument(\"--target_dir\", type=str, required=True)\n    args = parser.parse_args()\n    merge_jsonl_files(args.target_dir)",
+        "type": "code",
+        "location": "/tsllm/merge_jsonl.py:1-32"
+    },
     "491": {
         "file_id": 61,
-        "content": "This function retrieves the root node of a tree by traversing upwards until it reaches a node with no parent (root).",
+        "content": "This Python script merges multiple JSONL files in a target directory, excluding any file named \"merged.jsonl\". It reads each JSONL file, creates a dictionary with the index as key and object as value, then writes the merged data to a \"merged.jsonl\" file within the target directory. The script also handles KeyError exceptions that may occur when processing.",
         "type": "comment"
     },
     "492": {
