@@ -7,7 +7,7 @@
         "0": {
             "filepath": "/README.md",
             "entry_id": 0,
-            "language_id": "plain-text"
+            "language_id": "markdown"
         },
         "1": {
             "filepath": "/requirement.txt",
@@ -47,7 +47,7 @@
         "8": {
             "filepath": "/train_mcts_scripts/gsm8k/README.md",
             "entry_id": 44,
-            "language_id": "plain-text"
+            "language_id": "markdown"
         },
         "9": {
             "filepath": "/train_mcts_scripts/gsm8k/ds_config.json",
