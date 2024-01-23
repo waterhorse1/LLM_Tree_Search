@@ -107,7 +107,7 @@
         "20": {
             "filepath": "/train_mcts_scripts/rlhf/README.md",
             "entry_id": 114,
-            "language_id": "plain-text"
+            "language_id": "markdown"
         },
         "21": {
             "filepath": "/train_mcts_scripts/rlhf/accelerate_config.yaml",
