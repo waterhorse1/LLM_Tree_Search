@@ -47,7 +47,7 @@
         "8": {
             "filepath": "/train_mcts_scripts/gsm8k/README.md",
             "entry_id": 44,
-            "language_id": "markdown"
+            "language_id": "plain-text"
         },
         "9": {
             "filepath": "/train_mcts_scripts/gsm8k/ds_config.json",
@@ -107,7 +107,7 @@
         "20": {
             "filepath": "/train_mcts_scripts/rlhf/README.md",
             "entry_id": 114,
-            "language_id": "markdown"
+            "language_id": "plain-text"
         },
         "21": {
             "filepath": "/train_mcts_scripts/rlhf/accelerate_config.yaml",
