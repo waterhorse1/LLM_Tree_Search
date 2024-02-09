@@ -1,0 +1,15 @@
+{
+    "summary": "The code loads JSONL data, splits it into training and evaluation sets, and samples specified numbers of items for the training set using ArgumentParser. It then deduplicates and writes train and test data to JSONL files with specific prefixes.",
+    "details": [
+        {
+            "comment": "This code loads JSONL data, splits it into training and evaluation sets, and samples a specified number of items for the training set. It uses the ArgumentParser to take input parameters such as train_num and train_data_prefix. The loaded data is then split into two parts: one with answers included and another with empty answers.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/offline_rl/split_two_test.py\":0-33",
+            "content": "import copy\nimport json\nimport random\nfrom pathlib import Path\nfrom argparse import ArgumentParser\nfrom tsllm.offline_rl.utils import load_jsonl, write_to_jsonl\ndef sample_dicts(data, n):\n    if n > len(data):\n        n = len(data)\n    return random.sample(data, n)\nif __name__ == \"__main__\":\n    parser = ArgumentParser()\n    parser.add_argument(\"--train_num\", type=int, default=20)\n    parser.add_argument(\"--train_test_num\", type=int, default=2)\n    parser.add_argument(\"--train_data_prefix\", type=str)\n    args = parser.parse_args()\n    train_data = load_jsonl(f\"{args.train_data_prefix}_dedup.jsonl\")\n    train_data_eval = copy.deepcopy(train_data)\n    for d1, d2 in zip(train_data, train_data_eval):\n        picked_ans = sample_dicts(d1[\"answer\"], args.train_num + args.train_test_num)\n        if len(picked_ans) > args.train_num:\n            d1[\"answer\"] = picked_ans[: args.train_num]\n            d2[\"answer\"] = picked_ans[args.train_num :]\n        else:\n            d1[\"answer\"] = picked_ans\n            d2[\"answer\"] = []"
+        },
+        {
+            "comment": "Writes train and test data to JSONL files with specific prefixes for deduplicated samples.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/offline_rl/split_two_test.py\":35-41",
+            "content": "    write_to_jsonl(\n        train_data, f\"{args.train_data_prefix}_dedup_sample{args.train_num}.jsonl\"\n    )\n    write_to_jsonl(\n        train_data_eval,\n        f\"{args.train_data_prefix}_dedup_sample{args.train_num}_train_test_sample_{args.train_test_num}.jsonl\",\n    )"
+        }
+    ]
+}

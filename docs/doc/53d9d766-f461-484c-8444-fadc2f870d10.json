@@ -1,0 +1,10 @@
+{
+    "summary": "This code configures a DeepSpeed training setup for MCTS on game24 with LOCAL_MACHINE, 1 machine, and 8 processes. It uses deepspeed_config_file for configuration, disables downcast bf16, sets main_training_function, and enables same_network.",
+    "details": [
+        {
+            "comment": "This code configures a DeepSpeed training setup for MCTS on game24 with LOCAL_MACHINE, 1 machine, and 8 processes. It uses deepspeed_config_file for configuration, disables downcast bf16, sets main_training_function, and enables same_network.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/train_mcts_scripts/game24/mcts_game24_llama_deepspeed.yaml\":0-15",
+            "content": "compute_environment: LOCAL_MACHINE\ndeepspeed_config:\n  deepspeed_config_file: ./ds_config.json\n  zero3_init_flag: false\ndistributed_type: DEEPSPEED\ndowncast_bf16: 'no'\nmachine_rank: 0\nmain_training_function: main\nnum_machines: 1\nnum_processes: 8\nrdzv_backend: static\nsame_network: true\ntpu_env: []\ntpu_use_cluster: false\ntpu_use_sudo: false\nuse_cpu: false"
+        }
+    ]
+}

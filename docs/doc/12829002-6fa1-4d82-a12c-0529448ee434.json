@@ -1,0 +1,15 @@
+{
+    "summary": "This code merges and deduplicates JSONL question-answer pairs, filters duplicate answers, and outputs the final result to a new JSONL file.",
+    "details": [
+        {
+            "comment": "This code reads in multiple JSONL files containing question-answer pairs, merges them into a single dictionary (d_by_q), and deduplicates the questions. It also provides an option to output the final result to a new JSONL file.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/offline_rl/merge.py\":0-32",
+            "content": "import json\nfrom argparse import ArgumentParser\nfrom tsllm.argparse_utils import str2bool\nfrom tsllm.offline_rl.utils import load_jsonl, write_to_jsonl\nif __name__ == \"__main__\":\n    parser = ArgumentParser()\n    parser.add_argument(\"--input_paths\", action=\"store\", nargs=\"+\")\n    parser.add_argument(\"--output_path\", type=str)\n    parser.add_argument(\"--deduplicate\", type=str2bool, default=True)\n    args = parser.parse_args()\n    print(args.input_paths)\n    data = []\n    for input_path in args.input_paths:\n        data.extend(load_jsonl(input_path))\n    d_by_q = {}\n    for d in data:\n        q_str = d[\"question\"]\n        if q_str not in d_by_q:\n            d_by_q[q_str] = {\n                \"question\": q_str,\n                \"answer\": d[\"answer\"],\n                \"groundtruth\": d.get(\"groundtruth\", \"[DUMMY]\"),\n            }\n        else:\n            d_by_q[q_str][\"answer\"].extend(d[\"answer\"])\n    if args.deduplicate:\n        cnt, total_cnt, correct_cnt = 0, 0, 0\n        data = list(d_by_q.values())\n        print(len(data))"
+        },
+        {
+            "comment": "This code filters duplicate texts from the \"answer\" list in each dictionary of a data list. It counts and prints total, correct, and unique answer count before writing the modified data to a JSONL file.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/offline_rl/merge.py\":33-48",
+            "content": "        for d in data:\n            answer = d[\"answer\"]\n            unique_data = []\n            seen_texts = []\n            for item in answer:\n                if item[\"text\"] not in seen_texts:\n                    seen_texts.append(item[\"text\"])\n                    unique_data.append(item)\n                    cnt += 1\n                    if item[\"correct\"]:\n                        correct_cnt += 1\n                total_cnt += 1\n            d[\"answer\"] = unique_data\n        print(cnt, total_cnt, correct_cnt)\n    write_to_jsonl(data, args.output_path)"
+        }
+    ]
+}

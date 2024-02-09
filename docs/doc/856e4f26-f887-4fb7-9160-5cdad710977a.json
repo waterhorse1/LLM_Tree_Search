@@ -1,0 +1,10 @@
+{
+    "summary": "This function loads the GSM8K dataset for training and testing, allowing optional truncation of the training dataset using a specified number.",
+    "details": [
+        {
+            "comment": "This function loads the GSM8K dataset for training and testing, allowing optional truncation of the training dataset using a specified number.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/envs/gsm8k/data.py\":0-11",
+            "content": "from datasets import load_dataset\ndef get_train_test_dataset(*args, **kwargs):\n    num_train_data = kwargs.get(\"num_train_data\", None)\n    if num_train_data:\n        train_dataset = load_dataset(\"gsm8k\", \"main\", split=f\"train[:{num_train_data}]\")\n    else:\n        train_dataset = load_dataset(\"gsm8k\", \"main\", split=f\"train\")\n    test_dataset = load_dataset(\"gsm8k\", \"main\")[\"test\"]\n    return train_dataset, test_dataset"
+        }
+    ]
+}

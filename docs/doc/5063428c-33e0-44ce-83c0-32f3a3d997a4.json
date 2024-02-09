@@ -1,0 +1,10 @@
+{
+    "summary": "The code sets up a directory, creates a dedup file, and then splits it into training and testing data for offline RL.",
+    "details": [
+        {
+            "comment": "The code sets up a directory, creates a dedup file, and then splits it into training and testing data for offline RL.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/offline_rl/prontoqa/process.sh\":0-15",
+            "content": "set -e\nINPUT_DIR=\"prontoqa/cot_sample\"\nOUTPUT_DIR=\"prontoqa/processed\"\nmkdir -p $OUTPUT_DIR\nN=50\nfile_prefix=\"prontoqa_train_cot_sample_offline_sft_k100_ep1\"\npython dedup.py \\\n    --input_path ${INPUT_DIR}/${file_prefix}.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl\n# split_two_test.py will choose files encswith \"dedup\"\npython split_two_test.py \\\n    --train_data_prefix ${OUTPUT_DIR}/${file_prefix} \\\n    --train_num $N \\\n    --train_test_num 3"
+        }
+    ]
+}

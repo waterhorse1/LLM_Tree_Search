@@ -1,0 +1,15 @@
+{
+    "summary": "This code loads and merges data from JSONL files, allowing users to specify input and output directories through command-line arguments. It processes all 8 JSONL files in the input directory, creating a new JSONL file in the specified output directory with each entry separated by newline characters.",
+    "details": [
+        {
+            "comment": "This code loads JSONL files, merges data into a list, and then formats it for saving. The user specifies the input and output directories using command-line arguments, and the code processes all 8 JSONL files in the input directory to create a new JSONL file in the specified output directory.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/offline_rl/rlhf/process.py\":0-31",
+            "content": "import json\nfrom argparse import ArgumentParser\ndef load_jsonl(file_path):\n    data_list = []\n    with open(file_path, \"r\", encoding=\"utf-8\") as file:\n        for line in file:\n            data = json.loads(line.strip())\n            data_list.append(data)\n    return data_list\nif __name__ == \"__main__\":\n    parser = ArgumentParser()\n    parser.add_argument(\"--input_dir\", type=str, required=True)\n    parser.add_argument(\"--output_dir\", type=str, required=True)\n    config = parser.parse_args()\n    all_data = []\n    for i in range(8):\n        # merge all data, you can modify the path to your save path\n        all_data.extend(load_jsonl(f\"{config.input_dir}/rlhf/args0/cot_sc/{i}.jsonl\"))\n    d = []\n    for data_dict in all_data:\n        question = data_dict['prompt']\n        answer_list = []\n        for o in data_dict['output']:\n            answer_list.append({'text': o[0], 'reward':o[1]})\n        data_dict_new = {'question': question, 'answer': answer_list}\n        d.append(data_dict_new)\n    save_dir = config.output_dir + \"/rlhf_data.jsonl\""
+        },
+        {
+            "comment": "Writes data to file in JSON format with newline character separating each entry.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/offline_rl/rlhf/process.py\":32-35",
+            "content": "    with open(save_dir, 'w') as file:\n        for data in d:\n            json_str = json.dumps(data)\n            file.write(json_str + '\\n')"
+        }
+    ]
+}

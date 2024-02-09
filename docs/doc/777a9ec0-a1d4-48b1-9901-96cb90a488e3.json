@@ -1,0 +1,10 @@
+{
+    "summary": "The code is setting environment variables, defining parameters (K, T, N_WORKER), specifying output and cache directories, and running a Python script (generate_data.py) to generate data for offline RL with ProntoQA. The Python script uses LLama2 model, SFTP, tokenizer, and generates output in JSONL format for training.",
+    "details": [
+        {
+            "comment": "The code is setting environment variables, defining parameters (K, T, N_WORKER), specifying output and cache directories, and running a Python script (generate_data.py) to generate data for offline RL with ProntoQA. The Python script uses LLama2 model, SFTP, tokenizer, and generates output in JSONL format for training.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/offline_rl/prontoqa/gen_3.sh\":0-19",
+            "content": "set -e\nK=100\nT=0.7\nN_WORKER=16\nOUTPUT_DIR=./prontoqa/cot_sample/\nCUDA_DEVICES=0,1,2,3,4,5,6,7\nCT2_CACHE=$1\nTOKENIZER_PATH=$2\npython generate_data.py \\\n    -k $K \\\n    -t $T \\\n    --num_workers $N_WORKER \\\n    --gpu_ids $CUDA_DEVICES \\\n    --ct2_dir ${CT2_CACHE}/llama2_sft_ep1_ct2 \\\n    --tokenizer_path $TOKENIZER_PATH \\\n    --output_path ${OUTPUT_DIR}/prontoqa_train_cot_sample_offline_sft_k${K}_ep1.jsonl \\\n    --env_name prontoqa"
+        }
+    ]
+}

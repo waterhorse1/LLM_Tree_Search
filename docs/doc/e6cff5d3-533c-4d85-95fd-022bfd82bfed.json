@@ -1,0 +1,15 @@
+{
+    "summary": "The script preprocesses game24 training data by deduplicating and sampling it for episodes 1-3, creating deduplicated and sampled JSONL files in output directories. This allows for easy selection of data by other scripts and merging with additional splits.",
+    "details": [
+        {
+            "comment": "This script preprocesses game24 training data by deduplicating and sampling the data for episodes 1-3. It uses the dedup.py and sample.py scripts, creating deduped and sampled JSONL files in output directories with episode number appended to the file prefix. The output filenames are chosen based on their content, so other scripts can select them easily.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/offline_rl/game24/process.sh\":0-29",
+            "content": "set -e\nINPUT_DIR=\"game24/cot_sample\"\nOUTPUT_DIR=\"game24/processed\"\nmkdir -p $OUTPUT_DIR\nN=17\nfile_prefix=\"game24_train_cot_sample_offline_sft_k100_ep1\"\npython dedup.py \\\n    --input_path ${INPUT_DIR}/${file_prefix}.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl\npython sample.py \\\n    --input_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup_sample${N}.jsonl \\\n    -n $N\nfile_prefix=\"game24_train_cot_sample_offline_sft_k100_ep2\"\npython dedup.py \\\n    --input_path ${INPUT_DIR}/${file_prefix}.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl\npython sample.py \\\n    --input_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup_sample${N}.jsonl \\\n    -n $N\nfile_prefix=\"game24_train_cot_sample_offline_sft_k100_ep3\"\npython dedup.py \\\n    --input_path ${INPUT_DIR}/${file_prefix}.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl\n# split_two_test.py will choose files encswith \"dedup\""
+        },
+        {
+            "comment": "This code is splitting a training data set into two parts and then merging three of these splits back together. The merged result will be stored in the specified output path.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/offline_rl/game24/process.sh\":30-41",
+            "content": "python split_two_test.py \\\n    --train_data_prefix ${OUTPUT_DIR}/${file_prefix} \\\n    --train_num $N \\\n    --train_test_num 3 \npython merge.py \\\n    --input_paths ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k100_ep1_dedup_sample17.jsonl \\\n    ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k100_ep2_dedup_sample17.jsonl \\\n    ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k100_ep3_dedup_sample17.jsonl \\\n    --output_path ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k100_merged_dedup_sample17x3.jsonl"
+        }
+    ]
+}

@@ -1,0 +1,10 @@
+{
+    "summary": "Imports necessary modules and functions for the game24 environment, data handling, prompt, and evaluation tasks.",
+    "details": [
+        {
+            "comment": "Imports necessary modules and functions for the game24 environment, data handling, prompt, and evaluation tasks.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/envs/game24/__init__.py\":0-2",
+            "content": "from .env import Game24Env as Env, extract_answer, judge_correct, extract_groundtruth\nfrom .data import get_train_test_dataset\nfrom .prompt import COT_EXAMPLES, COT_TASK_DESC, PROBLEM_FORMAT_STR, SEP"
+        }
+    ]
+}

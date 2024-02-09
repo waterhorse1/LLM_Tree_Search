@@ -1,0 +1,15 @@
+{
+    "summary": "This code outlines the process of training a reinforcement learning model using preprocessed data. It involves modifying and running specific scripts to apply RLHF, filter rollout data, and mix value datasets for policy and value training.",
+    "details": [
+        {
+            "comment": "This code describes the iterative update of RLHF (Reinforcement Learning from Human Feedback) in a codebase. It outlines the rollout process using `tsllm/offline_rl/test_sft_and_v_rlhf.py` and specifies hyperparameters for RLHF. Additionally, it mentions modifying `test_policy_and_value.sh` with `--train`, converting rollout data using `process.sh`, filtering top k data from rollouts to construct policy training data with `filter_top_data_policy_training.py`, and mixing original value dataset with new sampled data to create the value training data with `mix_value_data.py`.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/train_mcts_scripts/rlhf/README.md\":0-20",
+            "content": "## Iterative update of RLHF\nHere we describe how to rollout and training iteratively for RLHF.\n### Rollout\nuse `tsllm/offline_rl/test_sft_and_v_rlhf.py` to sample examples on training dataset. Rollout hyperparameters for RLHF:\n```python\n{\n    \"temperature\": 1.0, \n    \"max_length\": 64, \n    \"pb_c_init\": 3, \n    \"num_simulations\": 5, \n    \"num_mcts_aggregation\": 10, \n    \"rollout_method\": \"mcts.get_next_action\", # this is mcts-alpha\n    \"mcts_sample\": True,\n    \"clear_tree\": True,\n    \"reset_total_tree\": False,\n    \"select_by_prior\": False, \n}\n```\nIn addition to these hyperparameters,, you need also to modify the hyperparameters in `test_policy_and_value.sh` with `--train`, which means we conduct rollouts on training dataset. After rollouts, you can refer to `ts_llm/offline_rlhf/process.sh` (convert rollout data to a corresponding format), `filter_top_data_policy_training.py` (filter top k data from rollouts to construct policy training data) and `mix_value_data.py` (mix original value dataset and new sampled value dataset, to construct the value training data) to get the final processed training data."
+        },
+        {
+            "comment": "This code is providing instructions for training a reinforcement learning model using preprocessed data. The user should first obtain the necessary data from rollout, then locate and modify the `train_rlhf_{sft/critic}.py` file in the designated directory. After modifying the arguments within the `config`, the user can proceed with training the model using the provided accelerate configuration.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/train_mcts_scripts/rlhf/README.md\":23-24",
+            "content": "### Training\nAfter getting the data in rollout, check `train_mcts_scripts/rlhf` for `train_rlhf_{sft/critic}.py`, modify args in `config`, then train it. (we use accelerate so we also provide the accelerate config in `train_mcts_scripts/rlhf/accelerate_config.yaml`)"
+        }
+    ]
+}

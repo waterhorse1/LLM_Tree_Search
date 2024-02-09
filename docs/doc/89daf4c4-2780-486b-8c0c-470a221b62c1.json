@@ -1,0 +1,10 @@
+{
+    "summary": "This code defines functions for aggregating votes based on majority and other rules. It uses the Counter class from collections to count votes, and defaultdict from collections for calculating the orm_max. The AGG_FN_MAP dictionary maps different aggregation functions to their corresponding functions in this module.",
+    "details": [
+        {
+            "comment": "This code defines functions for aggregating votes based on majority and other rules. It uses the Counter class from collections to count votes, and defaultdict from collections for calculating the orm_max. The AGG_FN_MAP dictionary maps different aggregation functions to their corresponding functions in this module.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/inference/evaluation/vote_utils.py\":0-33",
+            "content": "from collections import Counter, defaultdict\nfrom typing import List\nMAJORITY_VOTE = \"majority_vote\"\nORM_VOTE = \"orm_vote\"\nORM_MAX = \"orm_max\"\ndef _agg_majority_vote(x_list: List[str], unused_v_list: List[float]):\n    counts = Counter(x_list)\n    most_common = max(counts, key=counts.get)\n    return most_common\ndef _agg_orm_vote(x_list: List[str], v_list: List[float]):\n    assert len(x_list) == len(v_list)\n    x_dict = defaultdict(lambda: 0.0)\n    for x, v in zip(x_list, v_list):\n        x_dict[x] += v\n    highest_x = max(x_dict, key=x_dict.get)\n    return highest_x\ndef _agg_orm_max(x_list: List[str], v_list: List[float]):\n    text_max = x_list[v_list.index(max(v_list))]\n    return text_max\nAGG_FN_MAP = {\n    MAJORITY_VOTE: _agg_majority_vote,\n    ORM_VOTE: _agg_orm_vote,\n    ORM_MAX: _agg_orm_max,\n}"
+        }
+    ]
+}

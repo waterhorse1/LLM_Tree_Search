@@ -1,0 +1,10 @@
+{
+    "summary": "This code defines two functions: `str2bool`, which converts a string input to a boolean, and `list_of_ints`, which parses a comma-separated list of integers into a list. The `str2bool` function checks if the input is \"True\" or \"False\", returning the corresponding boolean value; otherwise, it raises a ValueError with an appropriate error message. The `list_of_ints` function splits the input string by commas and converts each part to an integer, then returns the resulting list.",
+    "details": [
+        {
+            "comment": "This code defines two functions: `str2bool`, which converts a string input to a boolean, and `list_of_ints`, which parses a comma-separated list of integers into a list. The `str2bool` function checks if the input is \"True\" or \"False\", returning the corresponding boolean value; otherwise, it raises a ValueError with an appropriate error message. The `list_of_ints` function splits the input string by commas and converts each part to an integer, then returns the resulting list.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/argparse_utils.py\":0-12",
+            "content": "def str2bool(x: str):\n    if x == \"False\":\n        return False\n    elif x == \"True\":\n        return True\n    else:\n        raise ValueError(\n            'you should either input \"True\" or \"False\" but not {}'.format(x)\n        )\ndef list_of_ints(arg):\n    return list(map(int, arg.split(\",\")))"
+        }
+    ]
+}

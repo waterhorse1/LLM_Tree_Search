@@ -1,0 +1,10 @@
+{
+    "summary": "This code sets up a Python package for an AlphaZero-like tree search learning framework using LLMs. It imports necessary modules, specifies the name, version, description, and other relevant details, finds packages to include, and requires Python 3.10 or higher.",
+    "details": [
+        {
+            "comment": "This code sets up a Python package for an AlphaZero-like tree search learning framework using LLMs. It imports necessary modules, specifies the name, version, description, and other relevant details, finds packages to include, and requires Python 3.10 or higher.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/setup.py\":0-17",
+            "content": "import os\nfrom setuptools import setup, find_packages\nimport setuptools\nsetup(\n    name=\"tsllm\",  # Replace with your own username\n    version=\"0.1.0\",\n    description=\"TS_LLM: AlphaZero-like tree-search learning framework for LLMs\",\n    long_description=open(\"README.md\", encoding=\"utf8\").read(),\n    long_description_content_type=\"text/markdown\",\n    author=\"tmp\",\n    author_email=\"tmp\",\n    packages=setuptools.find_packages(),\n    classifiers=[],\n    keywords=\"large language model, tree search, reinforcement learning, value function\",\n    python_requires='>=3.10',\n)"
+        }
+    ]
+}

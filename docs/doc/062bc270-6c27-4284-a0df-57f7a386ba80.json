@@ -1,0 +1,10 @@
+{
+    "summary": "This code sets up environment variables, creates an output directory if it doesn't exist, and runs a Python script to process input files in the specified directory. The processed data is saved in the output directory.",
+    "details": [
+        {
+            "comment": "This code sets up environment variables, creates an output directory if it doesn't exist, and runs a Python script to process input files in the specified directory. The processed data is saved in the output directory.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/offline_rl/rlhf/process.sh\":0-5",
+            "content": "set -e\nINPUT_DIR=\"./rlhf/cot_sample\"\nOUTPUT_DIR=\"./rlhf/processed\"\nmkdir -p $OUTPUT_DIR\npython3 process.py --input_dir=$INPUT_DIR --output_dir=$OUTPUT_DIR"
+        }
+    ]
+}

@@ -1,0 +1,10 @@
+{
+    "summary": "This code specifies the required Python packages for a project. \"ctranslate2\" version 3.17.1 is needed, as well as \"transformers\" version 4.29.2. The project also requires \"torch\" version 2.0.1+cu117 and \"numpy\" version 1.25.0. It depends on \"flash-attn\" version 1.0.9 and \"dm-tree\" version 0.1.8. These packages are used for machine translation, attention mechanism, and data manipulation.",
+    "details": [
+        {
+            "comment": "This code specifies the required Python packages for a project. \"ctranslate2\" version 3.17.1 is needed, as well as \"transformers\" version 4.29.2. The project also requires \"torch\" version 2.0.1+cu117 and \"numpy\" version 1.25.0. It depends on \"flash-attn\" version 1.0.9 and \"dm-tree\" version 0.1.8. These packages are used for machine translation, attention mechanism, and data manipulation.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/requirement.txt\":0-5",
+            "content": "ctranslate2==3.17.1\ntransformers==4.29.2\ntorch==2.0.1+cu117\nnumpy==1.25.0\nflash-attn==1.0.9\ndm-tree==0.1.8"
+        }
+    ]
+}

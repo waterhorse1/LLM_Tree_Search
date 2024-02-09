@@ -1,0 +1,10 @@
+{
+    "summary": "This code imports necessary modules and functions from various submodules (env, data, prompt) for the PrOntoQA environment. It includes functions like Env, extract_answer, judge_correct, and extract_groundtruth. The constants COT_EXAMPLES, COT_TASK_DESC, PROBLEM_FORMAT_STR, and SEP are also imported.",
+    "details": [
+        {
+            "comment": "This code imports necessary modules and functions from various submodules (env, data, prompt) for the PrOntoQA environment. It includes functions like Env, extract_answer, judge_correct, and extract_groundtruth. The constants COT_EXAMPLES, COT_TASK_DESC, PROBLEM_FORMAT_STR, and SEP are also imported.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/envs/prontoqa/__init__.py\":0-2",
+            "content": "from .env import PrOntoQAEnv as Env, extract_answer, judge_correct, extract_groundtruth\nfrom .data import get_train_test_dataset\nfrom .prompt import COT_EXAMPLES, COT_TASK_DESC, PROBLEM_FORMAT_STR, SEP"
+        }
+    ]
+}

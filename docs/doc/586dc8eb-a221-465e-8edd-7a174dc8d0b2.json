@@ -1,0 +1,10 @@
+{
+    "summary": "The script runs a test on an offline reinforcement learning model for game24, using specified CT2 and critic models, saving policy results in the provided directory. It uses TorchRun with 8 processes per node and sets environment variables to control testing options.",
+    "details": [
+        {
+            "comment": "The script runs a test on an offline reinforcement learning model for game24, using specified CT2 and critic models, saving policy results in the provided directory. It uses TorchRun with 8 processes per node and sets environment variables to control testing options.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/train_mcts_scripts/game24/test_policy_and_value.sh\":0-17",
+            "content": "set -e\nexport TEST_NO_TERMINAL=1\n# export TEST_WITH_TERMINAL=1\n# export TEST_COT_GREEDY=1\n# export TEST_COT_SC=1\n# export CUDA_VISIBLE_DEVICES=1,2,3,4,5,6,7\nCT2_DIR={your ct2 model cache}\nCRITIC_PATH={your critic model cache}\ntorchrun --nproc_per_node=8 --master-port 29522 ../../tsllm/offline_rl/test_sft_and_v.py \\\n    --critic_model_path $CRITIC_PATH \\\n    --tokenizer_path $CRITIC_PATH \\\n    --ct2_dir $CT2_DIR \\\n    --save_dir $1/policy_ep3 \\\n    --env_name game24 \\\n    --test True"
+        }
+    ]
+}

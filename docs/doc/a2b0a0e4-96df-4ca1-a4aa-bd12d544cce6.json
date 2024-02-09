@@ -1,0 +1,15 @@
+{
+    "summary": "The code loads and mixes two sets of data, sorts by question, shuffles answers, and saves in JSONL format for training a reinforcement learning critic module.",
+    "details": [
+        {
+            "comment": "The code loads two sets of data from JSONL files, one for direct sampling and another for MCTS sampling. It then sorts the data by question, creates a new list with mixed answers from both datasets, shuffles the answers, and saves the result in a JSONL file called 'rlhf_data_mixed_value.jsonl'. This code is preparing training data for critic module in reinforcement learning.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/train_mcts_scripts/rlhf/mix_value_data.py\":0-26",
+            "content": "import json\ndef load_jsonl(file_path):\n    data_list = []\n    with open(file_path, \"r\", encoding=\"utf-8\") as file:\n        for line in file:\n            data = json.loads(line.strip())\n            data_list.append(data)\n    return data_list\ndata_direct = load_jsonl('')# Your direct sampling data\ndata_mcts = load_jsonl('')# Your MCTS sampling data\nsorted_direct = sorted(data_direct, key=lambda item: item['question'])\nsorted_mcts =  sorted(data_mcts, key=lambda item: item['question'])\nimport random\nrandom.seed(42)\ndata_mixed = []\nfor data_d, data_m in zip(sorted_direct, sorted_mcts):\n    assert data_d['question'] == data_m['question']\n    answer_d = random.sample(data_d['answer'], 40)\n    answer_d.extend(data_m['answer'])\n    random.shuffle(answer_d)\n    data = {'question': data_d['question'], 'answer': answer_d}\n    assert len(answer_d) == 50 # make sure the number of data equals to 50\n    data_mixed.append(data)\n# save critic training data\nwith open('./rlhf_data_mixed_value.jsonl', 'w') as file:\n    for data in data_mixed:"
+        },
+        {
+            "comment": "This code serializes the data using json.dumps() and then appends it to a file along with a newline character, likely for storing data in a JSON format.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/train_mcts_scripts/rlhf/mix_value_data.py\":27-28",
+            "content": "        json_str = json.dumps(data)\n        file.write(json_str + '\\n')"
+        }
+    ]
+}

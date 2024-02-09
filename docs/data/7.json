@@ -1,0 +1,547 @@
+{
+    "700": {
+        "file_id": 82,
+        "content": "            )\n        else:\n            mcts_no_term_writer = None\n        if TEST_WITH_TERMINAL:\n            mcts_w_term_save_path = writer_dir / \"with_terminal_reward\"\n            if local_rank == 0 and not mcts_w_term_save_path.exists():\n                mcts_w_term_save_path.mkdir(parents=True)\n            dist.barrier()\n            mcts_w_term_writer = jsonlines.open(\n                mcts_w_term_save_path / f\"{local_rank}.jsonl\", \"a\"\n            )\n        else:\n            mcts_w_term_writer = None\n        cnt = 0\n        correct_cnt_dict = dict()\n        t0 = time.time()\n        for i in (pbar := tqdm(range(len(test_ds)), disable=(local_rank != 0))):\n            if i % world_size == local_rank:\n                results = test_problem(\n                    args,\n                    i,\n                    test_ds[i],\n                    cot_writer,\n                    cot_sc_writer,\n                    mcts_no_term_writer,\n                    mcts_w_term_writer,\n                )\n                for k, v in results.items():",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:593-622"
+    },
+    "701": {
+        "file_id": 82,
+        "content": "The code initializes `mcts_no_term_writer` and `mcts_w_term_writer`, which are used for saving MCTS results without and with terminal rewards, respectively. It also creates a progress bar `pbar` for iterating over `test_ds`. The `results` variable stores the results of calling `test_problem()` function for each iteration. Finally, it updates the `correct_cnt_dict` based on the results.",
+        "type": "comment"
+    },
+    "702": {
+        "file_id": 82,
+        "content": "                    if isinstance(v, int):\n                        if k not in correct_cnt_dict:\n                            correct_cnt_dict[k] = 0\n                        correct_cnt_dict[k] += v\n                    elif isinstance(v, dict):\n                        if k not in correct_cnt_dict:\n                            correct_cnt_dict[k] = dict()\n                        for sub_k, sub_v in v.items():\n                            if sub_k not in correct_cnt_dict[k]:\n                                correct_cnt_dict[k][sub_k] = 0\n                            correct_cnt_dict[k][sub_k] += sub_v\n                cnt += 1\n                results_strs = _result_str(correct_cnt_dict, cnt, join_str=\"; \")\n                pbar.set_description(results_strs)\n        print_with_rank(results_strs)\n        cnt_list = gather_scalar(cnt, local_rank, world_size)\n        gathered_results = {}\n        for k, v in correct_cnt_dict.items():\n            if isinstance(v, int):\n                gathered_list = gather_scalar(int(v), local_rank, world_size)",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:623-646"
+    },
+    "703": {
+        "file_id": 82,
+        "content": "This code updates a dictionary of correct counts, handling both integer and nested dictionary values. It then gathers the counts across different ranks for further processing.",
+        "type": "comment"
+    },
+    "704": {
+        "file_id": 82,
+        "content": "                if local_rank == 0:\n                    gathered_results[k] = sum(gathered_list)\n            elif isinstance(v, dict):\n                gathered_results[k] = {}\n                for sub_k, sub_v in v.items():\n                    gathered_list = gather_scalar(float(sub_v), local_rank, world_size)\n                    if local_rank == 0:\n                        gathered_results[k][sub_k] = sum(gathered_list)\n            else:\n                raise ValueError\n        if local_rank == 0:\n            total_cnt = sum(cnt_list)\n            t1 = time.time()\n            total_results_strs = _result_str(gathered_results, total_cnt)\n            print(cur_args)\n            print(\"TOTAL RESULTS:\\n\", total_results_strs)\n            print(\"Time: {}\".format(t1 - t0))",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v.py:647-665"
+    },
+    "705": {
+        "file_id": 82,
+        "content": "The code gathers results from distributed processes and combines them into a single dictionary. It handles dictionaries recursively, summing values across processes, and then prints the total results with timing information for process 0.",
+        "type": "comment"
+    },
+    "706": {
+        "file_id": 83,
+        "content": "/tsllm/offline_rl/test_sft_and_v_rlhf.py",
+        "type": "filepath"
+    },
+    "707": {
+        "file_id": 83,
+        "content": "The code handles Reinforcement Learning for LLMs by setting up search parameters, models for text generation, rollout methods, token limits, reward calculations, and CotSC scenario comparisons. It also manages reward data structures, gathers results from multiple processes, and prints total results with time taken if the local rank is 0.",
+        "type": "summary"
+    },
+    "708": {
+        "file_id": 83,
+        "content": "import os\nfrom pathlib import Path\nfrom typing import List, Optional\nimport torch.distributed as dist\nfrom tsllm.distributed.utils import print_with_rank, init_distributed, gather_scalar\nfrom transformers import AutoTokenizer, pipeline\nimport torch\nfrom functools import partial\nfrom tsllm.envs import get_env_datasets, get_default_query_str_builder\nfrom tsllm.envs.rlhf.prompt import PROBLEM_FORMAT_STR\nfrom tsllm.inference.trajectory_collector import _mcts_rollout_v1, _mcts_rollout_v2\nfrom tsllm.inference.value import value_fn\nimport json\nfrom tsllm.llm.ct2_utils import load_ct2_model\nfrom tsllm.mcts.utils import get_root\nfrom tsllm.model import load_critic_model\nfrom tsllm.model.modeling_actor_critic import AutoModelForCausalLMWithValueHead\nimport torch\nimport jsonlines\nfrom tsllm.llm.text_generation import llm_gen_ct2\nimport time\nimport numpy as np\nfrom tqdm import tqdm\nfrom tsllm.mcts.tree import MCTS\nfrom dataclasses import dataclass\nfrom argparse import ArgumentParser\nimport ctranslate2\nfrom tsllm.inference.value import value_fn_rlhf",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:1-29"
+    },
+    "709": {
+        "file_id": 83,
+        "content": "The code imports necessary libraries and modules for distributed computing, text generation, and model training. It also includes functions for MCTS rollout, value function estimation, and loading models. The code initializes the environment, sets up the model, and prepares for text generation and inference using MCTS algorithm. It handles data processing and loading of CT2 model, and includes utility functions for distributed learning.",
+        "type": "comment"
+    },
+    "710": {
+        "file_id": 83,
+        "content": "import time\nimport importlib\n@dataclass\nclass SearchArgs:\n    temperature: float = 1.0 # sampling temperature\n    num_mcts_aggregation: int = 5 # how many trajectories to sample\n    max_length: int = 8 # max depth of tree\n    pb_c_init: float = 10 # for mcts exploration\n    # init_critic_value: bool = True # whether we use value function to initialize the tree node value\n    rollout_method: str = None # which tree-search method we use\n    # mask_no_terminal_reward_value: bool = False # whether we mask the non-terminal value\n    prune_node_under_v: Optional[float] = None\n    num_simulations: int = 10 # parameter for mcts-alpha\n    # aggregation parameters\n    reset_total_tree: bool = False # intra-tree\n    clear_total_tree: bool = False # inter-tree\n    mcts_sample: bool = False # whether to use sample in mcts-alpha\n    max_simulation: Optional[int] = None # hyperparameter for mcts-alpha\n    max_token: Optional[int] = None # hyperparameter for mct-rollout\n    # DFS hyper parameter\n    prune_ratio: Optional[float] = 0.7",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:31-57"
+    },
+    "711": {
+        "file_id": 83,
+        "content": "This code defines a `SearchArgs` class with various parameters for tree search methods in Reinforcement Learning. Parameters include temperature, aggregation, max length, exploration rate, rollout method, and more. It also includes options for pruning nodes under a certain value, resetting or clearing the tree between simulations, and setting hyperparameters for MCTS-alpha and MCT-rollout.",
+        "type": "comment"
+    },
+    "712": {
+        "file_id": 83,
+        "content": "    prune_value: Optional[float] = None\n    # COT-SC-Tree equals to RAP with select_by_prior=True\n    select_by_prior: bool = False\n    # COT-SC number\n    k_maj: int = 100\n    max_new_tokens: int = 64\ninput_prompt_format = PROBLEM_FORMAT_STR\nif __name__ == \"__main__\":\n    TEST_NO_TERMINAL = int(os.getenv(\"TEST_NO_TERMINAL\", 0))\n    TEST_WITH_TERMINAL = int(os.getenv(\"TEST_WITH_TERMINAL\", 0))\n    TEST_COT_GREEDY = int(os.getenv(\"TEST_COT_GREEDY\", 0))\n    TEST_COT_SC = int(os.getenv(\"TEST_COT_SC\", 0))\n    assert TEST_NO_TERMINAL + TEST_WITH_TERMINAL + TEST_COT_SC + TEST_COT_GREEDY > 0\n    parser = ArgumentParser()\n    parser.add_argument(\"--ct2_dir\", type=str, required=True)\n    parser.add_argument(\"--tokenizer_path\", type=str, required=True)\n    parser.add_argument(\"--critic_model_path\",type=str, required=True)\n    parser.add_argument(\"--save_dir\", type=str, required=True)\n    parser.add_argument(\"--env_name\", type=str, required=True)\n    parser.add_argument(\"--dataset_name\", type=str, default=\"Dahoas/synthetic-instruct-gptj-pairwise\")",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:58-83"
+    },
+    "713": {
+        "file_id": 83,
+        "content": "This code initializes various optional parameters for the task at hand. It includes parameters like prune_value, select_by_prior, k_maj, and max_new_tokens. The code also reads in environment variables to determine which test to run and what arguments are required. Finally, it parses these arguments using an ArgumentParser.",
+        "type": "comment"
+    },
+    "714": {
+        "file_id": 83,
+        "content": "    parser.add_argument(\"--train\", action='store_true', default=False)\n    config = parser.parse_args()\n    args_list = [\n        {\n            \"temperature\": 1.0,\n            \"max_length\": 64,\n            \"pb_c_init\": 3,\n            \"num_simulations\": 10,\n            \"k_maj\": 5,\n            \"num_mcts_aggregation\": 1,\n            \"max_simulation\": None,\n            \"max_token\": 5000,\n            \"reset_total_tree\": False,\n            \"clear_total_tree\": True,\n            \"rollout_method\": \"mcts.get_next_action\",\n            \"select_by_prior\": False,\n            \"max_new_tokens\": 64,\n            \"mcts_sample\": False,\n            \"prune_ratio\": 0.9,\n            \"prune_value\": None\n        }\n    ]\n    task_module = importlib.import_module(f\"tsllm.envs.{config.env_name}\")\n    save_dir = Path(config.save_dir) / config.env_name\n    local_rank, world_size = init_distributed()\n    if config.env_name == \"rlhf\":\n        task_dataset_kwargs = {\"path\": config.dataset_name, 'num_train_data': 30000}\n        #assert config.train",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:84-117"
+    },
+    "715": {
+        "file_id": 83,
+        "content": "The code snippet is setting up arguments and configurations for an Reinforcement Learning model. It initializes a parser to handle command line arguments, creates a list of configuration settings for the model, imports a task module, defines a save directory, initializes distributed processes, and specifies a dataset path and number of training data for a specific environment (\"rlhf\").",
+        "type": "comment"
+    },
+    "716": {
+        "file_id": 83,
+        "content": "        #task_dataset_kwargs = {\"path\": config.dataset_name, 'train_data_pre': 22500, 'train_data_post':30000}\n    else:\n        task_dataset_kwargs = {}\n    train_ds, test_ds = get_env_datasets(config.env_name, **task_dataset_kwargs)\n    if config.train:\n        print_with_rank('Use training set')\n        test_ds = train_ds\n    tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_path)\n    tokenizer.eos_token = \"### End\"\n    from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification\n    reward_name = \"OpenAssistant/reward-model-deberta-v3-large-v2\"\n    rank_model, reward_tokenizer = AutoModelForSequenceClassification.from_pretrained(reward_name), AutoTokenizer.from_pretrained(reward_name)\n    rank_model = rank_model.bfloat16().to(f\"cuda:{local_rank}\")\n    @torch.inference_mode()\n    def reward_fn(question, answer):    \n        inputs = reward_tokenizer(question, answer, return_tensors='pt').to(f\"cuda:{local_rank}\")\n        score = rank_model(**inputs).logits[0].cpu().item()",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:118-138"
+    },
+    "717": {
+        "file_id": 83,
+        "content": "This code is creating a dataset for the task, determining if it should use the training or testing set based on config.train, and initializing the tokenizer, reward model, and reward function. The reward model takes in a question and answer pair as input and outputs a score. This score can be used to evaluate the quality of the generated answers.",
+        "type": "comment"
+    },
+    "718": {
+        "file_id": 83,
+        "content": "        return score\n    if not config.critic_model_path == 'None':\n        critic = AutoModelForCausalLMWithValueHead.from_pretrained(config.critic_model_path).to(f\"cuda:{local_rank}\").bfloat16()\n        policy_forward_value = partial(value_fn_rlhf, critic, tokenizer)\n    else:\n        critic = None\n        policy_forward_value = None\n    ############ CONVERT MODEL to CT2 files ###################\n    dist.barrier()\n    # PS：如果convert好了，上面两步都可以跳过\n    ################ LOAD CT2 model ####################\n    # ct2_generator = ctranslate2.Generator(ct2_dir,\n    #                                       )\n    # ct2_sp = spm.SentencePieceProcessor(os.path.join(ct2_dir, \"tokenizer.model\"))\n    ct2_generator = ctranslate2.Generator(\n        config.ct2_dir, device=\"cuda\", device_index=local_rank, compute_type=\"float32\"\n    )\n    def prompt_fn(problem_input: str):\n        return input_prompt_format.format(question=problem_input)\n    def cot_direct_output(args, problem_inst, stop, **kwargs):\n        prompt = prompt_fn(problem_inst[\"question\"])",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:139-166"
+    },
+    "719": {
+        "file_id": 83,
+        "content": "This code initializes a critic model if the config specifies a model path, otherwise it sets it to None. It also initializes a policy forward value based on whether there is a critic model or not. The code then proceeds to convert the model to CT2 files using ctranslate2 generator and defines prompt and cot_direct_output functions for further processing.",
+        "type": "comment"
+    },
+    "720": {
+        "file_id": 83,
+        "content": "        texts, logps = llm_gen_ct2(\n            ct2_generator,\n            tokenizer,\n            static_prompt=None,\n            prompt=prompt,\n            num_sequence=1,\n            stop=tokenizer.eos_token_id,\n            **kwargs,\n        )\n        reward_list = [reward_fn(prompt, txt) for txt in texts]\n        return reward_list[0], list(zip(texts, reward_list))\n    def cot_sc_output(args, problem_inst, stop, **kwargs):\n        prompt = prompt_fn(problem_inst[\"question\"])\n        texts, logps = llm_gen_ct2(\n            ct2_generator,\n            tokenizer,\n            static_prompt=None,\n            prompt=prompt,\n            num_sequence=args.k_maj,\n            stop=tokenizer.eos_token_id,\n            max_batch_size=50,\n            **kwargs,\n        )\n        reward_list = [reward_fn(prompt, txt) for txt in texts]\n        judge_results = max(reward_list)\n        return judge_results, list(zip(texts, reward_list))\n    def llm_forward_fn():\n        from llm.text_generation import llm_forward_ct2\n        llm_gen_v2 = partial(llm_forward_ct2, ct2_generator, tokenizer)",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:167-197"
+    },
+    "721": {
+        "file_id": 83,
+        "content": "The code snippet is from a machine learning model and appears to be responsible for generating text using LLM (Language Model) and evaluating the quality of generated outputs by applying a reward function. The code includes functions llm_gen_ct2, cot_sc_output, and llm_forward_fn which are used for text generation, output evaluation, and LLM forward pass respectively. The tokenizer is used to convert text into numerical sequences for model input. The reward_fn is applied to the generated texts and their corresponding prompts to evaluate the quality of each output. The max_batch_size parameter in cot_sc_output function limits the number of texts generated at a time.",
+        "type": "comment"
+    },
+    "722": {
+        "file_id": 83,
+        "content": "        return llm_gen_v2\n    def mcts_multi_search(args: \"SearchArgs\", problem_inst, no_terminal_reward=True):\n        env = task_module.Env(\n            config={\n                \"max_actions\": 50,\n                \"sep\": \"\",\n                \"max_length\": args.max_length,\n                \"temperature\": args.temperature,\n            },\n            problems=[\n                {\n                    \"question\": problem_inst[\"question\"],\n                }\n            ],\n            llm_forward_fn=llm_forward_fn(),\n            tokenizer=tokenizer,\n            reward_fn=reward_fn,\n        )\n        # llm_gen_fn=partial(llm_gen_with_logp_v1, model, tokenizer),\n        mcts = MCTS(\n            cfg={\n                \"num_simulations\": args.num_simulations,\n                \"pb_c_base\": 19652,\n                \"pb_c_init\": args.pb_c_init,\n                \"root_dirichlet_alpha\": 0.3,\n                \"root_noise_weight\": 0.25,\n                \"no_terminal_reward\": no_terminal_reward,\n            }\n        )\n        if args.rollout_method == \"mcts.rollout\":",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:198-229"
+    },
+    "723": {
+        "file_id": 83,
+        "content": "This code defines a function that performs MCTS search, initializes an environment for the given problem instance, and sets up an MCTS object with specified parameters. The environment is initialized with the provided question from the problem instance, using the given LLM forward function, tokenizer, and reward function. If the rollout method is set to \"mcts.rollout\", it uses the MCTS object for rollouts.",
+        "type": "comment"
+    },
+    "724": {
+        "file_id": 83,
+        "content": "            assert args.max_token is not None and args.max_simulation is None\n            output_list, _, _ = mcts.rollout(\n                env,\n                args.num_mcts_aggregation,\n                policy_forward_value,\n                max_num_simulation=args.max_simulation,\n                max_token=args.max_token,\n                return_tree=True,\n            )\n        elif args.rollout_method == \"mcts.get_next_action\":\n            output_list = _mcts_rollout_v1(\n                mcts,\n                env,\n                policy_forward_value,\n                args.num_mcts_aggregation,\n                args.reset_total_tree,\n                sample=args.mcts_sample,\n                clear_total_tree=args.clear_total_tree\n            )\n            prompt = prompt_fn(problem_inst[\"question\"])\n            # if len(texts) > 0:\n            #     value_list = policy_forward_value(\n            #         [prompt + txt + env.sep for txt in texts]\n            #     ).tolist()\n            # else:\n            #     value_list = []",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:230-255"
+    },
+    "725": {
+        "file_id": 83,
+        "content": "The code checks the rollout method and performs a MCTS rollout or uses mcts.get_next_action to get output. It also handles maximum token and simulation settings, and can clear the total tree if needed. The prompt function is used to generate text for evaluation.",
+        "type": "comment"
+    },
+    "726": {
+        "file_id": 83,
+        "content": "        elif args.rollout_method == \"mcts.rap\":\n            output_list = mcts.rap(\n                env,\n                args.num_mcts_aggregation,\n                policy_forward_value,\n                args.select_by_prior,\n            )\n        elif args.rollout_method == \"mcts.beam_search\":\n            output_list = mcts.beam_search(\n                env, args.num_mcts_aggregation, args.max_length, policy_forward_value\n            )\n        elif args.rollout_method == \"mcts.dfs\":\n            # here the num_mcts_aggregation is the step_limit which indicate how many nodes \n            # will be visited in the tree.\n            output_list = mcts.dfs(\n                env, \n                args.num_mcts_aggregation, \n                policy_forward_value, \n                prune_value=args.prune_value,\n                prune_ratio=args.prune_ratio\n            )\n        else:\n            raise ValueError(\"Unknow rollout method: {}\".format(args.rollout_method))\n        texts = [o[\"text\"] for o in output_list]\n        prompt = prompt_fn(problem_inst[\"question\"])",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:256-280"
+    },
+    "727": {
+        "file_id": 83,
+        "content": "This code snippet handles different rollout methods for a reinforcement learning algorithm. If \"mcts.rap\" is specified, it runs the rapid action planning method. If \"mcts.beam_search\" is given, it executes the beam search algorithm. If \"mcts.dfs\" is set, it performs depth-first search. For any other unrecognized rollout method, it raises a ValueError. Finally, it extracts the text outputs and prompts for further processing.",
+        "type": "comment"
+    },
+    "728": {
+        "file_id": 83,
+        "content": "        reward_list = [reward_fn(prompt, txt) for txt in texts]\n        judge_results = {}\n        if len(reward_list) == 0:\n            # default reward as -1\n            assert args.rollout_method == \"mcts.rollout\"\n            reward_list = [-1] \n        judge_results[f\"{args.rollout_method}@agg_{args.num_mcts_aggregation}\"] = max(reward_list)\n        if output_list and args.rollout_method != \"mcts.rollout\":\n            num_token = output_list[-1][\"num_generated_token\"]\n        else:\n            num_token = mcts.num_generated_token\n        judge_results[\"#token\"] = num_token\n        return mcts, judge_results, output_list\n    def test_problem(\n        args,\n        idx,\n        problem_inst,\n        cot_writer,\n        cot_sc_writer,\n        mcts_no_term_writer,\n        mcts_w_term_writer,\n    ):\n        results = {}\n        def save_fn(writer, output, result: dict):\n            if writer is not None:\n                writer.write(\n                    {\n                        \"i\": idx,\n                        \"prompt\": problem_inst[\"question\"],",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:281-312"
+    },
+    "729": {
+        "file_id": 83,
+        "content": "The code initializes a reward list, handles cases with no rewards, calculates maximum reward, counts tokens, and returns an MCTS object, judge results, and output list. It also defines a save function for storing problem results.",
+        "type": "comment"
+    },
+    "730": {
+        "file_id": 83,
+        "content": "                        \"output\": output,\n                        \"result\": result\n                    }\n                )\n        if TEST_COT_GREEDY:\n            r_cot_greedy, cot_episodes = cot_direct_output(\n                args,\n                problem_inst,\n                stop=tokenizer.eos_token_id,\n                max_new_tokens=args.max_new_tokens,\n                temperature=args.temperature,\n                top_k=1,\n            )\n            save_fn(cot_writer, cot_episodes, r_cot_greedy)\n            results[\"cot-greedy\"] = r_cot_greedy\n        if TEST_WITH_TERMINAL:\n            mcts, r_with_terminal, with_terminal_episodes = mcts_multi_search(\n                args, problem_inst, False\n            )\n            # save_tree_path = save_dir / f\"tmp_tree\"\n            # if not save_tree_path.exists():\n            #     save_tree_path.mkdir(parents=True)\n            # json.dump(\n            #     get_root(mcts.root).to_json(),\n            #     open(save_tree_path / f\"{idx}_r{r_with_terminal}.json\", \"w\"),",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:313-339"
+    },
+    "731": {
+        "file_id": 83,
+        "content": "This code snippet is part of a larger program for reinforcement learning and testing. It tests the model using different approaches such as COT-greedy and with terminal states, saving the results accordingly. The results are then added to the \"results\" dictionary for further analysis or processing.",
+        "type": "comment"
+    },
+    "732": {
+        "file_id": 83,
+        "content": "            #     indent=2,\n            # )\n            save_fn(mcts_w_term_writer, with_terminal_episodes, r_with_terminal)\n            results[\"w/-terminal\"] = r_with_terminal\n        if TEST_COT_SC:\n            r_cot_sc, cot_sc_episodes = cot_sc_output(\n                args,\n                problem_inst,\n                stop=tokenizer.eos_token_id,\n                temperature=args.temperature,\n                max_new_tokens=args.max_new_tokens,\n                top_k=50,\n            )\n            save_fn(cot_sc_writer, cot_sc_episodes, r_cot_sc)\n            results[\"cot-sc\"] = r_cot_sc\n        return results\n    def _result_str(results, cnt, join_str=\"\\n\"):\n        res = \"\"\n        for k, v in results.items():\n            if isinstance(v, float):\n                res += f\"{k}: {v/cnt}\"\n            elif isinstance(v, dict):\n                res += f\"{k}: \"\n                res += \", \".join(\n                    [\n                        (\n                            f\"{sub_k}: {sub_v/cnt:.2f}\"\n                            if sub_k == \"#token\"",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:340-369"
+    },
+    "733": {
+        "file_id": 83,
+        "content": "This code is defining a function that evaluates the performance of an LLM (Language Model) in a task involving offline reinforcement learning. It measures the effectiveness with and without terminal episodes, as well as incorporating a special test for the CotSC (Cotton Sequence Claim) scenario. The results are then returned and formatted for clarity.",
+        "type": "comment"
+    },
+    "734": {
+        "file_id": 83,
+        "content": "                            else f\"{sub_k}: {sub_v/cnt}\"\n                        )\n                        for sub_k, sub_v in v.items()\n                    ]\n                )\n            else:\n                raise ValueError\n            res += join_str\n        res += f\"cnt: {cnt}\"\n        return res\n    for i_arg, cur_args in enumerate(args_list):\n        args = SearchArgs(**cur_args)\n        if args.mcts_sample:\n            print_with_rank('Use mcts sample mode, Make sure you are using code to generate rollout instead of test')\n        writer_dir = save_dir / (f\"args{i_arg}/\")\n        if local_rank == 0:\n            print(\"Search args: {}\".format(args))\n            if not writer_dir.exists():\n                writer_dir.mkdir(parents=True)\n            json.dump(cur_args, open(writer_dir / \"args.json\", \"w\"))\n        if TEST_COT_GREEDY:\n            cot_save_path = writer_dir / \"cot\"\n            if local_rank == 0 and not cot_save_path.exists():\n                cot_save_path.mkdir(parents=True)\n            dist.barrier()",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:370-398"
+    },
+    "735": {
+        "file_id": 83,
+        "content": "This code performs a search using specified arguments, handles MCTS sample mode, saves search arguments and possibly Cot information to designated directories for later use.",
+        "type": "comment"
+    },
+    "736": {
+        "file_id": 83,
+        "content": "            cot_writer = jsonlines.open(cot_save_path / f\"{local_rank}.jsonl\", \"a\")\n        else:\n            cot_writer = None\n        if TEST_COT_SC:\n            cot_sc_save_path = writer_dir / \"cot_sc\"\n            if local_rank == 0 and not cot_sc_save_path.exists():\n                cot_sc_save_path.mkdir(parents=True)\n            dist.barrier()\n            cot_sc_writer = jsonlines.open(\n                cot_sc_save_path / f\"{local_rank}.jsonl\", \"a\"\n            )\n        else:\n            cot_sc_writer = None\n        if TEST_NO_TERMINAL:\n            mcts_no_term_save_path = writer_dir / \"no_terminal_reward\"\n            if local_rank == 0 and not mcts_no_term_save_path.exists():\n                mcts_no_term_save_path.mkdir(parents=True)\n            dist.barrier()\n            mcts_no_term_writer = jsonlines.open(\n                mcts_no_term_save_path / f\"{local_rank}.jsonl\", \"a\"\n            )\n        else:\n            mcts_no_term_writer = None\n        if TEST_WITH_TERMINAL:\n            mcts_w_term_save_path = writer_dir / \"with_terminal_reward\"",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:399-425"
+    },
+    "737": {
+        "file_id": 83,
+        "content": "This code is setting up file writers for various test results. It creates a writer if the corresponding TEST flag is set, and sets it to None otherwise. The code also ensures that directories are created if they don't already exist, and uses distributed barriers in some cases.",
+        "type": "comment"
+    },
+    "738": {
+        "file_id": 83,
+        "content": "            if local_rank == 0 and not mcts_w_term_save_path.exists():\n                mcts_w_term_save_path.mkdir(parents=True)\n            dist.barrier()\n            mcts_w_term_writer = jsonlines.open(\n                mcts_w_term_save_path / f\"{local_rank}.jsonl\", \"a\"\n            )\n        else:\n            mcts_w_term_writer = None\n        cnt = 0\n        reward_dict = dict()\n        t0 = time.time()\n        for i in (pbar := tqdm(range(len(test_ds)), disable=(local_rank != 0))):\n            if i % world_size == local_rank:\n                results = test_problem(\n                    args,\n                    i,\n                    test_ds[i],\n                    cot_writer,\n                    cot_sc_writer,\n                    mcts_no_term_writer,\n                    mcts_w_term_writer,\n                )\n                for k, v in results.items():\n                    if isinstance(v, float):\n                        if k not in reward_dict:\n                            reward_dict[k] = 0\n                        reward_dict[k] += v",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:426-453"
+    },
+    "739": {
+        "file_id": 83,
+        "content": "This code sets up the mcts_w_term_writer for saving game data and initializes a reward_dict. It then iterates through test_ds range, calling the test_problem function on each iteration. The results from this function are added to the reward_dict if they're floats.",
+        "type": "comment"
+    },
+    "740": {
+        "file_id": 83,
+        "content": "                    elif isinstance(v, dict):\n                        if k not in reward_dict:\n                            reward_dict[k] = dict()\n                        for sub_k, sub_v in v.items():\n                            if sub_k not in reward_dict[k]:\n                                reward_dict[k][sub_k] = 0\n                            reward_dict[k][sub_k] += sub_v\n                    else:\n                        raise NotImplementedError\n                cnt += 1\n                results_strs = _result_str(reward_dict, cnt, join_str=\"; \")\n                pbar.set_description(results_strs)\n        print_with_rank(results_strs)\n        cnt_list = gather_scalar(cnt, local_rank, world_size)\n        gathered_results = {}\n        for k, v in reward_dict.items():\n            if isinstance(v, float):\n                gathered_list = gather_scalar(v, local_rank, world_size)\n                if local_rank == 0:\n                    gathered_results[k] = sum(gathered_list)\n            elif isinstance(v, dict):",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:454-478"
+    },
+    "741": {
+        "file_id": 83,
+        "content": "This code handles rewards data structure. It checks the type of each value in the reward dictionary, adding it to the appropriate key or creating new keys as needed. It also handles gathering and summarizing results across multiple processes for accurate calculations.",
+        "type": "comment"
+    },
+    "742": {
+        "file_id": 83,
+        "content": "                gathered_results[k] = {}\n                for sub_k, sub_v in v.items():\n                    gathered_list = gather_scalar(float(sub_v), local_rank, world_size)\n                    if local_rank == 0:\n                        gathered_results[k][sub_k] = sum(gathered_list)\n            else:\n                raise ValueError\n        if local_rank == 0:\n            total_cnt = sum(cnt_list)\n            t1 = time.time()\n            total_results_strs = _result_str(gathered_results, total_cnt)\n            print(cur_args)\n            print(\"TOTAL RESULTS:\\n\", total_results_strs)\n            print(\"Time: {}\".format(t1 - t0))",
+        "type": "code",
+        "location": "/tsllm/offline_rl/test_sft_and_v_rlhf.py:479-494"
+    },
+    "743": {
+        "file_id": 83,
+        "content": "This code gathers results from multiple processes, sums them if the local rank is 0, and prints the total results with time taken. It uses `gather_scalar` to collect float values from different sub-values in a dictionary.",
+        "type": "comment"
+    },
+    "744": {
+        "file_id": 84,
+        "content": "/tsllm/offline_rl/utils.py",
+        "type": "filepath"
+    },
+    "745": {
+        "file_id": 84,
+        "content": "Functions to write data to a JSONL file, load data from a JSONL file, and set up random seed across different libraries.",
+        "type": "summary"
+    },
+    "746": {
+        "file_id": 84,
+        "content": "import json\nfrom typing import Optional\nimport random\nimport numpy as np\nimport os\nimport torch\ndef write_to_jsonl(data, output_file):\n    cnt = 0\n    with open(output_file, \"w\") as outfile:\n        for item in data:\n            outfile.write(json.dumps(item) + \"\\n\")\n            cnt += len(item[\"answer\"])\n        print(\"Write {} items into {}\".format(cnt, output_file))\ndef load_jsonl(file_path):\n    data_list = []\n    with open(file_path, \"r\", encoding=\"utf-8\") as file:\n        for line in file:\n            data = json.loads(line.strip())\n            data_list.append(data)\n    return data_list\ndef setup_seed(seed):\n    torch.manual_seed(seed)\n    torch.cuda.manual_seed_all(seed)\n    np.random.seed(seed)\n    random.seed(seed)\n    os.environ[\"PYTHONHASHSEED\"] = str(seed)\n    torch.backends.cudnn.deterministic = True",
+        "type": "code",
+        "location": "/tsllm/offline_rl/utils.py:1-33"
+    },
+    "747": {
+        "file_id": 84,
+        "content": "Functions to write data to a JSONL file, load data from a JSONL file, and set up random seed across different libraries.",
+        "type": "comment"
+    },
+    "748": {
+        "file_id": 85,
+        "content": "/tsllm/rl/config.py",
+        "type": "filepath"
+    },
+    "749": {
+        "file_id": 85,
+        "content": "The code provides a configurable RLConfig class with options for reinforcement learning tasks, including model, optimizer, scheduler, tokenizer, train settings, MCTS configuration, environment settings, and optional FSDP configuration. It also includes methods to convert dictionary to RLConfig object and serialize it back into dictionary.",
+        "type": "summary"
+    },
+    "750": {
+        "file_id": 85,
+        "content": "from typing import Dict, List, Optional, Any\nfrom dataclasses import dataclass, field\nfrom torch.distributed.fsdp import ShardingStrategy\nfrom torch.distributed.fsdp.fully_sharded_data_parallel import StateDictType\nfrom peft import PeftConfig\n@dataclass\nclass BaseConfig:\n    @classmethod\n    def from_dict(cls, config: Dict[str, Any]):\n        return cls(**config)\n    def __getitem__(self, k):\n        if hasattr(self, k):\n            return getattr(self, k)\n        else:\n            raise KeyError(\"Have no attribute named {}.\".format(k))\n    def get(self, k, default):\n        if hasattr(self, k):\n            return getattr(self, k)\n        else:\n            return default\n@dataclass\nclass ModelConfig(BaseConfig):\n    model_path: str\n    critic_model_path: Optional[str] = None\n    cache_dir: Optional[str] = None\n    model_arch_type: str = \"causal\"\n    peft_config: Optional[Dict] = None\n    value_state_dict_path: Optional[Dict] = None\n    # config for critic model, \n    #  since we have \"ValueHeadLLM\" and \"AutoModelForCausalLMWithValueHead\"",
+        "type": "code",
+        "location": "/tsllm/rl/config.py:1-37"
+    },
+    "751": {
+        "file_id": 85,
+        "content": "This code defines two classes, `BaseConfig` and `ModelConfig`, using the `dataclass` decorator for creating Python data classes. The `from_dict` class method allows objects of these classes to be instantiated from dictionaries. The `__getitem__` and `get` methods provide dictionary-like access to config attributes. The `ModelConfig` also includes optional fields for model path, critic model path, cache dir, model arch type, peft configuration, and value state dict path.",
+        "type": "comment"
+    },
+    "752": {
+        "file_id": 85,
+        "content": "    #  this may be removed in future versions.\n    value_model_type_name: str=\"ValueHeadLLM\"\n    def __post_init__(self):\n        from peft import get_peft_config\n        if isinstance(self.peft_config, dict):\n            self.peft_config = get_peft_config(self.peft_config)\n@dataclass\nclass TokenizerConfig(BaseConfig):\n    tokenizer_path: str\n    padding_side: str = \"left\"\n    truncation_side: str = \"right\"\n@dataclass\nclass TrainConfig(BaseConfig):\n    seq_length: int\n    epochs: int\n    micro_batch_size: Optional[int] = 4\n    sft_micro_batch_size: Optional[int] = 4\n    gradient_accumulation_steps: Optional[int] = 4\n    n_rollout: int = 10\n    n_problem_per_gpu_rollout: Optional[int] = 100\n    n_step_per_rollout: Optional[int] = 20\n    eval_interval: Optional[int] = 1\n    eval_n_problem: Optional[int] = 1\n    checkpoint_interval: int = 1\n    gamma: float = 0.99\n    gae_lambda: float = 0.95\n    pure_sft: bool = False\n    sft_loss_coef: Optional[float] = 1.0\n    value_loss_coef: Optional[float] = 0.5\n    train_epoch: Optional[int] = 1",
+        "type": "code",
+        "location": "/tsllm/rl/config.py:38-78"
+    },
+    "753": {
+        "file_id": 85,
+        "content": "This code defines several classes and configuration settings for a machine learning model. It includes options for the value model type, tokenizer path, training epochs, sequence length, and more. These settings allow users to customize their model's behavior and parameters during training and inference.",
+        "type": "comment"
+    },
+    "754": {
+        "file_id": 85,
+        "content": "    project_name: str = \"MCTS_train\"\n    entity_name: Optional[str] = None\n    group_name: Optional[str] = None\n    checkpoint_dir: Optional[str] = \"ckpts\"\n    save_optimizer: bool = True\n    rollout_logging_dir: Optional[str] = None\n    tracker: Optional[str] = \"wandb\"\n    logging_dir: Optional[str] = None\n    tags: Optional[List[str]] = field(default_factory=list)\n    seed: int = 42\n    minibatch_size: Optional[int] = None\n    pre_sft_datapath: Optional[str] = None\n    pre_onpolicy_datapath: Optional[str] = None\n    pre_onpolicy_datapath_train_test: Optional[str] = None\n    pre_onpolicy_datapath_test: Optional[str] = None\n    onpolicy_per_problem_max_size: Optional[int] = 3\n    sft_per_problem_max_size: Optional[int] = 5\n    env_name: str = \"\"\n    task_dataset_kwargs: dict = field(default_factory=dict)\n    # task_dataset_kwargs is a dict that should store task-specific\n    # kwargs for task_module.get_train_test_dataset\n    # e.g. num_train_data: Optional[int] = 1000 is for envs.gsm8k\n@dataclass\nclass MCTSConfig(BaseConfig):",
+        "type": "code",
+        "location": "/tsllm/rl/config.py:80-112"
+    },
+    "755": {
+        "file_id": 85,
+        "content": "This code defines a class \"MCTSConfig\" which contains various configuration options for the MCTS_train project. It includes options like project name, entity and group names, checkpoint directory, optimizer saving, logging directories, tracker usage, seed value, minibatch size, and task-specific dataset kwargs. These settings can be used to customize the behavior of the MCTS_train project according to specific needs.",
+        "type": "comment"
+    },
+    "756": {
+        "file_id": 85,
+        "content": "    num_simulations: int = 20\n    pb_c_base: float = 19652\n    pb_c_init: float = 10\n    root_dirichlet_alpha: float = 0.3\n    root_noise_weight: float = 0.25\n@dataclass\nclass OptimizerConfig(BaseConfig):\n    name: str\n    kwargs: Dict[str, Any] = field(default_factory=dict)\n@dataclass\nclass SchedulerConfig(BaseConfig):\n    name: str\n    kwargs: Dict[str, Any] = field(default_factory=dict)\n    warmup_ratio: Optional[float] = None\n    num_warmup_steps: Optional[int] = None\n# CAUTION: keep an eye on extra comma\n@dataclass\nclass EnvConfig(BaseConfig):\n    stop_str: str = \"The answer is \"\n    max_actions: int = 2\n    max_length: int = 6\n    is_few_shot: bool = False\n    generation_config: dict = field(default_factory=dict)\n@dataclass\nclass FSDPConfig(BaseConfig):\n    mixed_precision: bool = True\n    use_fp16: bool = False\n    sharding_strategy: ShardingStrategy = ShardingStrategy.FULL_SHARD\n    checkpoint_type: StateDictType = StateDictType.SHARDED_STATE_DICT\n    # alternatively can use SHARDED_STATE_DICT save one file per rank, and can resize the world-size.",
+        "type": "code",
+        "location": "/tsllm/rl/config.py:113-152"
+    },
+    "757": {
+        "file_id": 85,
+        "content": "This code defines several config classes for different model components such as OptimizerConfig, SchedulerConfig, EnvConfig, and FSDPConfig. Each class has attributes that control various aspects of the model's behavior and training process. The classes inherit from BaseConfig and use dataclasses for easy configuration handling. Some optional parameters are specified with \"Optional\" types to allow flexibility in their usage.",
+        "type": "comment"
+    },
+    "758": {
+        "file_id": 85,
+        "content": "    fsdp_activation_checkpointing: bool = True\n    pure_bf16: bool = True\n    optimizer: str = \"AdamW\"\n@dataclass\nclass RLConfig:\n    model: ModelConfig\n    optimizer: OptimizerConfig\n    scheduler: SchedulerConfig\n    tokenizer: TokenizerConfig\n    train: TrainConfig\n    mcts: MCTSConfig\n    env: EnvConfig\n    fsdp: Optional[FSDPConfig] = None\n    @classmethod\n    def from_dict(cls, config: Dict):\n        \"\"\"\n        Convert dictionary to TRLConfig.\n        \"\"\"\n        return cls(\n            model=ModelConfig.from_dict(config[\"model\"]),\n            tokenizer=TokenizerConfig.from_dict(config[\"tokenizer\"]),\n            optimizer=OptimizerConfig.from_dict(config[\"optimizer\"]),\n            scheduler=SchedulerConfig.from_dict(config[\"scheduler\"]),\n            train=TrainConfig.from_dict(config[\"train\"]),\n            mcts=MCTSConfig.from_dict(config[\"mcts\"]),\n            env=EnvConfig.from_dict(config[\"env\"]),\n            fsdp=FSDPConfig.from_dict(config[\"fsdp\"]) if \"fsdp\" in config else None,\n        )\n    def to_dict(self):",
+        "type": "code",
+        "location": "/tsllm/rl/config.py:153-185"
+    },
+    "759": {
+        "file_id": 85,
+        "content": "This code defines a class `RLConfig` with various configuration options for reinforcement learning tasks, including model, optimizer, scheduler, tokenizer, train settings, MCTS configuration, and environment settings. It also includes an optional FSDP configuration if present in the input dictionary. The class has two methods: `from_dict` to convert a dictionary into an `RLConfig` object, and `to_dict` to serialize the config back into a dictionary.",
+        "type": "comment"
+    },
+    "760": {
+        "file_id": 85,
+        "content": "        data = {\n            \"model\": self.model.__dict__,\n            \"tokenizer\": self.tokenizer.__dict__,\n            \"optimizer\": self.optimizer.__dict__,\n            \"scheduler\": self.scheduler.__dict__,\n            \"train\": self.train.__dict__,\n            \"mcts\": self.mcts.__dict__,\n            \"env\": self.env.__dict__,\n        }\n        if self.fsdp is not None:\n            data[\"fsdp\"] = self.fsdp.__dict__\n        return data",
+        "type": "code",
+        "location": "/tsllm/rl/config.py:186-198"
+    },
+    "761": {
+        "file_id": 85,
+        "content": "This function creates a dictionary 'data' containing the attributes of model, tokenizer, optimizer, scheduler, train, mcts, and environment objects. If fsdp is not None, it also includes 'fsdp'. It then returns this data dictionary.",
+        "type": "comment"
+    },
+    "762": {
+        "file_id": 86,
+        "content": "/tsllm/rl/data/buffer.py",
+        "type": "filepath"
+    },
+    "763": {
+        "file_id": 86,
+        "content": "The function handles variable-length inputs and validates padding sides, while the code defines a class for managing data with methods to add/clear experiences, retrieve items by index, and create DataLoader objects.",
+        "type": "summary"
+    },
+    "764": {
+        "file_id": 86,
+        "content": "from typing import List, Sequence\nimport torch\nimport torch.nn.functional as F\nfrom torch.utils.data import Dataset, DataLoader\nfrom tsllm.distributed.utils import print_with_rank\nfrom tsllm.rl.data.node_types import TimeStep, Trajectory, MCTSBatch\nfrom functools import partial\nfrom torch.nn.utils.rnn import pad_sequence\ndef collate_fn(\n    padding_side: str,\n    pad_token_id: int,\n    max_action_length: int,\n    max_num_actions: int,\n    elems: Sequence[TimeStep],\n) -> MCTSBatch:\n    if padding_side == \"left\":\n        # Left padding of already left-padded queries\n        query_tensors = pad_sequence(\n            [elem.query_tensor.flip(0) for elem in elems],\n            padding_value=pad_token_id,\n            batch_first=True,\n        ).flip(1)\n    elif padding_side == \"right\":\n        query_tensors = pad_sequence(\n            [elem.query_tensor for elem in elems],\n            padding_value=pad_token_id,\n            batch_first=True,\n        )\n    else:\n        raise ValueError(f\"Invalid padding side: {padding_side}\")",
+        "type": "code",
+        "location": "/tsllm/rl/data/buffer.py:1-32"
+    },
+    "765": {
+        "file_id": 86,
+        "content": "This function collates a sequence of TimeStep elements into an MCTSBatch. It uses pad_sequence to handle padding, depending on the 'padding_side' argument. If 'padding_side' is 'left', it pads the start of each query tensor; if 'right', it pads the end of each query tensor. Raises ValueError for invalid padding side.",
+        "type": "comment"
+    },
+    "766": {
+        "file_id": 86,
+        "content": "    for elem in elems:\n        # pad from [flexible_n_action, flexible_act_len] to [n_action, max_action_length]\n        elem.legal_actions_tensor = F.pad(\n            elem.legal_actions_tensor,\n            (\n                0,\n                max_action_length - elem.legal_actions_tensor.shape[1],\n                0,\n                max_num_actions - elem.legal_actions_tensor.shape[0],\n            ),\n            mode=\"constant\",\n            value=pad_token_id,\n        )\n        # pad from [flexible_n_action] to [n_action]\n        elem.action_probs = F.pad(\n            elem.action_probs,\n            (0, max_num_actions - elem.action_probs.shape[0]),\n            mode=\"constant\",\n            value=0.0,\n        )\n    try:\n        padded_response_tensor = pad_sequence(\n            [elem.response_tensor for elem in elems],\n            padding_value=pad_token_id,\n            batch_first=True,\n        )\n    except Exception as e:\n        print_with_rank([elem.response_tensor.shape for elem in elems])\n        print_with_rank([elem.response_tensor for elem in elems])",
+        "type": "code",
+        "location": "/tsllm/rl/data/buffer.py:34-63"
+    },
+    "767": {
+        "file_id": 86,
+        "content": "This code pads tensors for elements in a list to match the standard tensor dimensions. It handles variable-length legal actions, action probabilities, and response tensors. If there's an error during padding, it prints the shape of the input tensors and the individual tensors.",
+        "type": "comment"
+    },
+    "768": {
+        "file_id": 86,
+        "content": "        raise e\n    return MCTSBatch(\n        query_tensors,\n        # Right pad the rest, to have a single horizontal query/response split\n        padded_response_tensor,\n        torch.stack([elem.reward for elem in elems]),\n        torch.stack([elem.value for elem in elems]),\n        torch.stack([elem.returns for elem in elems]),\n        torch.stack([elem.legal_actions_tensor for elem in elems]),\n        torch.stack([elem.action_probs for elem in elems]),\n        torch.stack([elem.termiated for elem in elems]),\n        torch.stack([elem.truncated for elem in elems]),\n    )\nclass MCTSBuffer(Dataset):\n    def __init__(self, padding_side, pad_token_id, max_action_length, max_num_actions):\n        super().__init__()\n        self.history: List[TimeStep] = []\n        self.padding_side = padding_side\n        self.pad_token_id = pad_token_id\n        self.max_action_length = max_action_length\n        self.max_num_actions = max_num_actions\n    def __len__(self):\n        return len(self.history)\n    def push(self, exps: Sequence[TimeStep]):",
+        "type": "code",
+        "location": "/tsllm/rl/data/buffer.py:64-92"
+    },
+    "769": {
+        "file_id": 86,
+        "content": "This code is raising an exception 'e' if it occurs and then returns a MCTSBatch object containing various tensors including query_tensors, padded_response_tensor, rewards, values, returns, legal_actions_tensors, action_probs, terminated flags, and truncated flags.\n\nThe class MCTSBuffer is initialized with a list of TimeStep history, padding side, pad_token_id, max_action_length, and max_num_actions. It also returns the length of the history and pushes a sequence of TimeStep experiences into the history.",
+        "type": "comment"
+    },
+    "770": {
+        "file_id": 86,
+        "content": "        self.history += exps\n    def clear(self):\n        self.history = []\n    def __getitem__(self, index: int) -> TimeStep:\n        return self.history[index]\n    def create_loader(\n        self,\n        batch_size: int,\n        shuffle: bool,\n    ) -> DataLoader:\n        return DataLoader(\n            self,\n            batch_size,\n            shuffle=shuffle,\n            collate_fn=partial(\n                collate_fn,\n                self.padding_side,\n                self.pad_token_id,\n                self.max_action_length,\n                self.max_num_actions,\n            ),\n        )",
+        "type": "code",
+        "location": "/tsllm/rl/data/buffer.py:93-117"
+    },
+    "771": {
+        "file_id": 86,
+        "content": "The code defines a class for managing and accessing data. It has methods to add experiences to the history, clear the history, get items from the history by index, and create a DataLoader object with specified batch size and shuffle option.",
+        "type": "comment"
+    },
+    "772": {
+        "file_id": 87,
+        "content": "/tsllm/rl/data/node_types_new.py",
+        "type": "filepath"
+    },
+    "773": {
+        "file_id": 87,
+        "content": "The code defines dataclasses for TimeStep and neural network data, utilizing scipy's lfilter for returns calculation. It includes tokenizing input strings and policy-based reinforcement learning for values and returns. The class also handles tensors and calculates rewards based on value index.",
+        "type": "summary"
+    },
+    "774": {
+        "file_id": 87,
+        "content": "from dataclasses import dataclass\nimport numpy as np\nimport torch\nfrom torchtyping import TensorType\nfrom typing import Optional, Sequence, List\nfrom transformers import AutoTokenizer\nfrom tsllm.distributed.utils import print_with_rank, print_rank_0\ndef _tokenize_fn(s, tokenizer, drop_bos: bool = False):\n    input_ids = tokenizer(s, return_tensors=\"pt\", padding=True).input_ids\n    if drop_bos and torch.all(input_ids[:, 0] == tokenizer.bos_token_id):\n        input_ids = input_ids[:, 1:]\n    return input_ids\n@dataclass\nclass TimeStep:\n    query_tensor: TensorType[\"query_length\"]\n    response_tensor: TensorType[\"response_length\"]\n    reward: TensorType\n    value: TensorType\n    returns: TensorType\n    legal_actions_tensor: TensorType[\"num_action\", \"max_action_length\"]\n    # legal_actions_attn_mask: TensorType[\"num_action\", \"max_action_length\"]\n    action_probs: TensorType[\"num_action\"]\n    termiated: TensorType\n    truncated: TensorType\n    @classmethod\n    def from_string(\n        cls,\n        tokenizer: AutoTokenizer,",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:1-33"
+    },
+    "775": {
+        "file_id": 87,
+        "content": "This code defines a dataclass called \"TimeStep\" that contains various tensors such as query_tensor, response_tensor, reward, value, returns, legal_actions_tensor, action_probs, terminated and truncated. The class also has a classmethod named from_string which takes an AutoTokenizer instance and likely converts a string into a TimeStep object using the given tokenizer.",
+        "type": "comment"
+    },
+    "776": {
+        "file_id": 87,
+        "content": "        query_str: str,\n        response_str: str,\n        reward: float,\n        value: float,\n        legal_actions: List[str],\n        action_probs: TensorType[\"num_action\"],\n        terminated: bool,\n        truncated: bool,\n    ):\n        assert (\n            tokenizer.padding_side == \"right\"\n        ), \"the tokenizer's padding side should be right.\"\n        assert tokenizer.pad_token != None, \"Your tokenizer's pad_token is None\"\n        # here only squeeze the first batch dimension\n        query_tensor = _tokenize_fn(query_str, tokenizer, False).squeeze_(0)\n        total_tensor = _tokenize_fn(\n            query_str + response_str, tokenizer, False\n        ).squeeze_(0)\n        response_tensor = total_tensor[len(query_tensor) :]\n        total_legal_action_qa_tensor = _tokenize_fn(\n            [query_str + action_str for action_str in legal_actions], tokenizer, False\n        )\n        legal_action_tensor = total_legal_action_qa_tensor[:, len(query_tensor) :]\n        # yapf: disable\n        return cls(query_tensor,",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:34-61"
+    },
+    "777": {
+        "file_id": 87,
+        "content": "This function tokenizes input strings, applies padding, and creates tensors for query, response, and legal actions. It asserts the tokenizer's padding side and checks if the pad_token is not None. It then uses the _tokenize_fn to create query, total, response, and legal_action_tensors by passing the necessary strings and tokenizer.",
+        "type": "comment"
+    },
+    "778": {
+        "file_id": 87,
+        "content": "                   response_tensor,\n                   torch.tensor(reward),\n                   torch.tensor(value),\n                   torch.tensor(0.),\n                   legal_action_tensor,\n                   torch.tensor(action_probs),\n                   torch.tensor(terminated),\n                   torch.tensor(truncated))\n        # yapf: enable\nimport scipy.signal\ndef discount_cumsum(x, discount):\n    if isinstance(x, torch.Tensor):\n        x = x.numpy()\n        return torch.tensor(\n            scipy.signal.lfilter([1], [1, float(-discount)], x[::-1], axis=0)[\n                ::-1\n            ].copy()\n        )\n    else:\n        return scipy.signal.lfilter([1], [1, float(-discount)], x[::-1], axis=0)[::-1]\ndef _compute_return_fn(rews, vals, gamma, gae_lambda, last_value):\n    last_gae_lam = 0\n    reversed_adv = []\n    for t in reversed(range(len(rews))):\n        next_v = vals[t + 1] if t < len(rews) - 1 else last_value\n        delta = rews[t] + gamma * next_v - vals[t]\n        last_gae_lam = delta + gamma * gae_lambda * last_gae_lam",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:62-94"
+    },
+    "779": {
+        "file_id": 87,
+        "content": "This code defines a function \"discount_cumsum\" that computes the cumulative discounted sum of a list of numbers using scipy.signal's lfilter function. It also defines another function \"_compute_return_fn\" which takes in a list of rewards, values, gamma (discount factor), gae_lambda, and last_value as parameters. This function calculates the Generalized Advantage Estimation (GAE) by iterating over the reversed range of the length of rewards and updating the delta value for each time step.",
+        "type": "comment"
+    },
+    "780": {
+        "file_id": 87,
+        "content": "        reversed_adv.append(last_gae_lam)\n    adv = torch.tensor(reversed_adv[::-1])\n    ret = adv + vals\n    return ret\n@dataclass\nclass Trajectory:\n    timesteps: Sequence[TimeStep]\n    def compute_returns(\n        self, gamma: float = 0.99, gae_lambda: float = 0.95, last_value: float = 0\n    ):\n        rews = torch.tensor([ts.reward for ts in self.timesteps])\n        vals = torch.tensor([ts.value for ts in self.timesteps])\n        ret = _compute_return_fn(rews, vals, gamma, gae_lambda, last_value)\n        ## ========= trlx PPO's implementation ===========\n        # lastgaelam = 0\n        # advantages_reversed = []\n        # for t in reversed(range(response_length)):\n        #     nextvalues = values[:, t + 1] if t < response_length - 1 else 0.0\n        #     delta = rewards[:, t] + self.gamma * nextvalues - values[:, t]\n        #     lastgaelam = delta + self.gamma * self.lam * lastgaelam\n        #     advantages_reversed.append(lastgaelam)\n        # advantages = torch.stack(advantages_reversed[::-1], dim=1)",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:95-120"
+    },
+    "781": {
+        "file_id": 87,
+        "content": "This code computes returns for a trajectory by taking rewards and values from the timesteps, applying a function to compute advantages based on gamma and lambda, and then adds these advantages to the values. This is done using a reversed approach where lastgaelam (last generalized advantage estimation lambda) is updated in reverse order. Finally, the advantages are stacked in reverse order for each timestep.",
+        "type": "comment"
+    },
+    "782": {
+        "file_id": 87,
+        "content": "        # returns = advantages + values\n        # if use_whitening:\n        #     advantages = whiten(advantages)\n        ## ========= OpenAI SpinningUp PPO's implementation ===========\n        # rews = [ts.reward for ts in self.timesteps] + [last_value]\n        # vals = [ts.value for ts in self.timesteps] + [last_value]\n        # rews = np.array(rews)\n        # vals = np.array(vals)\n        # deltas = rews[:-1] + gamma * vals[1:] - vals[:-1]\n        # adv = discount_cumsum(deltas, gamma * gae_lambda)\n        # ret = discount_cumsum(rews, gamma)[:-1]\n        for i in range(len(self.timesteps)):\n            self.timesteps[i].returns = ret[i]\n@dataclass\nclass MCTSBatch:\n    query_tensor: TensorType[\"bsz\", \"query_length\"]\n    response_tensor: TensorType[\"bsz\", \"response_length\"]\n    reward: TensorType[\"bsz\"]\n    value: TensorType[\"bsz\"]\n    returns: TensorType[\"bsz\"]\n    legal_actions_tensor: TensorType[\"bsz\", \"num_action\", \"max_action_length\"]\n    # legal_actions_attn_mask: TensorType[\"bsz\", \"num_action\", \"max_action_length\"]",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:121-147"
+    },
+    "783": {
+        "file_id": 87,
+        "content": "This code snippet is calculating the returns for each timestep in a batch of data. It uses rewards and values from the timesteps to calculate the deltas, then computes the advantages using discounted cumulative sums. The returns are stored in the corresponding timestep object. The MCTSBatch class represents a batch of data with query tensor, response tensor, reward, value, returns, legal_actions_tensor (and potentially legal_actions_attn_mask).",
+        "type": "comment"
+    },
+    "784": {
+        "file_id": 87,
+        "content": "    action_probs: TensorType[\"bsz\", \"num_action\"]\n    termiated: TensorType[\"bsz\"]\n    truncated: TensorType[\"bsz\"]\n    def to(self, *args, **kwargs):\n        self.query_tensor = self.query_tensor.to(*args, **kwargs)\n        self.response_tensor = self.response_tensor.to(*args, **kwargs)\n        self.reward = self.reward.to(*args, **kwargs)\n        self.value = self.value.to(*args, **kwargs)\n        self.returns = self.returns.to(*args, **kwargs)\n        self.legal_actions_tensor = self.legal_actions_tensor.to(*args, **kwargs)\n        self.action_probs = self.action_probs.to(*args, **kwargs)\n        self.termiated = self.termiated.to(*args, **kwargs)\n        self.truncated = self.truncated.to(*args, **kwargs)\n@dataclass\nclass SftInstance:\n    input_ids: TensorType[\"seq_len\"]\n    label: TensorType[\"seq_len\"]\n    returns: TensorType[\"seq_len\"]\n    mask: TensorType[\"seq_len\"]\n    @classmethod\n    def from_string(\n        cls,\n        q_str: str,\n        r_str: str,\n        tokenizer: AutoTokenizer,\n        policy_forward_seq_value: callable,",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:148-177"
+    },
+    "785": {
+        "file_id": 87,
+        "content": "This code is defining classes for handling data in a neural network model. It includes methods for converting strings to tensors and moving tensors to specific devices (e.g., GPU). The SftInstance class takes input IDs, labels, returns, and mask as input.",
+        "type": "comment"
+    },
+    "786": {
+        "file_id": 87,
+        "content": "        gamma: float,\n        gae_lambda: float,\n        IGNORE_IDX=-100,\n    ):\n        q_ids = _tokenize_fn(q_str, tokenizer, False).squeeze(0)\n        r_ids = _tokenize_fn(r_str, tokenizer, True).squeeze(0)\n        total_ids = _tokenize_fn(q_str + r_str, tokenizer, False).squeeze(0)\n        assert len(total_ids) == len(q_ids) + len(r_ids)\n        label = total_ids.clone()\n        label[: len(q_ids)] = IGNORE_IDX\n        input_ids = total_ids\n        answer_steps = r_str.split(\"\\n\")\n        vs = []\n        mask = torch.zeros_like(input_ids)\n        current_str = q_str\n        value_seq = policy_forward_seq_value(q_str + r_str).squeeze(0)\n        for i, a in enumerate(answer_steps):\n            if len(a) == 0:\n                if i != len(answer_steps) - 1:\n                    print_with_rank(\n                        \"possible problems met in sft instance building. {}\".format(\n                            answer_steps\n                        )\n                    )\n                continue\n            current_str += a + \"\\n\"",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:178-206"
+    },
+    "787": {
+        "file_id": 87,
+        "content": "This code tokenizes input strings, creates labels and input_ids for a language model, and initializes necessary variables for a policy-based reinforcement learning algorithm. It handles potential problems in answer steps of the instance being built.",
+        "type": "comment"
+    },
+    "788": {
+        "file_id": 87,
+        "content": "            current_ids = _tokenize_fn(current_str, tokenizer, False).squeeze(0)\n            # current_value = policy_forward_value_fn(current_str).item()\n            current_value = value_seq[len(current_ids) - 1]\n            mask[len(current_ids) - 1] = 1\n            vs.append(current_value)\n        vs = torch.tensor(vs)\n        rews = torch.zeros_like(vs)\n        rews[-1] = 1.0  # sft instance is corrent.\n        rets = _compute_return_fn(\n            rews=rews, vals=vs, gamma=gamma, gae_lambda=gae_lambda, last_value=0\n        )  # sft instances always terminate.\n        returns = torch.zeros_like(input_ids)\n        nonzero_indices = mask.nonzero()\n        assert len(nonzero_indices) == len(vs), (\n            len(nonzero_indices),\n            len(vs),\n            nonzero_indices,\n            vs,\n        )\n        for i, idx in enumerate(nonzero_indices):\n            returns[idx.item()] = rets[i]\n        return cls(input_ids, label, returns, mask)\n@dataclass\nclass SftBatch:\n    input_ids: TensorType[\"bsz\", \"seq_len\"]",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:207-233"
+    },
+    "789": {
+        "file_id": 87,
+        "content": "The code defines a function that processes Sentence-Fragment Transformer (SFT) instances by tokenizing the input string, calculating values and returns for each instance, and creating a batch of data with input IDs, labels, and returns. The returns are calculated based on computed returns using a given gamma and gae_lambda parameters. The code also includes a class definition for SftBatch to store this processed batch data.",
+        "type": "comment"
+    },
+    "790": {
+        "file_id": 87,
+        "content": "    label: TensorType[\"bsz\", \"seq_len\"]\n    attn_mask: TensorType[\"bsz\", \"seq_len\"]\n    returns: TensorType[\"bsz\", \"seq_len\"]\n    mask: TensorType[\"bsz\", \"seq_len\"]  # value_mask\n    def to(self, *args, **kwargs):\n        self.input_ids = self.input_ids.to(*args, **kwargs)\n        self.label = self.label.to(*args, **kwargs)\n        self.attn_mask = self.attn_mask.to(*args, **kwargs)\n        self.returns = self.returns.to(*args, **kwargs)\n        self.mask = self.mask.to(*args, **kwargs)\n@dataclass\nclass TrajInstance:\n    input_ids: TensorType[\"seq_len\"]\n    label: TensorType[\"seq_len\"]\n    returns: TensorType[\"seq_len\"]\n    mask: TensorType[\"seq_len\"]\n    question: str\n    response: str\n    @classmethod\n    def from_string(\n        cls,\n        q_str: str,\n        r_str: str,\n        value_index: np.array,\n        reward_list: np.array,\n        tokenizer: AutoTokenizer,\n        policy_forward_seq_value: callable,\n        gamma: float,\n        gae_lambda: float,\n        cal_value: bool,\n        use_gae=True,\n        IGNORE_IDX=-100,",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:234-269"
+    },
+    "791": {
+        "file_id": 87,
+        "content": "The code defines a class that takes input, label, returns, and mask tensors of shape \"bsz\", \"seq_len\". It also has a question and response string attributes. The classmethod from_string creates an instance of the class using a question string, response string, value index array, reward list array, tokenizer, policy forward sequence value function, gamma, gae_lambda, cal_value, use_gae, and IGNORE_IDX parameters.",
+        "type": "comment"
+    },
+    "792": {
+        "file_id": 87,
+        "content": "    ):\n        q_ids = _tokenize_fn(q_str, tokenizer, False).squeeze(0)\n        r_ids = _tokenize_fn(r_str, tokenizer, True).squeeze(0)\n        total_ids = _tokenize_fn(q_str + r_str, tokenizer, False).squeeze(0)\n        # Check whether q_str + r_str creates some new tokens\n        # assert len(total_ids) == len(q_ids) + len(r_ids)\n        label = total_ids.clone()\n        label[: len(q_ids)] = IGNORE_IDX\n        input_ids = total_ids\n        if cal_value:\n            value_index = torch.tensor(value_index).int()\n            reward_list = torch.tensor(reward_list).float()\n            mask = torch.zeros_like(input_ids)\n            # Check value index dimension is correct\n            assert value_index[0] == len(q_ids) - 1\n            assert value_index[-1] == len(mask) - 1\n            # assert r_str.split(\"\\n\")[-1] == \"\"\n            # answer_steps = r_str.split(\"\\n\")[:-1]  # The last one is null or eos\n            vs = []\n            # current_str = q_str\n            # TODO: Organize code and check logic\n            if use_gae:",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:270-296"
+    },
+    "793": {
+        "file_id": 87,
+        "content": "This code segment tokenizes input questions and references, concatenates them, checks if new tokens are created, creates a label tensor with ignore values for the question part, assigns input_ids with total_ids, calculates rewards based on value index, asserts that the value index is correct, and initializes a list vs for further processing.",
+        "type": "comment"
+    },
+    "794": {
+        "file_id": 87,
+        "content": "                value_seq = policy_forward_seq_value(q_str + r_str).squeeze(0)\n                # mask and reward for the final answer\n                # Value index\n                mask[value_index[:-1]] = 1\n                # Final reward index\n                mask[value_index[-1]] = 2\n                vs = value_seq[value_index[:-1]]\n                rews = reward_list\n                rets = _compute_return_fn(\n                    rews=rews, vals=vs, gamma=gamma, gae_lambda=gae_lambda, last_value=0\n                )  # sft instances always terminate.\n                # add the final reward\n                rets = torch.cat([rets, reward_list[-1:]])\n                returns = torch.zeros(len(input_ids))\n                nonzero_indices = mask.nonzero()\n                assert len(nonzero_indices) == len(rets) == len(vs) + 1\n                for i, idx in enumerate(nonzero_indices):\n                    returns[idx.item()] = rets[i]\n                # result = torch.tensor([result])\n            else:\n                # conduct MC return calculation",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:297-323"
+    },
+    "795": {
+        "file_id": 87,
+        "content": "This code calculates returns for a sequence of values and rewards. It applies a mask to select the value index and final reward, then computes returns using MC method. The function handles both terminating and non-terminating instances separately.",
+        "type": "comment"
+    },
+    "796": {
+        "file_id": 87,
+        "content": "                # Value index\n                mask[value_index[:-1]] = 1\n                # Final reward index\n                mask[value_index[-1]] = 2\n                assert value_index[-1] == len(mask) - 1\n                rets = discount_cumsum(reward_list, gamma)\n                # append the final reward\n                rets = torch.cat([rets, reward_list[-1:]])\n                returns = torch.zeros(len(input_ids))\n                nonzero_indices = mask.nonzero()\n                assert len(nonzero_indices) == len(rets)\n                for i, idx in enumerate(nonzero_indices):\n                    returns[idx.item()] = rets[i]\n        else:\n            # add padding tensor if not calculate value\n            # result = torch.tensor([result])\n            returns = torch.zeros(len(input_ids))\n            mask = torch.zeros_like(input_ids)\n        return cls(input_ids, label, returns, mask, q_str, r_str)\n@dataclass\nclass TrajBatch:\n    input_ids: TensorType[\"bsz\", \"seq_len\"]\n    label: TensorType[\"bsz\", \"seq_len\"]",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:324-352"
+    },
+    "797": {
+        "file_id": 87,
+        "content": "Creates a mask for value and final reward indices, calculates cumulative rewards, appends final reward, initializes returns tensor with zeros, assigns returns to nonzero indices in mask, and creates TrajBatch object with input_ids, label, returns, mask, q_str, r_str.",
+        "type": "comment"
+    },
+    "798": {
+        "file_id": 87,
+        "content": "    attn_mask: TensorType[\"bsz\", \"seq_len\"]\n    returns: TensorType[\"bsz\", \"seq_len\"]\n    mask: TensorType[\"bsz\", \"seq_len\"]  # value_mask\n    def to(self, *args, **kwargs):\n        self.input_ids = self.input_ids.to(*args, **kwargs)\n        self.label = self.label.to(*args, **kwargs)\n        self.attn_mask = self.attn_mask.to(*args, **kwargs)\n        self.returns = self.returns.to(*args, **kwargs)\n        self.mask = self.mask.to(*args, **kwargs)",
+        "type": "code",
+        "location": "/tsllm/rl/data/node_types_new.py:353-362"
+    },
+    "799": {
+        "file_id": 87,
+        "content": "This code defines a class method \"to\" that transfers the input_ids, label, attn_mask, and returns tensors to specified device. The attn_mask and returns tensors are of type TensorType[\"bsz\", \"seq_len\"], and the mask tensor is an alias for value_mask.",
+        "type": "comment"
+    }
+}

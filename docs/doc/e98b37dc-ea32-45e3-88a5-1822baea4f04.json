@@ -1,0 +1,10 @@
+{
+    "summary": "This code reads MCTS rollout data from a JSONL file, filters the top 5 answers based on their reward value, and saves the policy data to another JSONL file.",
+    "details": [
+        {
+            "comment": "This code reads MCTS rollout data from a JSONL file, filters the top 5 answers based on their reward value, and saves the policy data to another JSONL file.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/train_mcts_scripts/rlhf/filter_top_data_policy_training.py\":0-20",
+            "content": "import json\ntopk = 5\ndef load_jsonl(file_path):\n    data_list = []\n    with open(file_path, \"r\", encoding=\"utf-8\") as file:\n        for line in file:\n            data = json.loads(line.strip())\n            data_list.append(data)\n    return data_list\ndata_mcts = load_jsonl('') # your mcts rollout path here\nfor data in data_mcts:\n    data['answer'] = sorted(data['answer'], key=lambda item: item['reward'], reverse=True)[:topk] # topk\n# save policy data\nwith open('./rlhf_data_best5_mcts.jsonl', 'w') as file:\n    for data in data_mcts:\n        json_str = json.dumps(data)\n        file.write(json_str + '\\n')"
+        }
+    ]
+}
