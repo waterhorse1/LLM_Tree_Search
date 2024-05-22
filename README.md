@@ -1,6 +1,19 @@
 # TS_LLM: AlphaZero-like tree-search learning framework for LLMs 
 The official implementation of paper: [Alphazero-like Tree-Search can guide large language model decoding and training](https://arxiv.org/pdf/2309.17179.pdf)
 
+# Open Source Model
+We open source our trained policy and value network on Huggingface：
+
+* GSM8k:
+  - Policy: https://huggingface.co/OhCherryFire/llama2-7b-gsm8k-policy-hf
+  - Value: https://huggingface.co/OhCherryFire/llama2-7b-gsm8k-value
+* Game24:
+	- Policy: https://huggingface.co/OhCherryFire/llama2-7b-game24-policy-hf
+	- Value: https://huggingface.co/OhCherryFire/llama2-7b-game24-value
+* ProntoQA:
+	- Policy: https://huggingface.co/OhCherryFire/llama2-7b-prontoqa-policy-hf
+	- Value: https://huggingface.co/OhCherryFire/llama2-7b-prontoqa-value
+
 # Enviroment Installation
 please use correct version of `transformers` and `ctranlate2`
 ```
