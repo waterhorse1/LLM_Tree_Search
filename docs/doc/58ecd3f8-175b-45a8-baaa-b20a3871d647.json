@@ -1,0 +1,10 @@
+{
+    "summary": "The code executes a Python script named 'generate_data.py' three times with different parameters for each run. The aim is to generate data for an environment called gsm8k, and the generated data will be stored in different JSONL files. The code uses different CT2 directories for each run, indicating that it is generating data for different episodes of the gsm8k environment.",
+    "details": [
+        {
+            "comment": "The code executes a Python script named 'generate_data.py' three times with different parameters for each run. The aim is to generate data for an environment called gsm8k, and the generated data will be stored in different JSONL files. The code uses different CT2 directories for each run, indicating that it is generating data for different episodes of the gsm8k environment.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/offline_rl/gsm8k_data/gen_3.sh\":0-40",
+            "content": "set -e\nK=100\nT=0.7\nN_WORKER=16\nOUTPUT_DIR=./gsm8k_data/cot_sample/\nCUDA_DEVICES=0,1,2,3,4,5,6,7\nCT2_CACHE=$1\nTOKENIZER_PATH=$2\npython generate_data.py \\\n    -k $K \\\n    -t $T \\\n    --num_workers $N_WORKER \\\n    --gpu_ids $CUDA_DEVICES \\\n    --ct2_dir ${CT2_CACHE}/llama2_sft_ep1_ct2 \\\n    --tokenizer_path $TOKENIZER_PATH \\\n    --output_path ${OUTPUT_DIR}/gsm8k_train_cot_sample_offline_sft_k${K}_ep1.jsonl \\\n    --env_name gsm8k\npython generate_data.py \\\n    -k $K \\\n    -t $T \\\n    --num_workers $N_WORKER \\\n    --gpu_ids $CUDA_DEVICES \\\n    --ct2_dir ${CT2_CACHE}/llama2_sft_ep2_ct2 \\\n    --tokenizer_path $TOKENIZER_PATH \\\n    --output_path ${OUTPUT_DIR}/gsm8k_train_cot_sample_offline_sft_k${K}_ep2.jsonl \\\n    --env_name gsm8k\npython generate_data.py \\\n    -k $K \\\n    -t $T \\\n    --num_workers $N_WORKER \\\n    --gpu_ids $CUDA_DEVICES \\\n    --ct2_dir ${CT2_CACHE}/llama2_sft_ep3_ct2 \\\n    --tokenizer_path $TOKENIZER_PATH \\\n    --output_path ${OUTPUT_DIR}/gsm8k_train_cot_sample_offline_sft_k${K}_ep3.jsonl \\\n    --env_name gsm8k"
+        }
+    ]
+}

@@ -1,0 +1,10 @@
+{
+    "summary": "This script sets up an environment for testing policy and value functions using a CT2 model cache, critic model cache, and runs the test with specified arguments. It uses 8 processors per node and saves policy results in the given directory. The environment is set to rlhf.",
+    "details": [
+        {
+            "comment": "This script sets up an environment for testing policy and value functions using a CT2 model cache, critic model cache, and runs the test with specified arguments. It uses 8 processors per node and saves policy results in the given directory. The environment is set to rlhf.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/train_mcts_scripts/rlhf/test_policy_and_value.sh\":0-15",
+            "content": "set -e\n# export TEST_NO_TERMINAL=1\nexport TEST_WITH_TERMINAL=1\n# export TEST_COT_GREEDY=1\n# export TEST_COT_SC=1\n# export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7\nCT2_DIR={your ct2 model cache}\nCRITIC_PATH={your critic model cache}\ntorchrun --nproc_per_node=8 --master-port 29503 ../../tsllm/offline_rl/test_sft_and_v_rlhf.py \\\n    --critic_model_path $CRITIC_PATH \\\n    --tokenizer_path $CRITIC_PATH \\\n    --ct2_dir $CT2_DIR \\\n    --save_dir $1/policy_ep1 \\\n    --env_name rlhf"
+        }
+    ]
+}

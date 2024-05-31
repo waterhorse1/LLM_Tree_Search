@@ -1,0 +1,545 @@
+{
+    "500": {
+        "file_id": 63,
+        "content": "from typing import List, Optional, Tuple\nimport logging\nimport torch\nfrom torch import nn\nimport transformers\nfrom transformers.models.llama.modeling_llama import apply_rotary_pos_emb\nfrom einops import rearrange\nfrom flash_attn.flash_attn_interface import flash_attn_unpadded_qkvpacked_func\nfrom flash_attn.bert_padding import unpad_input, pad_input\ndef forward(\n    self,\n    hidden_states: torch.Tensor,\n    attention_mask: Optional[torch.Tensor] = None,\n    position_ids: Optional[torch.Tensor] = None,\n    past_key_value: Optional[Tuple[torch.Tensor]] = None,\n    output_attentions: bool = False,\n    use_cache: bool = False,\n) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:\n    \"\"\"Input shape: Batch x Time x Channel\n    attention_mask: [bsz, q_len]\n    \"\"\"\n    bsz, q_len, _ = hidden_states.size()\n    query_states = (\n        self.q_proj(hidden_states)\n        .view(bsz, q_len, self.num_heads, self.head_dim)\n        .transpose(1, 2)\n    )\n    key_states = (\n        self.k_proj(hidden_states)",
+        "type": "code",
+        "location": "/tsllm/model/llama_flash_attn_monkey_patch.py:1-37"
+    },
+    "501": {
+        "file_id": 63,
+        "content": "The code is defining a function `forward` that performs attention operation on input hidden states. It first projects the hidden states into query, key and value states. Then it reshapes them according to the number of heads and head dimension. Finally, it transposes the query states before performing the attention operation.",
+        "type": "comment"
+    },
+    "502": {
+        "file_id": 63,
+        "content": "        .view(bsz, q_len, self.num_heads, self.head_dim)\n        .transpose(1, 2)\n    )\n    value_states = (\n        self.v_proj(hidden_states)\n        .view(bsz, q_len, self.num_heads, self.head_dim)\n        .transpose(1, 2)\n    )\n    # [bsz, q_len, nh, hd]\n    # [bsz, nh, q_len, hd]\n    kv_seq_len = key_states.shape[-2]\n    assert past_key_value is None, \"past_key_value is not supported\"\n    cos, sin = self.rotary_emb(value_states, seq_len=kv_seq_len)\n    query_states, key_states = apply_rotary_pos_emb(\n        query_states, key_states, cos, sin, position_ids\n    )\n    # [bsz, nh, t, hd]\n    assert not output_attentions, (\n        \"output_attentions is not supported\",\n        output_attentions,\n    )\n    assert not use_cache, (\"use_cache is not supported\", use_cache)\n    # Flash attention codes from\n    # https://github.com/HazyResearch/flash-attention/blob/main/flash_attn/flash_attention.py\n    # transform the data into the format required by flash attention\n    qkv = torch.stack(\n        [query_states, key_states, value_states], dim=2",
+        "type": "code",
+        "location": "/tsllm/model/llama_flash_attn_monkey_patch.py:38-68"
+    },
+    "503": {
+        "file_id": 63,
+        "content": "This code performs a Flash attention operation, which involves transforming the data into the format required by Flash attention. It creates query, key, and value states and applies rotary position embedding to both. The resulting query_states and key_states are then transformed into the required format for Flash attention. The use of output_attentions and cache is not supported in this code.",
+        "type": "comment"
+    },
+    "504": {
+        "file_id": 63,
+        "content": "    )  # [bsz, nh, 3, q_len, hd]\n    qkv = qkv.transpose(1, 3)  # [bsz, q_len, 3, nh, hd]\n    # We have disabled _prepare_decoder_attention_mask in LlamaModel\n    # the attention_mask should be the same as the key_padding_mask\n    key_padding_mask = attention_mask\n    if key_padding_mask is None:\n        qkv = rearrange(qkv, \"b s ... -> (b s) ...\")\n        max_s = q_len\n        cu_q_lens = torch.arange(\n            0, (bsz + 1) * q_len, step=q_len, dtype=torch.int32, device=qkv.device\n        )\n        output = flash_attn_unpadded_qkvpacked_func(\n            qkv, cu_q_lens, max_s, 0.0, softmax_scale=None, causal=True\n        )\n        output = rearrange(output, \"(b s) ... -> b s ...\", b=bsz)\n    else:\n        nheads = qkv.shape[-2]\n        x = rearrange(qkv, \"b s three h d -> b s (three h d)\")\n        x_unpad, indices, cu_q_lens, max_s = unpad_input(x, key_padding_mask)\n        x_unpad = rearrange(\n            x_unpad, \"nnz (three h d) -> nnz three h d\", three=3, h=nheads\n        )\n        output_unpad = flash_attn_unpadded_qkvpacked_func(",
+        "type": "code",
+        "location": "/tsllm/model/llama_flash_attn_monkey_patch.py:69-92"
+    },
+    "505": {
+        "file_id": 63,
+        "content": "This code is responsible for handling attention masks in the Llama model. It transposes the input and then checks if there is an attention mask. If there isn't, it applies a function to unpadded QKV packed inputs with some parameters. If there is one, it rearranges the input, unpads it, and passes it through a function specifically designed for unpadded QKV packed inputs. The output is then rearranged back into its original shape.",
+        "type": "comment"
+    },
+    "506": {
+        "file_id": 63,
+        "content": "            x_unpad, cu_q_lens, max_s, 0.0, softmax_scale=None, causal=True\n        )\n        output = rearrange(\n            pad_input(\n                rearrange(output_unpad, \"nnz h d -> nnz (h d)\"), indices, bsz, q_len\n            ),\n            \"b s (h d) -> b s h d\",\n            h=nheads,\n        )\n    return self.o_proj(rearrange(output, \"b s h d -> b s (h d)\")), None, None\n# Disable the transformation of the attention mask in LlamaModel as the flash attention\n# requires the attention mask to be the same as the key_padding_mask\ndef _prepare_decoder_attention_mask(\n    self, attention_mask, input_shape, inputs_embeds, past_key_values_length\n):\n    # [bsz, seq_len]\n    return attention_mask\ndef replace_llama_attn_with_flash_attn():\n    cuda_major, cuda_minor = torch.cuda.get_device_capability()\n    if cuda_major < 8:\n        logging.warning(\n            \"Flash attention is only supported on A100 or H100 GPU during training due to head dim > 64 backward.\"\n            \"ref: https://github.com/HazyResearch/flash-attention/issues/190#issuecomment-1523359593\"",
+        "type": "code",
+        "location": "/tsllm/model/llama_flash_attn_monkey_patch.py:93-119"
+    },
+    "507": {
+        "file_id": 63,
+        "content": "This code snippet is modifying the LlamaModel to use Flash attention instead of the original attention mechanism. It introduces a function `replace_llama_attn_with_flash_attn()` which checks the CUDA version and ensures that only A100 or H100 GPUs are used for training due to limitations with Flash attention's head dimension. Additionally, it modifies `_prepare_decoder_attention_mask()` function to disable the transformation of the attention mask in LlamaModel since Flash attention requires the same mask as key\\_padding\\_mask.",
+        "type": "comment"
+    },
+    "508": {
+        "file_id": 63,
+        "content": "        )\n    transformers.models.llama.modeling_llama.LlamaModel._prepare_decoder_attention_mask = (\n        _prepare_decoder_attention_mask\n    )\n    transformers.models.llama.modeling_llama.LlamaAttention.forward = forward",
+        "type": "code",
+        "location": "/tsllm/model/llama_flash_attn_monkey_patch.py:120-124"
+    },
+    "509": {
+        "file_id": 63,
+        "content": "In this code snippet, the original `_prepare_decoder_attention_mask` function in `LlamaModel` is being overwritten with a custom function called `_prepare_decoder_attention_mask`. The `forward` function of `LlamaAttention` class is also being replaced.",
+        "type": "comment"
+    },
+    "510": {
+        "file_id": 64,
+        "content": "/tsllm/model/modeling_actor_critic.py",
+        "type": "filepath"
+    },
+    "511": {
+        "file_id": 64,
+        "content": "This code defines MLP heads, extends AutoModel for causal language models, and includes a Transformer-based model with Actor-Critic approach for sequence generation tasks, computing attention and hidden states while optionally caching intermediate results.",
+        "type": "summary"
+    },
+    "512": {
+        "file_id": 64,
+        "content": "from collections import OrderedDict\nfrom dataclasses import dataclass\nimport gc\nfrom typing import List, Optional, Tuple, Union\nimport torch\nfrom torch import nn\nimport transformers\nfrom transformers.modeling_outputs import ModelOutput\nfrom tsllm.model.modeling_base import PreTrainedModelWrapper\nfrom tsllm.model.utils import findattr\nfrom peft import PeftConfig\ndef make_head(n_embd: int, out: int, dtype: type = torch.float32) -> nn.Sequential:\n    \"\"\"Returns a generic sequential MLP head.\"\"\"\n    return nn.Sequential(\n        nn.Linear(n_embd, n_embd * 2, dtype=dtype),\n        nn.ReLU(),\n        nn.Linear(n_embd * 2, out, dtype=dtype),\n    )\ndef hf_get_hidden_size(config: transformers.PretrainedConfig) -> int:\n    \"\"\"Returns the hidden layer dimensionality of the model architecture specified\n    by the HuggingFace transformers config.\n    NOTE: Different model configurations have different hidden size attribute names.\n        - hidden_size: (OPTConfig, BloomConfig)\n        - n_embd: (GPT2Config, GPTJConfig)\n        - d_model: (PegasusConfig, XLNetConfig)",
+        "type": "code",
+        "location": "/tsllm/model/modeling_actor_critic.py:1-29"
+    },
+    "513": {
+        "file_id": 64,
+        "content": "This code defines functions for creating MLP heads and retrieving the hidden size from a HuggingFace transformers config. It also imports necessary modules, defines dataclasses and types, and creates a class that inherits from PreTrainedModelWrapper. The function hf_get_hidden_size handles different model configurations to retrieve their respective hidden layer dimensionality.",
+        "type": "comment"
+    },
+    "514": {
+        "file_id": 64,
+        "content": "    \"\"\"\n    hidden_size_attrs = (\"hidden_size\", \"n_embd\", \"d_model\")\n    return findattr(config, hidden_size_attrs)\n@dataclass\nclass CausalLMOutputWithValue(ModelOutput):\n    loss: Optional[torch.FloatTensor] = None\n    logits: Optional[torch.FloatTensor] = None\n    past_key_values: Optional[Tuple[Tuple[torch.FloatTensor]]] = None\n    hidden_states: Optional[Tuple[torch.FloatTensor]] = None\n    attentions: Optional[Tuple[torch.FloatTensor]] = None\n    cross_attentions: Optional[Tuple[torch.FloatTensor]] = None\n    value: Optional[torch.FloatTensor] = None\nclass AutoModelForCausalLMWithValueHead(PreTrainedModelWrapper):\n    \"\"\"An `AutoModel` class wrapper for `transformers` causal models that have a\n    language modeling head and a value head\n    \"\"\"\n    _auto_model_parent_class = transformers.AutoModelForCausalLM\n    _supported_modules = [\"v_head\", \"peft_config\"]\n    def __init__(\n        self,\n        base_model: transformers.PreTrainedModel,\n        peft_config: Optional[PeftConfig] = None,\n    ):\n        super().__init__(base_model, peft_config=peft_config)",
+        "type": "code",
+        "location": "/tsllm/model/modeling_actor_critic.py:30-59"
+    },
+    "515": {
+        "file_id": 64,
+        "content": "This code defines a class `CausalLMOutputWithValue` and a model wrapper `AutoModelForCausalLMWithValueHead`. The class represents the output of a causal language model, including loss, logits, past key values, hidden states, attentions, cross-attentions, and value. The model wrapper is used to extend transformers' AutoModel for causal language models with an additional value head and supports PEFT configuration.",
+        "type": "comment"
+    },
+    "516": {
+        "file_id": 64,
+        "content": "        self.v_head = make_head(hf_get_hidden_size(self.base_model.config), 1)\n    def forward(\n        self,\n        input_ids: torch.LongTensor = None,\n        attention_mask: Optional[torch.Tensor] = None,\n        past_key_values: Optional[List[torch.FloatTensor]] = None,\n        position_ids: Optional[List[torch.FloatTensor]] = None,\n        head_mask: Optional[torch.Tensor] = None,\n        labels: Optional[torch.LongTensor] = None,\n        inputs_embeds: Optional[torch.FloatTensor] = None,\n        use_cache: Optional[bool] = None,\n        output_attentions: Optional[bool] = None,\n        output_hidden_states: Optional[bool] = None,\n        return_dict: Optional[bool] = None,\n    ) -> Union[Tuple, CausalLMOutputWithValue]:\n        # # set use cache = False to use flash-attn\n        if use_cache is None:\n            use_cache = False\n        forward_kwargs = self.get_compatible_forward_kwargs(\n            input_ids=input_ids,\n            attention_mask=attention_mask,\n            position_ids=position_ids,",
+        "type": "code",
+        "location": "/tsllm/model/modeling_actor_critic.py:60-83"
+    },
+    "517": {
+        "file_id": 64,
+        "content": "The code defines a model class with a `v_head` attribute and a forward method. The forward method takes input arguments such as input_ids, attention_mask, etc., and returns CausalLMOutputWithValue. Use cache is set to False for flash-attn, and the method retrieves compatible kwargs from self.",
+        "type": "comment"
+    },
+    "518": {
+        "file_id": 64,
+        "content": "            past_key_values=past_key_values,\n            head_mask=head_mask,\n            inputs_embeds=inputs_embeds,\n            use_cache=use_cache,\n            labels=labels,\n            output_attentions=output_attentions,\n            output_hidden_states=output_hidden_states,\n            return_dict=return_dict,\n        )\n        forward_kwargs[\"output_hidden_states\"] = True\n        forward_kwargs[\"return_dict\"] = True\n        # # set use cache = False to use flash-attn\n        # assert not use_cache, (\"To use flast-attn, you should now use cache\", use_cache)\n        # forward_kwargs[\"use_cache\"] = False\n        # outputs = self.base_model(**forward_kwargs)\n        # value = self.v_head(outputs.hidden_states[-1]).squeeze(-1)\n        # if not return_dict:\n        #     outputs = (outputs.logits,) + outputs[1:] + (value,)\n        #     return outputs\n        # return CausalLMOutputWithValue(**outputs, value=value)\n        forward_kwargs.pop(\"labels\")\n        transformer_outputs = self.base_model.transformer(**forward_kwargs)",
+        "type": "code",
+        "location": "/tsllm/model/modeling_actor_critic.py:84-109"
+    },
+    "519": {
+        "file_id": 64,
+        "content": "This code snippet is for a Transformer-based model with an Actor-Critic approach, used for sequence generation tasks. It utilizes past key values and input embeddings to compute attention and hidden states. The use_cache parameter determines whether to cache intermediate results for efficiency. Flash-attn is disabled by default. The outputs include logits, attentions, and hidden states (optionally including the value).",
+        "type": "comment"
+    },
+    "520": {
+        "file_id": 64,
+        "content": "        # hidden_states = transformer_outputs[0]\n        value = self.v_head(transformer_outputs.hidden_states[-1]).squeeze(-1)\n        return CausalLMOutputWithValue(value=value)\n    def generate(self, *args, **kwargs) -> Union[ModelOutput, torch.LongTensor]:\n        return self.base_model.generate(*args, **kwargs)\n    def state_dict(self, *args, heads_only=False, **kwargs):\n        \"\"\"\n        Returns the state dictionary of the model. We add the state dictionary of the value head\n        to the state dictionary of the wrapped model by prepending the key with `v_head.`.\n        \"\"\"\n        v_head_state_dict = self.v_head.state_dict(*args, **kwargs)\n        if heads_only:\n            model_state_dict = OrderedDict()\n        else:\n            model_state_dict = self.base_model.state_dict(*args, **kwargs)\n        for k, v in v_head_state_dict.items():\n            model_state_dict[f\"v_head.{k}\"] = v\n        return model_state_dict\n    def post_init(self, state_dict):\n        \"\"\"\n        Adds the state dictionary of the value head to the state dictionary of the wrapped model",
+        "type": "code",
+        "location": "/tsllm/model/modeling_actor_critic.py:110-135"
+    },
+    "521": {
+        "file_id": 64,
+        "content": "This code defines a model for text generation that uses a transformer architecture. It includes a value head, which outputs the predicted value of each token in the generated sequence. The `generate` method is used to generate sequences from the input prompt. The `state_dict` method returns the state dictionary of the model, including the state dictionary of the value head. The `post_init` method adds the state dictionary of the value head to the state dictionary of the wrapped model.",
+        "type": "comment"
+    },
+    "522": {
+        "file_id": 64,
+        "content": "        by prepending the key with `v_head.`. This function removes the `v_head.` prefix from the\n        keys of the value head state dictionary.\n        \"\"\"\n        super().post_init()\n        for k in list(state_dict.keys()):\n            if \"v_head.\" in k:\n                state_dict[k.replace(\"v_head.\", \"\")] = state_dict.pop(k)\n        self.v_head.load_state_dict(state_dict, strict=False)\n        del state_dict\n        gc.collect()  # noqa: E702\n    def gradient_checkpointing_enable(self):\n        self.base_model.gradient_checkpointing_enable()\n    def gradient_checkpointing_disable(self):\n        self.base_model.gradient_checkpointing_disable()",
+        "type": "code",
+        "location": "/tsllm/model/modeling_actor_critic.py:136-152"
+    },
+    "523": {
+        "file_id": 64,
+        "content": "This code snippet defines a class with methods for loading state dictionaries and enabling/disabling gradient checkpointing. It removes the `v_head.` prefix from keys of value head state dictionary, loads the updated state dictionary into v_head, and provides functions to enable or disable gradient checkpointing in the base model.",
+        "type": "comment"
+    },
+    "524": {
+        "file_id": 65,
+        "content": "/tsllm/model/modeling_base.py",
+        "type": "filepath"
+    },
+    "525": {
+        "file_id": 65,
+        "content": "The code introduces a \"PreTrainedModelWrapper\" class that extends `transformers.PreTrainedModel` and integrates HuggingFace's `trl` library for Peft model support, efficiently downloading large models using Hub API, merges PyTorch downloads, and handles model states with post-initialization methods.",
+        "type": "summary"
+    },
+    "526": {
+        "file_id": 65,
+        "content": "# NOTE: This file contains a modified version of the `PreTrainedModelWrapper` class from\n# HuggingFace's `trl` library. The original source code can be found here:\n# https://github.com/lvwerra/trl/blob/78c13226bf8ea1ccd9b1c091f03a938098521f6c/trl/models/modeling_base.py\nimport inspect\nimport json\nimport os\nfrom typing import Any, Dict, List, Optional, Union\nimport torch\nimport torch.nn as nn\nimport transformers\nfrom huggingface_hub import hf_hub_download\nfrom peft import (\n    PeftConfig,\n    get_peft_config,\n    get_peft_model,\n    get_peft_model_state_dict,\n    PeftModel,\n)\nfrom tsllm.distributed.utils import print_rank_0, print_with_rank\nclass PreTrainedModelWrapper(nn.Module, transformers.utils.PushToHubMixin):\n    \"\"\"A wrapper around `transformers.PreTrainedModel`\n    Reference: @younesbelkada's `PreTrainedModelWrapper`\n    https://github.com/lvwerra/trl/blob/4f5c16fafde42d9aca971952bcdcc1f5a0a68cf0/trl/models/modeling_base.py#L2\n    Attributes:\n        _auto_model_parent_class (transformers.AutoModel): The `transformers.AutoModel`",
+        "type": "code",
+        "location": "/tsllm/model/modeling_base.py:1-32"
+    },
+    "527": {
+        "file_id": 65,
+        "content": "The code defines a class called \"PreTrainedModelWrapper\" that serves as a wrapper for the `transformers.PreTrainedModel` and extends it with additional functionality from HuggingFace's `trl` library. It allows for easy integration of Peft models and provides push-to-hub capabilities. The code references the original source code for this class, which can be found on GitHub.",
+        "type": "comment"
+    },
+    "528": {
+        "file_id": 65,
+        "content": "            type to base the wrapping behavior off of, e.g. `transformers.AutoModelForCausalLM`.\n        _supported_modules (List[str]): A list of attribute names for modules of\n            the underlying architecture model. This is used, for example, to save\n            and load any additional modules by manipulating the state dict.\n        _supported_args (List[str]): A list of arguments specific to the underlying\n            architecture to separate from arguments that are supported by the\n            parent `AutoModel` class. Any arguments that are not supported by the\n            underlying model will be passed to the parent `AutoModel` class.\n    \"\"\"\n    _auto_model_parent_class: transformers.AutoModel = None\n    _supported_modules: List[str] = None\n    # Supported args should come from a `PretrainedConfig` of the\n    # specific underlying type similar to how config instances can be used to instantiate\n    # `transformers.PreTrainedModel`s.\n    _supported_args: List[str] = []\n    def __init__(\n        self,",
+        "type": "code",
+        "location": "/tsllm/model/modeling_base.py:33-51"
+    },
+    "529": {
+        "file_id": 65,
+        "content": "This code defines a class with three attributes: _auto_model_parent_class, _supported_modules, and _supported_args. These attributes are used to specify the type of underlying model, the modules of the underlying architecture to save and load, and specific arguments for the underlying architecture, respectively. The __init__ method is called when creating an instance of this class.",
+        "type": "comment"
+    },
+    "530": {
+        "file_id": 65,
+        "content": "        base_model: Optional[transformers.PreTrainedModel] = None,\n        peft_config: Optional[PeftConfig] = None,\n        **kwargs,\n    ):\n        super().__init__()\n        self.base_model = base_model\n        # cache `forward` args for general use (avoids incompatible args across architectures)\n        self.forward_kwargs = inspect.getfullargspec(self.base_model.forward).args\n        self.is_loaded_in_8bit = getattr(base_model, \"is_loaded_in_8bit\", False)\n        if self.is_loaded_in_8bit:\n            raise NotImplementedError(\n                \"`is_loaded_in_8bit` is an experimental feature not yet fully supported. Please do not use it.\"\n            )\n        self.peft_config = peft_config\n    @property\n    def device(self):\n        return self.base_model.device\n    def compute_transition_scores(self, *args, **kwargs):\n        return self.base_model.compute_transition_scores(*args, **kwargs)\n    @classmethod\n    def _split_kwargs(cls, kwargs: Dict[str, Any]):\n        \"\"\"Separates the kwargs from the supported arguments within `supported_args`",
+        "type": "code",
+        "location": "/tsllm/model/modeling_base.py:52-77"
+    },
+    "531": {
+        "file_id": 65,
+        "content": "This code defines a class that serves as a base for PEFT models. It initializes the base model, caches forward function arguments, and handles 8-bit quantization. It also provides device property access and delegates transition scores computation to the underlying base model.",
+        "type": "comment"
+    },
+    "532": {
+        "file_id": 65,
+        "content": "        and those that are not\n        \"\"\"\n        supported_kwargs = {}\n        unsupported_kwargs = {}\n        for key, value in kwargs.items():\n            if key in cls._supported_args:\n                supported_kwargs[key] = value\n            else:\n                unsupported_kwargs[key] = value\n        return supported_kwargs, unsupported_kwargs\n    @classmethod\n    def from_config(\n        cls,\n        config: transformers.PretrainedConfig,\n        peft_config: Optional[PeftConfig] = None,\n        **kwargs,\n    ):\n        \"\"\"Instantiate the pretrained pytorch model from a configuration.\n        Args:\n            config (transformers.PretrainedConfig): The configuration to use to\n                instantiate the base model.\n        NOTE: Loading a model from its configuration file does **not** load the\n        model weights. It only affects the model's configuration. Use\n        `~transformers.AutoModel.from_pretrained` to load the model weights.\n        \"\"\"\n        if kwargs is not None:\n            wrapped_model_kwargs, from_config_kwargs = cls._split_kwargs(kwargs)",
+        "type": "code",
+        "location": "/tsllm/model/modeling_base.py:78-107"
+    },
+    "533": {
+        "file_id": 65,
+        "content": "The code defines a class method `from_config` that instantiates a pretrained PyTorch model from a configuration. It also includes a helper function `_split_kwargs` that splits the input kwargs into supported and unsupported ones. This helps to ensure only the supported arguments are used for instantiation, while preserving the unsupported ones.",
+        "type": "comment"
+    },
+    "534": {
+        "file_id": 65,
+        "content": "        else:\n            from_config_kwargs = {}\n            wrapped_model_kwargs = {}\n        base_model = cls._auto_model_parent_class.from_config(\n            config, **from_config_kwargs\n        )\n        if peft_config:\n            base_model = get_peft_model(peft_config)\n        model = cls(base_model, **wrapped_model_kwargs)\n        return model\n    @classmethod\n    def from_pretrained(  # noqa: max-complexity\n        cls,\n        pretrained_model_name_or_path: Union[str, transformers.PreTrainedModel],\n        revision=None,\n        peft_config: Optional[PeftConfig] = None,\n        *model_args,\n        **kwargs,\n    ):\n        \"\"\"Instantiate a pretrained pytorch model from a pretrained model configuration.\n        This method is a wrapper around `transformers.PreTrainedModel.from_pretrained`.\n        Please refer to the documentation of `transformers.PreTrainedModel.from_pretrained`\n        for more information.\n        Args:\n            pretrained_model_name_or_path (str or `transformers.PreTrainedModel`):",
+        "type": "code",
+        "location": "/tsllm/model/modeling_base.py:108-136"
+    },
+    "535": {
+        "file_id": 65,
+        "content": "This code defines a class method for instantiating pretrained PyTorch models from a pretrained model configuration. It first checks the given arguments, and if no specific model is provided, it creates an instance of the base model using the config provided. If a PEFT (Parameter-Efficient Fine-Tuning) configuration is present, it replaces the base model with a PEFT-wrapped model. The method ultimately returns the instantiated pretrained PyTorch model.",
+        "type": "comment"
+    },
+    "536": {
+        "file_id": 65,
+        "content": "                The identifier of the pretrained model to load or the pretrained model itself.\n            revision (str, *optional*): Optional specific Git branch, tag or commit hash.\n            *model_args (sequence of positional arguments, *optional*):\n                All remaining positional arguments will be passed to the `_auto_model_parent_class`.\n            **kwargs (dict, *optional*):\n                Dictionary of keyword arguments to pass to both the underlying `_auto_model_parent_class`\n                call (e.g. `transformers.AutoModelForCausalLM.from_pretrained`) and the specific\n                instance of the wrapped model.\n        NOTE: You must pass in arguments specific to the wrapped model as keyword arguments.\n        \"\"\"\n        if kwargs is not None:\n            peft_from_pretrained_kwargs = kwargs.pop(\"peft_from_pretrained_kwargs\", {})\n            peft_int8_kwargs = kwargs.pop(\"peft_int8_kwargs\", {})\n            wrapped_model_kwargs, from_pretrained_kwargs = cls._split_kwargs(kwargs)",
+        "type": "code",
+        "location": "/tsllm/model/modeling_base.py:137-152"
+    },
+    "537": {
+        "file_id": 65,
+        "content": "This code defines a function that loads a pretrained model or the model itself by specifying its identifier. The function takes three parameters: `model_id`, which is either the identifier of the pretrained model or the pretrained model itself; `revision`, an optional Git branch, tag, or commit hash; and `model_args`, a sequence of positional arguments that will be passed to the underlying `_auto_model_parent_class`. The function also takes keyword arguments `**kwargs`, which are passed both to the `_auto_model_parent_class` call and the specific instance of the wrapped model. Note that any keyword arguments specific to the wrapped model must be passed as `peft_from_pretrained_kwargs` or `peft_int8_kwargs`.",
+        "type": "comment"
+    },
+    "538": {
+        "file_id": 65,
+        "content": "        else:\n            peft_from_pretrained_kwargs = {}\n            peft_int8_kwargs = {}\n            from_pretrained_kwargs = {}\n            wrapped_model_kwargs = {}\n        if isinstance(pretrained_model_name_or_path, str):\n            is_loaded_in_8bit = (\n                from_pretrained_kwargs[\"load_in_8bit\"]\n                if \"load_in_8bit\" in from_pretrained_kwargs\n                else False\n            )\n        else:\n            is_loaded_in_8bit = getattr(\n                pretrained_model_name_or_path, \"is_loaded_in_8bit\", False\n            )\n        if is_loaded_in_8bit:\n            raise NotImplementedError(\n                \"`is_loaded_in_8bit` is not yet fully supported. Please do not use it.\"\n            )\n        if isinstance(pretrained_model_name_or_path, str):\n            # Check if there is a local peft adapter\n            local_peft_adapter = os.path.exists(\n                os.path.join(pretrained_model_name_or_path, \"adapter_config.json\")\n            )\n            base_model = None\n            try:",
+        "type": "code",
+        "location": "/tsllm/model/modeling_base.py:153-182"
+    },
+    "539": {
+        "file_id": 65,
+        "content": "This code checks if a pretrained model is loaded in 8-bit mode. If so, it raises a NotImplementedError as this feature is not yet supported. The code also determines if there's a local peft adapter by checking for the existence of 'adapter_config.json'. If found, the base model is set to None.",
+        "type": "comment"
+    },
+    "540": {
+        "file_id": 65,
+        "content": "                trained_adapter_config = PeftConfig.from_pretrained(\n                    pretrained_model_name_or_path\n                )\n            except ValueError:\n                trained_adapter_config = None\n            if peft_config is not None:\n                if trained_adapter_config is not None:\n                    print_with_rank(\n                        f\"WARNING: peft config file detected in {pretrained_model_name_or_path}\"\n                        \" but ignored since the argument `peft_config` is provided. Remove the\"\n                        \" argument `peft_config` to use the trained peft adapter.\"\n                    )\n                # Create a new peft adapter with the given config\n                base_model = cls._auto_model_parent_class.from_pretrained(\n                    pretrained_model_name_or_path, *model_args, **from_pretrained_kwargs\n                )\n                base_model = get_peft_model(base_model, peft_config)\n                print_with_rank(\"peft adapter initialised\")",
+        "type": "code",
+        "location": "/tsllm/model/modeling_base.py:183-203"
+    },
+    "541": {
+        "file_id": 65,
+        "content": "This code attempts to create a new peft adapter with a given config. If a peft_config is provided, it will print a warning and ignore the pretrained model's config file. It then initializes a base model from the pre-trained model path and applies the peft adapter on it. Finally, it prints \"peft adapter initialized\".",
+        "type": "comment"
+    },
+    "542": {
+        "file_id": 65,
+        "content": "            elif trained_adapter_config is not None:\n                peft_config = trained_adapter_config\n                # Use the pretrained (local or remote) peft adapter file \"adapter_config.json\"\n                base_model = cls._auto_model_parent_class.from_pretrained(\n                    trained_adapter_config.base_model_name_or_path,\n                    *model_args,\n                    **from_pretrained_kwargs,\n                )\n                # Load the peft weights in \"adapter_model.bin\" and wrap the base model with a PeftModel\n                base_model = PeftModel.from_pretrained(\n                    base_model,\n                    pretrained_model_name_or_path,\n                    **peft_from_pretrained_kwargs,\n                )\n                print_with_rank(\"Trained peft adapter loaded\")\n            if base_model is None:\n                # No peft\n                print_with_rank(\"Load Base Model, Won't matter if Warning\")\n                base_model = cls._auto_model_parent_class.from_pretrained(",
+        "type": "code",
+        "location": "/tsllm/model/modeling_base.py:205-226"
+    },
+    "543": {
+        "file_id": 65,
+        "content": "This code checks if a trained adapter configuration is present. If it is, it loads the pretrained adapter and base model using PeftModel, then prints a message. If no PEFT is available, it simply loads the base model from the specified directory.",
+        "type": "comment"
+    },
+    "544": {
+        "file_id": 65,
+        "content": "                    pretrained_model_name_or_path, *model_args, **from_pretrained_kwargs\n                )\n        elif isinstance(pretrained_model_name_or_path, transformers.PreTrainedModel):\n            base_model = pretrained_model_name_or_path\n            if peft_config is not None:\n                base_model = get_peft_model(base_model, peft_config)\n                print_with_rank(\"peft adapter initialized\")\n        else:\n            raise ValueError(\n                f\"Invalid type for `base_model_name_or_path`: {type(pretrained_model_name_or_path)}\"\n                \"Expected `str` or `transformers.PreTrainedModel`.\"\n            )\n        if peft_config is not None:\n            wrapped_model_kwargs[\"peft_config\"] = peft_config\n        model = cls(base_model, **wrapped_model_kwargs)\n        if isinstance(pretrained_model_name_or_path, str):\n            filename = os.path.join(pretrained_model_name_or_path, \"pytorch_model.bin\")\n            sharded_index_filename = os.path.join(\n                pretrained_model_name_or_path, \"pytorch_model.bin.index.json\"",
+        "type": "code",
+        "location": "/tsllm/model/modeling_base.py:227-250"
+    },
+    "545": {
+        "file_id": 65,
+        "content": "This code initializes a model based on the provided `pretrained_model_name_or_path`. If it is a string, it loads the PyTorch model binary file. If it's an instance of transformers.PreTrainedModel, it uses it directly or applies PEFT if a peft_config is provided. The wrapped model kwargs are then passed to the class constructor, and the model is initialized.",
+        "type": "comment"
+    },
+    "546": {
+        "file_id": 65,
+        "content": "            )\n            is_sharded = False\n            if not os.path.exists(filename):\n                try:\n                    filename = hf_hub_download(\n                        pretrained_model_name_or_path,\n                        \"pytorch_model.bin\",\n                        revision=revision,\n                    )\n                # Sharded\n                except Exception:\n                    if os.path.exists(sharded_index_filename):\n                        index_file_name = sharded_index_filename\n                    else:\n                        index_file_name = hf_hub_download(\n                            pretrained_model_name_or_path,\n                            \"pytorch_model.bin.index.json\",\n                            revision=revision,\n                        )\n                    with open(index_file_name, \"r\") as f:\n                        index = json.load(f)\n                    # Collect files containing weights from supported modules\n                    files_to_download = set()\n                    for k, v in index[\"weight_map\"].items():",
+        "type": "code",
+        "location": "/tsllm/model/modeling_base.py:251-275"
+    },
+    "547": {
+        "file_id": 65,
+        "content": "This code checks if the required model file exists. If not, it attempts to download the sharded PyTorch model using the Hugging Face Hub API. If the download encounters an exception, it looks for the sharded index file instead and extracts the necessary information to download only the required parts of the model. This ensures efficient downloading and handling of large models.",
+        "type": "comment"
+    },
+    "548": {
+        "file_id": 65,
+        "content": "                        if any([module in k for module in cls._supported_modules]):\n                            files_to_download.add(v)\n                    is_sharded = True\n            if is_sharded:\n                # Merge each shard into a state dict\n                # TODO: Optimize this to avoid wasting RAM\n                state_dict = {}\n                for shard_file in files_to_download:\n                    filename = os.path.join(pretrained_model_name_or_path, shard_file)\n                    # Download if shard file doesn't exist locally\n                    if not os.path.exists(filename):\n                        filename = hf_hub_download(\n                            pretrained_model_name_or_path, shard_file, revision=revision\n                        )\n                    state_dict.update(torch.load(filename, map_location=\"cpu\"))\n            else:\n                state_dict = torch.load(filename, map_location=\"cpu\")\n        else:\n            state_dict = pretrained_model_name_or_path.state_dict()",
+        "type": "code",
+        "location": "/tsllm/model/modeling_base.py:276-295"
+    },
+    "549": {
+        "file_id": 65,
+        "content": "This code checks if the model is sharded and downloads or merges shard files into a state dict. If not sharded, it directly loads the state dict from the given path. It also handles the case when pretrained_model_name_or_path is already a state dict itself.",
+        "type": "comment"
+    },
+    "550": {
+        "file_id": 65,
+        "content": "        print_with_rank(\"Load Linear Layer\")\n        model.post_init(state_dict=state_dict)\n        return model\n    def save_pretrained(self, *args, **kwargs):\n        \"\"\"Save the pretrained model to a directory. This method is a wrapper\n        around `transformers.PreTrainedModel.save_pretrained`. Please refer to\n        the documentation of `transformers.PreTrainedModel.save_pretrained` for\n        more information.\n        Args:\n            *args (`list`, *optional*):\n                Positional arguments passed along to the underlying model's\n                `save_pretrained` method.\n            **kwargs (`dict`, *optional*):\n                Keyword arguments passed along to the underlying model's\n                `save_pretrained` method.\n        \"\"\"\n        state_dict = kwargs.get(\"state_dict\", None)\n        if state_dict is None:\n            state_dict = self.state_dict()\n            kwargs[\"state_dict\"] = state_dict\n        if self.peft_config is not None:\n            # Save the heads, which are not part of the peft adapter",
+        "type": "code",
+        "location": "/tsllm/model/modeling_base.py:297-321"
+    },
+    "551": {
+        "file_id": 65,
+        "content": "This code defines a class with two methods: \"load_linear_layer\" and \"save_pretrained\". The \"load_linear_layer\" method is responsible for loading a linear layer into the model. It also initializes the model with the provided state dictionary. The \"save_pretrained\" method saves the pre-trained model to a directory, using underlying methods from the transformers library. If no state dictionary is provided, it creates one using the model's own state dictionary method and updates the kwargs accordingly.",
+        "type": "comment"
+    },
+    "552": {
+        "file_id": 65,
+        "content": "            os.makedirs(args[0], exist_ok=True)\n            save_path = os.path.join(args[0], \"pytorch_model.bin\")\n            head_state_dict = self.state_dict(heads_only=True)\n            torch.save(head_state_dict, save_path)\n        return self.base_model.save_pretrained(*args, **kwargs)\n    def state_dict(self, *args, **kwargs):\n        \"\"\"Return the state_dict of the pretrained model.\"\"\"\n        raise NotImplementedError\n    def post_init(self, *args, **kwargs):\n        \"\"\"Post initialization method. This method is called after the model is\n        instantiated and loaded from a checkpoint. It can be used to perform\n        additional operations such as loading the state_dict.\n        \"\"\"\n        if self.peft_config is not None:\n            # Don't use the interface of the peft model,\n            # use the interface of the underlying transformer model instead.\n            # (peft adds 2 \"base_model\" layers)\n            # self.base_model LoraModelForCausalLM\n            # self.base_model.base_model LoraModel",
+        "type": "code",
+        "location": "/tsllm/model/modeling_base.py:322-343"
+    },
+    "553": {
+        "file_id": 65,
+        "content": "Function is part of a class (LoraModelForCausalLM) that inherits from another class (LoraModel). It has methods to save and load model states, as well as post-initialization. The code is for the base model's saving method which calls the save_pretrained function. If a peft_config exists, it uses the underlying transformer model's interface instead of the PEFT one.",
+        "type": "comment"
+    },
+    "554": {
+        "file_id": 65,
+        "content": "            # self.base_model.base_model.model LlamaModelForCausalLM\n            self.forward_kwargs = inspect.getfullargspec(\n                self.base_model.base_model.model.forward\n            ).args\n    def get_compatible_forward_kwargs(self, **kwargs) -> Dict[str, Any]:\n        \"\"\"Filter out arguments not supported by the specific instance of\n        `base_model.transformer.forward`\n        \"\"\"\n        # FIXME: This is a hack to get around the fact that the `transformers`\n        # architectures we use don't have a consistent API for `forward` parameters.\n        return {k: v for k, v in kwargs.items() if k in self.forward_kwargs}",
+        "type": "code",
+        "location": "/tsllm/model/modeling_base.py:344-355"
+    },
+    "555": {
+        "file_id": 65,
+        "content": "This code retrieves the valid arguments for the `base_model.transformer.forward` function and filters out any unsupported arguments. It's a hack to work around inconsistent APIs in transformers architectures used by the model.",
+        "type": "comment"
+    },
+    "556": {
+        "file_id": 66,
+        "content": "/tsllm/model/modeling_prm.py",
+        "type": "filepath"
+    },
+    "557": {
+        "file_id": 66,
+        "content": "This code introduces a `CategoricalHeadLMOutputWithPast` class for causal language models, improving sequential decoding speed. It also defines a language model output class with methods for loading, initializing, and cleanup, along with return types for a language modeling function, a ValueHeadedLLM class as a wrapper for AutoModel base model, enabling pre-trained model loading while maintaining additional layers like cat_head module.",
+        "type": "summary"
+    },
+    "558": {
+        "file_id": 66,
+        "content": "from collections import OrderedDict\nfrom dataclasses import dataclass\nimport gc\nfrom typing import Optional, Tuple\nimport torch\nimport torch.nn as nn\nfrom transformers import AutoModel\nimport transformers\nfrom transformers.modeling_outputs import ModelOutput\nfrom tsllm.model.modeling_base import PreTrainedModelWrapper\n@dataclass\nclass CategoricalHeadLMOutputWithPast(ModelOutput):\n    \"\"\"\n    Base class for causal language model (or autoregressive) outputs.\n    Args:\n        loss (`torch.FloatTensor` of shape `(1,)`, *optional*, returned when `labels` is provided):\n            Language modeling loss (for next-token prediction).\n        logits (`torch.FloatTensor` of shape `(batch_size, sequence_length, config.vocab_size)`):\n            Prediction scores of the language modeling head (scores for each vocabulary token before SoftMax).\n        past_key_values (`tuple(tuple(torch.FloatTensor))`, *optional*, returned when `use_cache=True` is passed or when `config.use_cache=True`):\n            Tuple of `tuple(torch.FloatTensor)` of length `config.n_layers`, with each tuple having 2 tensors of shape",
+        "type": "code",
+        "location": "/tsllm/model/modeling_prm.py:1-24"
+    },
+    "559": {
+        "file_id": 66,
+        "content": "This code defines a `CategoricalHeadLMOutputWithPast` class that represents the outputs of a causal language model. It includes properties like loss, logits, and past_key_values. The `@dataclass` decorator is used for data class functionality, while `transformers` library imports are utilized for necessary functionalities.",
+        "type": "comment"
+    },
+    "560": {
+        "file_id": 66,
+        "content": "            `(batch_size, num_heads, sequence_length, embed_size_per_head)`)\n            Contains pre-computed hidden-states (key and values in the self-attention blocks) that can be used (see\n            `past_key_values` input) to speed up sequential decoding.\n        hidden_states (`tuple(torch.FloatTensor)`, *optional*, returned when `output_hidden_states=True` is passed or when `config.output_hidden_states=True`):\n            Tuple of `torch.FloatTensor` (one for the output of the embeddings, if the model has an embedding layer, +\n            one for the output of each layer) of shape `(batch_size, sequence_length, hidden_size)`.\n            Hidden-states of the model at the output of each layer plus the optional initial embedding outputs.\n        attentions (`tuple(torch.FloatTensor)`, *optional*, returned when `output_attentions=True` is passed or when `config.output_attentions=True`):\n            Tuple of `torch.FloatTensor` (one for each layer) of shape `(batch_size, num_heads, sequence_length,",
+        "type": "code",
+        "location": "/tsllm/model/modeling_prm.py:25-35"
+    },
+    "561": {
+        "file_id": 66,
+        "content": "This code defines a model with output features including past key-values, hidden states, and attentions. The past key-values are precomputed hidden states used for speeding up sequential decoding. The `hidden_states` contains the model's hidden states at the output of each layer, and optional initial embedding outputs if present. The `attentions` is a tuple containing the attention scores for each layer, returned when either `output_attentions=True` or `config.output_attentions=True`.",
+        "type": "comment"
+    },
+    "562": {
+        "file_id": 66,
+        "content": "            sequence_length)`.\n            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention\n            heads.\n    \"\"\"\n    loss: Optional[torch.FloatTensor] = None\n    logits: torch.FloatTensor = None\nclass CategoricalHeadedLLM(PreTrainedModelWrapper):\n    _auto_model_parent_class = AutoModel\n    _supported_modules = [\"cat_head\"]\n    _supported_args = [\"n_out\", \"loss_fn\"]\n    def __init__(\n        self,\n        base_model: AutoModel,\n        n_out: int = 3,\n        loss_fn: callable = nn.CrossEntropyLoss(),\n        **kwargs,\n    ):\n        super().__init__(base_model, **kwargs)\n        self.base_model = base_model\n        self.n_out = n_out\n        hidden_state = self.base_model.config.hidden_size\n        self.cat_head = nn.Linear(hidden_state, n_out)\n        self.loss_fn = loss_fn\n    def forward(\n        self,\n        input_ids: torch.LongTensor = None,\n        labels: torch.LongTensor = None,\n        attention_mask: Optional[torch.Tensor] = None,\n    ):\n        outputs = self.base_model(",
+        "type": "code",
+        "location": "/tsllm/model/modeling_prm.py:36-73"
+    },
+    "563": {
+        "file_id": 66,
+        "content": "Class for a language model with a categorical head, initializes the base model, adds a linear layer for classification tasks, and defines forward pass to include the base model's output and the new layer. Loss function can be specified in constructor.",
+        "type": "comment"
+    },
+    "564": {
+        "file_id": 66,
+        "content": "            input_ids=input_ids,\n            attention_mask=attention_mask,\n        )\n        hidden_states = outputs[0]\n        logits = self.cat_head(hidden_states)\n        loss = None\n        if labels is not None:\n            labels = labels.view(-1).to(logits.device)\n            # you should keep logits with shape (-1, n_class) and labels with shape [-1]\n            loss = self.loss_fn(logits.view(-1, logits.size(-1)), labels)\n        return CategoricalHeadLMOutputWithPast(loss=loss, logits=logits)\n    def gradient_checkpointing_enable(self):\n        self.base_model.gradient_checkpointing_enable()\n    def state_dict(self, *args, heads_only=False, **kwargs):\n        \"\"\"\n        Returns the state dictionary of the model. We add the state dictionary of the value head\n        to the state dictionary of the wrapped model by prepending the key with `cat_head.`.\n        \"\"\"\n        cat_head_state_dict = self.cat_head.state_dict(*args, **kwargs)\n        if heads_only:\n            model_state_dict = OrderedDict()",
+        "type": "code",
+        "location": "/tsllm/model/modeling_prm.py:74-99"
+    },
+    "565": {
+        "file_id": 66,
+        "content": "This code is for a model that outputs the logits and loss of a categorical language modeling task. It uses gradient checkpointing to save memory, and allows for retrieving only the state dictionary of the head layer if needed. The function `gradient_checkpointing_enable` enables gradient checkpointing in the base model, while `state_dict` returns the state dictionary of both the model and the head layer.",
+        "type": "comment"
+    },
+    "566": {
+        "file_id": 66,
+        "content": "        else:\n            model_state_dict = self.base_model.state_dict(*args, **kwargs)\n        for k, v in cat_head_state_dict.items():\n            model_state_dict[f\"cat_head.{k}\"] = v\n        return model_state_dict\n    def post_init(self, state_dict):\n        \"\"\"\n        Adds the state dictionary of the value head to the state dictionary of the wrapped model\n        by prepending the key with `cat_head.`. This function removes the `cat_head.` prefix from the\n        keys of the value head state dictionary.\n        \"\"\"\n        super().post_init()\n        for k in list(state_dict.keys()):\n            if \"cat_head.\" in k:\n                state_dict[k.replace(\"cat_head.\", \"\")] = state_dict.pop(k)\n        self.cat_head.load_state_dict(state_dict, strict=False)\n        del state_dict\n        gc.collect()\n    @classmethod\n    def from_config(cls, config: transformers.PretrainedConfig, **kwargs):\n        \"\"\"Instantiate the pretrained pytorch model from a configuration.\n        Args:\n            config (transformers.PretrainedConfig): The configuration to use to",
+        "type": "code",
+        "location": "/tsllm/model/modeling_prm.py:100-128"
+    },
+    "567": {
+        "file_id": 66,
+        "content": "This code defines a class with methods to load the state dictionary of a model with a categorical head, and adds it to the base model's state dictionary. It also includes a method for initializing the model from a configuration file and a cleanup function to remove unnecessary keys.",
+        "type": "comment"
+    },
+    "568": {
+        "file_id": 66,
+        "content": "                instantiate the base model.\n        NOTE: Loading a model from its configuration file does **not** load the\n        model weights. It only affects the model's configuration. Use\n        `~transformers.AutoModel.from_pretrained` to load the model weights.\n        \"\"\"\n        if kwargs is not None:\n            wrapped_model_kwargs, from_config_kwargs = cls._split_kwargs(kwargs)\n        else:\n            from_config_kwargs = {}\n            wrapped_model_kwargs = {}\n        base_model = cls._auto_model_parent_class.from_config(\n            config, **from_config_kwargs\n        )\n        model = cls(base_model, **wrapped_model_kwargs)\n        return model\n@dataclass\nclass ValueHeadLMOutputWithPast(ModelOutput):\n    \"\"\"\n    Base class for causal language model (or autoregressive) outputs.\n    Args:\n        loss (`torch.FloatTensor` of shape `(1,)`, *optional*, returned when `labels` is provided):\n            Language modeling loss (for next-token prediction).\n        logits (`torch.FloatTensor` of shape `(batch_size, sequence_length, config.vocab_size)`):",
+        "type": "code",
+        "location": "/tsllm/model/modeling_prm.py:129-156"
+    },
+    "569": {
+        "file_id": 66,
+        "content": "This code defines a method to instantiate the base model and create a language model output class. The base model is instantiated by loading its configuration file, but not the weights. The `AutoModel.from_pretrained` function should be used separately to load the model weights. The `ValueHeadLMOutputWithPast` class represents the output of a causal language model (autoregressive) and includes properties like loss and logits.",
+        "type": "comment"
+    },
+    "570": {
+        "file_id": 66,
+        "content": "            Prediction scores of the language modeling head (scores for each vocabulary token before SoftMax).\n        past_key_values (`tuple(tuple(torch.FloatTensor))`, *optional*, returned when `use_cache=True` is passed or when `config.use_cache=True`):\n            Tuple of `tuple(torch.FloatTensor)` of length `config.n_layers`, with each tuple having 2 tensors of shape\n            `(batch_size, num_heads, sequence_length, embed_size_per_head)`)\n            Contains pre-computed hidden-states (key and values in the self-attention blocks) that can be used (see\n            `past_key_values` input) to speed up sequential decoding.\n        hidden_states (`tuple(torch.FloatTensor)`, *optional*, returned when `output_hidden_states=True` is passed or when `config.output_hidden_states=True`):\n            Tuple of `torch.FloatTensor` (one for the output of the embeddings, if the model has an embedding layer, +\n            one for the output of each layer) of shape `(batch_size, sequence_length, hidden_size)`.",
+        "type": "code",
+        "location": "/tsllm/model/modeling_prm.py:157-166"
+    },
+    "571": {
+        "file_id": 66,
+        "content": "The code defines the return types for a language modeling function. It returns prediction scores, optional past key values for faster sequential decoding, and optionally hidden states if output_hidden_states is set to True or config.output_hidden_states. The past_key_values are tuples of tensors of shape (batch_size, num_heads, sequence_length, embed_size_per_head). Hidden_states are optional and provided as a tuple of torch.FloatTensor of shape (batch_size, sequence_length, hidden_size) if output_hidden_states is set to True or config.output_hidden_states.",
+        "type": "comment"
+    },
+    "572": {
+        "file_id": 66,
+        "content": "            Hidden-states of the model at the output of each layer plus the optional initial embedding outputs.\n        attentions (`tuple(torch.FloatTensor)`, *optional*, returned when `output_attentions=True` is passed or when `config.output_attentions=True`):\n            Tuple of `torch.FloatTensor` (one for each layer) of shape `(batch_size, num_heads, sequence_length,\n            sequence_length)`.\n            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention\n            heads.\n    \"\"\"\n    loss: Optional[torch.FloatTensor] = None\n    value: torch.FloatTensor = None\nclass ValueHeadedLLM(PreTrainedModelWrapper):\n    _auto_model_parent_class = AutoModel\n    _supported_modules = [\"cat_head\"]\n    _supported_args = [\"loss_fn\"]\n    def __init__(\n        self, base_model: AutoModel, loss_fn: callable = nn.CrossEntropyLoss(), **kwargs\n    ):\n        super().__init__(base_model, **kwargs)\n        self.base_model = base_model\n        hidden_state = self.base_model.config.hidden_size",
+        "type": "code",
+        "location": "/tsllm/model/modeling_prm.py:168-191"
+    },
+    "573": {
+        "file_id": 66,
+        "content": "The code defines a class called ValueHeadedLLM, which is a wrapper for an AutoModel base model. It has an optional loss function (defaulting to nn.CrossEntropyLoss()) and adds a \"cat_head\" module. The class also stores the hidden states of the model at each layer and attentions weights for self-attention heads as optional outputs.",
+        "type": "comment"
+    },
+    "574": {
+        "file_id": 66,
+        "content": "        self.cat_head = nn.Linear(hidden_state, 1)\n        self.loss_fn = loss_fn\n    def forward(\n        self,\n        input_ids: torch.LongTensor = None,\n        labels: torch.LongTensor = None,\n        attention_mask: Optional[torch.Tensor] = None,\n    ):\n        outputs = self.base_model(\n            input_ids=input_ids, attention_mask=attention_mask, use_cache=False\n        )\n        hidden_states = outputs[0]\n        value = self.cat_head(hidden_states).squeeze(dim=-1)\n        loss = None\n        return ValueHeadLMOutputWithPast(loss=loss, value=value)\n    def gradient_checkpointing_enable(self):\n        self.base_model.gradient_checkpointing_enable()\n    def state_dict(self, *args, heads_only=False, **kwargs):\n        \"\"\"\n        Returns the state dictionary of the model. We add the state dictionary of the value head\n        to the state dictionary of the wrapped model by prepending the key with `cat_head.`.\n        \"\"\"\n        cat_head_state_dict = self.cat_head.state_dict(*args, **kwargs)\n        if heads_only:",
+        "type": "code",
+        "location": "/tsllm/model/modeling_prm.py:193-223"
+    },
+    "575": {
+        "file_id": 66,
+        "content": "This code defines a model with a value head and loss function. The forward method processes input_ids, attention_mask, and returns the value and loss. The gradient_checkpointing_enable method enables gradient checkpointing for the base model. The state_dict method returns the model's state dictionary along with the value head's state dictionary if heads_only is True.",
+        "type": "comment"
+    },
+    "576": {
+        "file_id": 66,
+        "content": "            model_state_dict = OrderedDict()\n        else:\n            model_state_dict = self.base_model.state_dict(*args, **kwargs)\n        for k, v in cat_head_state_dict.items():\n            model_state_dict[f\"cat_head.{k}\"] = v\n        return model_state_dict\n    def post_init(self, state_dict):\n        \"\"\"\n        Adds the state dictionary of the value head to the state dictionary of the wrapped model\n        by prepending the key with `cat_head.`. This function removes the `cat_head.` prefix from the\n        keys of the value head state dictionary.\n        \"\"\"\n        super().post_init()\n        for k in list(state_dict.keys()):\n            if \"cat_head.\" in k:\n                state_dict[k.replace(\"cat_head.\", \"\")] = state_dict.pop(k)\n        self.cat_head.load_state_dict(state_dict, strict=False)\n        del state_dict\n        gc.collect()\n    @classmethod\n    def from_config(cls, config: transformers.PretrainedConfig, **kwargs):\n        \"\"\"Instantiate the pretrained pytorch model from a configuration.",
+        "type": "code",
+        "location": "/tsllm/model/modeling_prm.py:224-250"
+    },
+    "577": {
+        "file_id": 66,
+        "content": "This code defines two functions for handling the state dictionary of a model. The first function, \"get_model_state_dict\", checks if the input is an OrderedDict or not, and returns the base model's state dictionary with the cat_head appended to each key. The second function, \"post_init\", takes in a state dictionary, removes the \"cat_head.\" prefix from its keys, and loads the updated dictionary into the cat_head module of the model.",
+        "type": "comment"
+    },
+    "578": {
+        "file_id": 66,
+        "content": "        Args:\n            config (transformers.PretrainedConfig): The configuration to use to\n                instantiate the base model.\n        NOTE: Loading a model from its configuration file does **not** load the\n        model weights. It only affects the model's configuration. Use\n        `~transformers.AutoModel.from_pretrained` to load the model weights.\n        \"\"\"\n        if kwargs is not None:\n            wrapped_model_kwargs, from_config_kwargs = cls._split_kwargs(kwargs)\n        else:\n            from_config_kwargs = {}\n            wrapped_model_kwargs = {}\n        base_model = cls._auto_model_parent_class.from_config(\n            config, **from_config_kwargs\n        )\n        model = cls(base_model, **wrapped_model_kwargs)\n        return model",
+        "type": "code",
+        "location": "/tsllm/model/modeling_prm.py:252-270"
+    },
+    "579": {
+        "file_id": 66,
+        "content": "This code defines a function that loads a model's configuration from a file and instantiates the base model using the config. It does not load the model weights. Use `~transformers.AutoModel.from_pretrained` to load the model weights.",
+        "type": "comment"
+    },
+    "580": {
+        "file_id": 67,
+        "content": "/tsllm/model/utils.py",
+        "type": "filepath"
+    },
+    "581": {
+        "file_id": 67,
+        "content": "The code defines functions for simplifying attribute access in a more chainable way. \"rhasattr\" checks if an object has a specific nested attribute, \"rgetattr\" is a chainable version of \"getattr\", and \"findattr\" ensures all attributes are present in the object.",
+        "type": "summary"
+    },
+    "582": {
+        "file_id": 67,
+        "content": "import functools\nfrom typing import Union, Tuple\ndef rhasattr(obj, attr):\n    \"\"\"A chain-able attribute version of hasattr. For example, to check if\n    `obj` has the attribute `foo.bar.baz`, you can use:\n        `rhasattr(obj, \"foo.bar.baz\")`\n    Reference: https://stackoverflow.com/a/67303315\n    \"\"\"\n    _nested_attrs = attr.split(\".\")\n    _curr_obj = obj\n    for _a in _nested_attrs[:-1]:\n        if hasattr(_curr_obj, _a):\n            _curr_obj = getattr(_curr_obj, _a)\n        else:\n            return False\n    return hasattr(_curr_obj, _nested_attrs[-1])\ndef rgetattr(obj, attr: str, *args) -> object:\n    \"\"\"A chain-able attribute version of getattr. For example, to get the\n    attribute `foo.bar.baz` from `obj`, you can use:\n        `rgetattr(obj, \"foo.bar.baz\")`\n    Reference: https://stackoverflow.com/a/31174427\n    \"\"\"\n    def _getattr(obj, attr):\n        return getattr(obj, attr, *args)\n    return functools.reduce(_getattr, [obj] + attr.split(\".\"))\ndef findattr(obj, attrs: Tuple[str]) -> Union[object, None]:",
+        "type": "code",
+        "location": "/tsllm/model/utils.py:1-34"
+    },
+    "583": {
+        "file_id": 67,
+        "content": "This code defines three functions: \"rhasattr\", \"rgetattr\", and \"findattr\". The first function, \"rhasattr\", checks if an object has a specific nested attribute by splitting the input string into nested attributes and iterating through them. The second function, \"rgetattr\", is a chainable version of \"getattr\" that allows accessing nested attributes in a similar manner as \"rhasattr\". Finally, \"findattr\" takes an object and a tuple of attributes to find if all the attributes are present in the object. These functions aim to simplify attribute access in a more chainable way.",
+        "type": "comment"
+    },
+    "584": {
+        "file_id": 67,
+        "content": "    for attr in attrs:\n        if rhasattr(obj, attr):\n            return rgetattr(obj, attr)\n    raise ValueError(f\"Could not find an attribute from `{attrs}` in `{obj}`\")",
+        "type": "code",
+        "location": "/tsllm/model/utils.py:35-38"
+    },
+    "585": {
+        "file_id": 67,
+        "content": "Iterates through attributes, checks if each attribute exists in the object and returns it. Raises a ValueError if no attribute is found in the specified list of attrs for the given obj.",
+        "type": "comment"
+    },
+    "586": {
+        "file_id": 68,
+        "content": "/tsllm/offline_rl/dedup.py",
+        "type": "filepath"
+    },
+    "587": {
+        "file_id": 68,
+        "content": "This Python script loads a JSONL file, deduplicates text entries within answers, and writes the deduplicated data to another JSONL file. It keeps track of counts for total entries, unique entries, and correct entries, then outputs these counts at the end.",
+        "type": "summary"
+    },
+    "588": {
+        "file_id": 68,
+        "content": "import json\nfrom argparse import ArgumentParser\nfrom tsllm.offline_rl.utils import load_jsonl, write_to_jsonl\nif __name__ == \"__main__\":\n    parser = ArgumentParser()\n    parser.add_argument(\"--input_path\", type=str)\n    parser.add_argument(\"--output_path\", type=str)\n    args = parser.parse_args()\n    data = load_jsonl(args.input_path)\n    print(\"Load from {}\".format(args.input_path))\n    cnt = 0\n    total_cnt = 0\n    correct_cnt = 0\n    for d in data:\n        answer = d[\"answer\"] if \"answer\" in d else d[\"output\"]\n        unique_data = []\n        seen_texts = []\n        for item in answer:\n            if item[\"text\"] not in seen_texts:\n                seen_texts.append(item[\"text\"])\n                unique_data.append(item)\n                cnt += 1\n                if item[\"correct\"]:\n                    correct_cnt += 1\n            total_cnt += 1\n        d[\"answer\"] = unique_data\n    write_to_jsonl(data, args.output_path)\n    print(\"{} {} {}\".format(cnt, total_cnt, correct_cnt))",
+        "type": "code",
+        "location": "/tsllm/offline_rl/dedup.py:1-33"
+    },
+    "589": {
+        "file_id": 68,
+        "content": "This Python script loads a JSONL file, deduplicates text entries within answers, and writes the deduplicated data to another JSONL file. It keeps track of counts for total entries, unique entries, and correct entries, then outputs these counts at the end.",
+        "type": "comment"
+    },
+    "590": {
+        "file_id": 69,
+        "content": "/tsllm/offline_rl/game24/gen_3.sh",
+        "type": "filepath"
+    },
+    "591": {
+        "file_id": 69,
+        "content": "This script generates data for the game24 environment using three different episodes (ep1, ep2, ep3) and a specified number of workers. It utilizes CUDA devices, sets output directory, CT2 cache, and tokenizer paths to generate JSONL files for each episode.",
+        "type": "summary"
+    },
+    "592": {
+        "file_id": 69,
+        "content": "set -e\nK=100\nT=0.7\nN_WORKER=16\nOUTPUT_DIR=./game24/cot_sample/\nCUDA_DEVICES=0,1,2,3,4,5,6,7\nCT2_CACHE=$1\nTOKENIZER_PATH=$2\npython generate_data.py \\\n    -k $K \\\n    -t $T \\\n    --num_workers $N_WORKER \\\n    --gpu_ids $CUDA_DEVICES \\\n    --ct2_dir ${CT2_CACHE}/llama2_sft_ep1_ct2 \\\n    --tokenizer_path $TOKENIZER_PATH \\\n    --output_path ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k${K}_ep1.jsonl \\\n    --env_name game24\npython generate_data.py \\\n    -k $K \\\n    -t $T \\\n    --num_workers $N_WORKER \\\n    --gpu_ids $CUDA_DEVICES \\\n    --ct2_dir ${CT2_CACHE}/llama2_sft_ep2_ct2 \\\n    --tokenizer_path $TOKENIZER_PATH \\\n    --output_path ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k${K}_ep2.jsonl \\\n    --env_name game24\npython generate_data.py \\\n    -k $K \\\n    -t $T \\\n    --num_workers $N_WORKER \\\n    --gpu_ids $CUDA_DEVICES \\\n    --ct2_dir ${CT2_CACHE}/llama2_sft_ep3_ct2 \\\n    --tokenizer_path $TOKENIZER_PATH \\\n    --output_path ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k${K}_ep3.jsonl \\\n    --env_name game24",
+        "type": "code",
+        "location": "/tsllm/offline_rl/game24/gen_3.sh:1-41"
+    },
+    "593": {
+        "file_id": 69,
+        "content": "This script generates data for the game24 environment using three different episodes (ep1, ep2, ep3) and a specified number of workers. It utilizes CUDA devices, sets output directory, CT2 cache, and tokenizer paths to generate JSONL files for each episode.",
+        "type": "comment"
+    },
+    "594": {
+        "file_id": 70,
+        "content": "/tsllm/offline_rl/game24/process.sh",
+        "type": "filepath"
+    },
+    "595": {
+        "file_id": 70,
+        "content": "The script preprocesses game24 training data by deduplicating and sampling it for episodes 1-3, creating deduplicated and sampled JSONL files in output directories. This allows for easy selection of data by other scripts and merging with additional splits.",
+        "type": "summary"
+    },
+    "596": {
+        "file_id": 70,
+        "content": "set -e\nINPUT_DIR=\"game24/cot_sample\"\nOUTPUT_DIR=\"game24/processed\"\nmkdir -p $OUTPUT_DIR\nN=17\nfile_prefix=\"game24_train_cot_sample_offline_sft_k100_ep1\"\npython dedup.py \\\n    --input_path ${INPUT_DIR}/${file_prefix}.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl\npython sample.py \\\n    --input_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup_sample${N}.jsonl \\\n    -n $N\nfile_prefix=\"game24_train_cot_sample_offline_sft_k100_ep2\"\npython dedup.py \\\n    --input_path ${INPUT_DIR}/${file_prefix}.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl\npython sample.py \\\n    --input_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup_sample${N}.jsonl \\\n    -n $N\nfile_prefix=\"game24_train_cot_sample_offline_sft_k100_ep3\"\npython dedup.py \\\n    --input_path ${INPUT_DIR}/${file_prefix}.jsonl \\\n    --output_path ${OUTPUT_DIR}/${file_prefix}_dedup.jsonl\n# split_two_test.py will choose files encswith \"dedup\"",
+        "type": "code",
+        "location": "/tsllm/offline_rl/game24/process.sh:1-30"
+    },
+    "597": {
+        "file_id": 70,
+        "content": "This script preprocesses game24 training data by deduplicating and sampling the data for episodes 1-3. It uses the dedup.py and sample.py scripts, creating deduped and sampled JSONL files in output directories with episode number appended to the file prefix. The output filenames are chosen based on their content, so other scripts can select them easily.",
+        "type": "comment"
+    },
+    "598": {
+        "file_id": 70,
+        "content": "python split_two_test.py \\\n    --train_data_prefix ${OUTPUT_DIR}/${file_prefix} \\\n    --train_num $N \\\n    --train_test_num 3 \npython merge.py \\\n    --input_paths ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k100_ep1_dedup_sample17.jsonl \\\n    ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k100_ep2_dedup_sample17.jsonl \\\n    ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k100_ep3_dedup_sample17.jsonl \\\n    --output_path ${OUTPUT_DIR}/game24_train_cot_sample_offline_sft_k100_merged_dedup_sample17x3.jsonl",
+        "type": "code",
+        "location": "/tsllm/offline_rl/game24/process.sh:31-42"
+    },
+    "599": {
+        "file_id": 70,
+        "content": "This code is splitting a training data set into two parts and then merging three of these splits back together. The merged result will be stored in the specified output path.",
+        "type": "comment"
+    }
+}

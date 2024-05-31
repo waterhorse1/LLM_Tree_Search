@@ -1,0 +1,10 @@
+{
+    "summary": "This Python script merges multiple JSONL files in a target directory, excluding any file named \"merged.jsonl\". It reads each JSONL file, creates a dictionary with the index as key and object as value, then writes the merged data to a \"merged.jsonl\" file within the target directory. The script also handles KeyError exceptions that may occur when processing.",
+    "details": [
+        {
+            "comment": "This Python script merges multiple JSONL files in a target directory, excluding any file named \"merged.jsonl\". It reads each JSONL file, creates a dictionary with the index as key and object as value, then writes the merged data to a \"merged.jsonl\" file within the target directory. The script also handles KeyError exceptions that may occur when processing.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/merge_jsonl.py\":0-31",
+            "content": "import jsonlines\nimport pathlib\nimport argparse\ndef merge_jsonl_files(target_dir):\n    target_dir = pathlib.Path(target_dir)\n    total_data = dict()\n    for jl_file in target_dir.glob(r\"*.jsonl\"):\n        if \"merged.jsonl\" in str(jl_file):\n            print(\"WARNING!!: SKIP {}\".format(jl_file))\n            continue\n        print(jl_file)\n        with jsonlines.open(jl_file, \"r\") as reader:\n            for obj in reader:\n                total_data[obj[\"i\"]] = obj\n    with jsonlines.open(target_dir / \"merged.jsonl\", \"w\") as writer:\n        for i in range(len(total_data)):\n            try:\n                writer.write(total_data[i])\n            except KeyError as e:\n                print(\"key i not exist: \", i)\n                raise e\nif __name__ == \"__main__\":\n    parser = argparse.ArgumentParser()\n    parser.add_argument(\"--target_dir\", type=str, required=True)\n    args = parser.parse_args()\n    merge_jsonl_files(args.target_dir)"
+        }
+    ]
+}

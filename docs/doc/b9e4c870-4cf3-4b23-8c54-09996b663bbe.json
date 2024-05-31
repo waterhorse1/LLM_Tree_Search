@@ -1,0 +1,15 @@
+{
+    "summary": "The code defines a function `get_train_test_dataset` for game datasets and a `JsonlQuestionDataset` class to load JSONL data without answers. Additionally, it includes the `CSVDataset` class that reads puzzles data from CSV files and has methods to return the number of elements and retrieve specific puzzle elements.",
+    "details": [
+        {
+            "comment": "This code defines a function `get_train_test_dataset` that returns the train and test datasets for a game. The train and test data paths are provided as arguments, with default values specified in case they're not provided. The `JsonlQuestionDataset` class is defined to load JSONL data without answers into the dataset. It then removes the \"answer\" key from each object and returns a dummy answer when indexing the dataset.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/envs/game24/data.py\":0-38",
+            "content": "from torch.utils.data import Dataset\nimport pandas as pd\nimport jsonlines\nfrom pathlib import Path\ndef get_train_test_dataset(*args, **kwargs):\n    env_dir = Path(__file__).parent\n    train_data_path = kwargs.get(\n        \"train_data_path\", env_dir / \"train_data/train_dedup.jsonl\"\n    )\n    test_data_path = kwargs.get(\n        \"test_data_path\", env_dir / \"train_data/test_dedup.jsonl\"\n    )\n    train_ds = JsonlQuestionDataset(train_data_path)\n    test_ds = JsonlQuestionDataset(test_data_path)\n    return train_ds, test_ds\nclass JsonlQuestionDataset(Dataset):\n    def __init__(self, data_path):\n        super().__init__()\n        self.data = []\n        with jsonlines.open(data_path, \"r\") as reader:\n            for obj in reader:\n                obj.pop(\"answer\")\n                self.data.append(obj)\n    def __len__(self):\n        return len(self.data)\n    def __getitem__(self, index):\n        # dummy answer, just for compatibility\n        return {\"question\": self.data[index][\"question\"], \"answer\": \"[DUMMY ANSWER]\"}\n# This is the dataset that"
+        },
+        {
+            "comment": "This code defines a CSVDataset class that reads puzzles data from a CSV file at the specified path. It inherits from the Dataset class and has an initialized self.data list, which is populated with puzzle data read from the CSV file. The class also includes methods to return the number of elements in the dataset (len) and retrieve a specific puzzle element from the dataset using index (getitem).",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/envs/game24/data.py\":39-48",
+            "content": "class CSVDataset(Dataset):\n    def __init__(self, data_path) -> None:\n        super().__init__()\n        self.data = list(pd.read_csv(data_path)[\"Puzzles\"])\n    def __len__(self):\n        return len(self.data)\n    def __getitem__(self, index):\n        return {\"question\": self.data[index]}"
+        }
+    ]
+}

@@ -1,0 +1,10 @@
+{
+    "summary": "The code snippet defines constants related to the instruction and response format of a task. COT_EXAMPLES and COT_TASK_DESC are set to None, suggesting they might be used later in the program. The variable PROBLEM_FORMAT_STR provides a template for displaying instructions and requests, with placeholders for the question and response. SEP is an empty string possibly used for separating elements in the code.",
+    "details": [
+        {
+            "comment": "The code snippet defines constants related to the instruction and response format of a task. COT_EXAMPLES and COT_TASK_DESC are set to None, suggesting they might be used later in the program. The variable PROBLEM_FORMAT_STR provides a template for displaying instructions and requests, with placeholders for the question and response. SEP is an empty string possibly used for separating elements in the code.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/envs/rlhf/prompt.py\":0-11",
+            "content": "COT_EXAMPLES = None\nCOT_TASK_DESC = None\nPROBLEM_FORMAT_STR = \"\"\"Below is an instruction that describes a task. Write a response that appropriately completes the request.\n### Instruction:\n{question}\n### Response:\n\"\"\"\nSEP=\"\""
+        }
+    ]
+}

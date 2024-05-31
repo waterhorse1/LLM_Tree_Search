@@ -1,0 +1,10 @@
+{
+    "summary": "This JSON configuration file sets various parameters for training a machine learning model. It specifies the micro-batch size per GPU, gradient accumulation steps, whether to use BF16 and FP16, and zero optimization settings. The goal is likely to optimize the training process and improve performance.",
+    "details": [
+        {
+            "comment": "This JSON configuration file sets various parameters for training a machine learning model. It specifies the micro-batch size per GPU, gradient accumulation steps, whether to use BF16 and FP16, and zero optimization settings. The goal is likely to optimize the training process and improve performance.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/train_mcts_scripts/rlhf/ds_config_no_offload.json\":0-18",
+            "content": "{\n    \"train_micro_batch_size_per_gpu\": \"auto\",\n    \"gradient_accumulation_steps\": 8,\n    \"bf16\": {\n      \"enabled\": true\n    },\n    \"fp16\": {\n      \"enabled\": false,\n      \"min_loss_scale\": 0.0001,\n      \"fp16_scale_tolerance\": 0.0,\n      \"opt_level\": \"O1\"\n    },\n    \"zero_optimization\": {\n      \"stage\": 2,\n      \"allgather_partitions\": true,\n      \"allgather_bucket_size\": 5e8,\n      \"contiguous_gradients\": true\n    }\n  }"
+        }
+    ]
+}

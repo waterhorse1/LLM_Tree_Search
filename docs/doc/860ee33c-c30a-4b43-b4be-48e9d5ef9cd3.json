@@ -1,0 +1,10 @@
+{
+    "summary": "This configuration file sets the compute environment to local machine, uses DeepSpeed for distributed training with no offloading, and has one machine with eight processes. It also includes options for RDZV backend, network usage, TPU settings, and disables CPU use.",
+    "details": [
+        {
+            "comment": "This configuration file sets the compute environment to local machine, uses DeepSpeed for distributed training with no offloading, and has one machine with eight processes. It also includes options for RDZV backend, network usage, TPU settings, and disables CPU use.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/train_mcts_scripts/rlhf/accelerate_config.yaml\":0-15",
+            "content": "compute_environment: LOCAL_MACHINE\ndeepspeed_config:\n  deepspeed_config_file: ./ds_config_no_offload.json\n  zero3_init_flag: false\ndistributed_type: DEEPSPEED\ndowncast_bf16: 'no'\nmachine_rank: 0\nmain_training_function: main\nnum_machines: 1\nnum_processes: 8\nrdzv_backend: static\nsame_network: true\ntpu_env: []\ntpu_use_cluster: false\ntpu_use_sudo: false\nuse_cpu: false"
+        }
+    ]
+}

@@ -1,0 +1,15 @@
+{
+    "summary": "The code defines functions for simplifying attribute access in a more chainable way. \"rhasattr\" checks if an object has a specific nested attribute, \"rgetattr\" is a chainable version of \"getattr\", and \"findattr\" ensures all attributes are present in the object.",
+    "details": [
+        {
+            "comment": "This code defines three functions: \"rhasattr\", \"rgetattr\", and \"findattr\". The first function, \"rhasattr\", checks if an object has a specific nested attribute by splitting the input string into nested attributes and iterating through them. The second function, \"rgetattr\", is a chainable version of \"getattr\" that allows accessing nested attributes in a similar manner as \"rhasattr\". Finally, \"findattr\" takes an object and a tuple of attributes to find if all the attributes are present in the object. These functions aim to simplify attribute access in a more chainable way.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/model/utils.py\":0-33",
+            "content": "import functools\nfrom typing import Union, Tuple\ndef rhasattr(obj, attr):\n    \"\"\"A chain-able attribute version of hasattr. For example, to check if\n    `obj` has the attribute `foo.bar.baz`, you can use:\n        `rhasattr(obj, \"foo.bar.baz\")`\n    Reference: https://stackoverflow.com/a/67303315\n    \"\"\"\n    _nested_attrs = attr.split(\".\")\n    _curr_obj = obj\n    for _a in _nested_attrs[:-1]:\n        if hasattr(_curr_obj, _a):\n            _curr_obj = getattr(_curr_obj, _a)\n        else:\n            return False\n    return hasattr(_curr_obj, _nested_attrs[-1])\ndef rgetattr(obj, attr: str, *args) -> object:\n    \"\"\"A chain-able attribute version of getattr. For example, to get the\n    attribute `foo.bar.baz` from `obj`, you can use:\n        `rgetattr(obj, \"foo.bar.baz\")`\n    Reference: https://stackoverflow.com/a/31174427\n    \"\"\"\n    def _getattr(obj, attr):\n        return getattr(obj, attr, *args)\n    return functools.reduce(_getattr, [obj] + attr.split(\".\"))\ndef findattr(obj, attrs: Tuple[str]) -> Union[object, None]:"
+        },
+        {
+            "comment": "Iterates through attributes, checks if each attribute exists in the object and returns it. Raises a ValueError if no attribute is found in the specified list of attrs for the given obj.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/model/utils.py\":34-37",
+            "content": "    for attr in attrs:\n        if rhasattr(obj, attr):\n            return rgetattr(obj, attr)\n    raise ValueError(f\"Could not find an attribute from `{attrs}` in `{obj}`\")"
+        }
+    ]
+}

@@ -1,0 +1,20 @@
+{
+    "summary": "This code defines a function `tot_value_fn` that generates prompts based on inputs and assigns scores to keywords, while another code calculates the mean of a list of values and returns an array containing all computed means.",
+    "details": [
+        {
+            "comment": "This code defines a function `tot_value_fn` which takes a critic model, tokenizer, environment name and input string as inputs. It then generates prompts for the given input strings based on the environment type (game24) and encodes them using the tokenizer.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/inference/lm_self_value.py\":0-31",
+            "content": "import torch\nfrom typing import Union, List\nfrom tsllm.model import ValueHeadedLLM\nfrom transformers import AutoTokenizer\nimport re\nimport numpy as np\n@torch.inference_mode()\ndef tot_value_fn(\n    critic: ValueHeadedLLM,\n    tokenizer: AutoTokenizer,\n    env_name: str,\n    input_str: Union[List[str], str],\n):\n    if env_name == \"game24\":\n        from envs.game24.prompt import VALUE_PROMPT, VALUE_LAST_STEP_PROMPT\n    else:\n        print(\"tot_value_fn does not support env {}.\".format(env_name))\n        raise NotImplementedError\n    token_batch = []\n    for text in input_str:\n        last_line = text.strip().split(\"\\n\")[-1]\n        if \"left\" in last_line:\n            current_numbers = last_line.split(\"left: \")[-1].split(\")\")[0]\n            prompt = VALUE_PROMPT.format(input=current_numbers)\n        else:\n            inp = text.strip().split(\"\\n\")[1].replace(\"Input: \", \"\")\n            ans = last_line.lower().replace(\"The answer is: \", \"\")\n            prompt = VALUE_LAST_STEP_PROMPT.format(input=inp, answer=ans)\n        prompt_tokens = tokenizer.convert_ids_to_tokens(tokenizer.encode(prompt))"
+        },
+        {
+            "comment": "This code is generating a batch of sequences using a language model and then evaluating each sequence based on specific keywords. It assigns scores to the sequences based on whether they contain certain words (\"impossible\", \"likely\", or \"sure\"). These scores are stored in values, which may be used later in the program.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/inference/lm_self_value.py\":32-61",
+            "content": "        token_batch.append(prompt_tokens)\n    step_results = critic.generate_batch(\n        token_batch,\n        sampling_temperature=1.0,\n        sampling_topp=1.0,\n        sampling_topk=100,\n        max_length=128,\n        return_scores=True,\n        include_prompt_in_result=False,\n        end_token=[tokenizer.eos_token_id],\n        static_prompt=None,\n        max_batch_size=0,\n        num_hypotheses=3,  # it is the n_evaluate_sample in tot\n    )\n    values = []\n    value_map = {\"impossible\": 0.001, \"likely\": 1, \"sure\": 20}\n    for res in list(step_results):\n        v_res = []\n        for seq in res.sequences_ids:\n            text = tokenizer.decode(seq)\n            matchs = re.findall(r\"\\bimpossible|sure|likely\\b\", text)\n            if len(matchs) > 0:\n                # it will generate too much imagination, thus we chose only the first one.\n                v_seq = value_map[matchs[0]]\n            else:\n                # default to likely\n                v_seq = value_map[\"likely\"]\n            v_res.append(v_seq)"
+        },
+        {
+            "comment": "This code calculates the mean of a list of values and appends it to another list. Finally, it returns an array containing all computed means.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/inference/lm_self_value.py\":62-64",
+            "content": "        values.append(np.mean(v_res))\n    return np.array(values)"
+        }
+    ]
+}

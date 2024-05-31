@@ -1,0 +1,10 @@
+{
+    "summary": "This Python script loads a JSONL file, deduplicates text entries within answers, and writes the deduplicated data to another JSONL file. It keeps track of counts for total entries, unique entries, and correct entries, then outputs these counts at the end.",
+    "details": [
+        {
+            "comment": "This Python script loads a JSONL file, deduplicates text entries within answers, and writes the deduplicated data to another JSONL file. It keeps track of counts for total entries, unique entries, and correct entries, then outputs these counts at the end.",
+            "location": "\"/media/root/Toshiba XG3/works/LLM_Tree_Search/docs/src/tsllm/offline_rl/dedup.py\":0-32",
+            "content": "import json\nfrom argparse import ArgumentParser\nfrom tsllm.offline_rl.utils import load_jsonl, write_to_jsonl\nif __name__ == \"__main__\":\n    parser = ArgumentParser()\n    parser.add_argument(\"--input_path\", type=str)\n    parser.add_argument(\"--output_path\", type=str)\n    args = parser.parse_args()\n    data = load_jsonl(args.input_path)\n    print(\"Load from {}\".format(args.input_path))\n    cnt = 0\n    total_cnt = 0\n    correct_cnt = 0\n    for d in data:\n        answer = d[\"answer\"] if \"answer\" in d else d[\"output\"]\n        unique_data = []\n        seen_texts = []\n        for item in answer:\n            if item[\"text\"] not in seen_texts:\n                seen_texts.append(item[\"text\"])\n                unique_data.append(item)\n                cnt += 1\n                if item[\"correct\"]:\n                    correct_cnt += 1\n            total_cnt += 1\n        d[\"answer\"] = unique_data\n    write_to_jsonl(data, args.output_path)\n    print(\"{} {} {}\".format(cnt, total_cnt, correct_cnt))"
+        }
+    ]
+}

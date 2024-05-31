@@ -1,0 +1,6 @@
+ctranslate2==3.17.1
+transformers==4.29.2
+torch==2.0.1+cu117
+numpy==1.25.0
+flash-attn==1.0.9
+dm-tree==0.1.8
