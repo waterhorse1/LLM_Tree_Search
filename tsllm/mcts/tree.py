@@ -858,8 +858,12 @@ class MCTS(object):
 
         text_state = simulate_env.get_state()
         if not self._init_critic_value:
+            # Note that we dont use shared decoder for policy and value
+            # So we need to calculate value here separately
             leaf_value = policy_forward_fn(text_state).item()
         else:
+            # _init_critic_value enables the batch inference for value
+            # which is more computational efficient
             leaf_value = node._initial_value
             assert len(simulate_env.legal_actions) > 0
             child_values = policy_forward_fn(
